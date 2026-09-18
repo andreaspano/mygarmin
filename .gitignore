@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Outputs
+out/
+
+# Use-only distribution snapshots (tools/dispach.sh)
+#user/
+
+# data
+data/
+archive/
+
+# Lightning / TensorBoard
+lightning_logs/
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Env files
+.env
+
+# keys
+.aider*
+
+# Build

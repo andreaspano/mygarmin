@@ -1,0 +1,100 @@
+"""Tabella delle singole attivita', condivisa fra le pagine.
+
+La pagina Activities e quella Week mostrano lo stesso elenco (stesse colonne,
+stessi formati, stesse icone): tenerlo qui evita che le due copie divergano."""
+
+import base64
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
+
+ICONS_DIR = Path("icons")
+SPORT_ICON_FILES = {
+    "walking": "walking.png",
+    "running": "running.png",
+    "cycling": "cycling.png",
+    "hiking": "trekking.png",
+    "cross_country_skiing": "backcountry_ski.png",
+}
+_ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+
+ACTIVITY_COLUMNS = [
+    "icon",
+    "activity_id",
+    "start_time",
+    "activity_name",
+    "sport",
+    "sub_sport",
+    "total_distance_km",
+    "total_time_min",
+    "avg_heart_rate",
+    "avg_speed_kmh",
+    "total_ascent_m",
+]
+
+ACTIVITY_COLUMN_CONFIG = {
+    "icon": st.column_config.ImageColumn("", width=50),
+    "activity_id": st.column_config.NumberColumn("ID", format="%d", width=100, alignment="right"),
+    "start_time": st.column_config.DatetimeColumn("Date", format="D MMM YYYY, HH:mm", width=170),
+    "activity_name": st.column_config.TextColumn("Name", width=220),
+    "sport": st.column_config.TextColumn("Sport", width=90),
+    "sub_sport": st.column_config.TextColumn("Type", width=90),
+    "total_distance_km": st.column_config.NumberColumn(
+        "Distance (km)", format="%.1f", width=110, alignment="right"
+    ),
+    "total_time_min": st.column_config.NumberColumn(
+        "Duration (min)", format="%.0f", width=100, alignment="right"
+    ),
+    "avg_heart_rate": st.column_config.NumberColumn("Avg HR", width=90, alignment="right"),
+    "avg_speed_kmh": st.column_config.NumberColumn(
+        "Avg speed (km/h)", format="%.1f", width=160, alignment="right"
+    ),
+    "total_ascent_m": st.column_config.NumberColumn(
+        "Elevation gain (m)", format="%.0f", width=140, alignment="right"
+    ),
+}
+
+
+@st.cache_data
+def sport_icons() -> dict:
+    icons = {}
+    for sport, filename in SPORT_ICON_FILES.items():
+        path = ICONS_DIR / filename
+        if path.exists():
+            mime = _ICON_MIME_TYPES.get(path.suffix.lower(), "application/octet-stream")
+            encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+            icons[sport] = f"data:{mime};base64,{encoded}"
+    return icons
+
+
+def sport_icon_path(sport: str | None) -> Path | None:
+    """Il file dell'icona, per chi vuole mostrarla con `st.image` invece che
+    dentro una colonna della tabella."""
+    filename = SPORT_ICON_FILES.get(sport)
+    if not filename:
+        return None
+    path = ICONS_DIR / filename
+    return path if path.exists() else None
+
+
+def with_icons(activities: pd.DataFrame) -> pd.DataFrame:
+    activities = activities.copy()
+    activities["icon"] = activities["sport"].map(sport_icons())
+    return activities
+
+
+def activity_table(activities: pd.DataFrame, **kwargs):
+    """Mostra `activities` con le colonne/formati standard.
+
+    Gli argomenti extra (`on_select`, `selection_mode`, `key`, `height`, ...)
+    passano dritti a `st.dataframe`, cosi' ogni pagina decide se la tabella
+    e' selezionabile o solo da leggere."""
+    if "icon" not in activities.columns:
+        activities = with_icons(activities)
+    return st.dataframe(
+        activities[ACTIVITY_COLUMNS],
+        column_config=ACTIVITY_COLUMN_CONFIG,
+        hide_index=True,
+        **kwargs,
+    )

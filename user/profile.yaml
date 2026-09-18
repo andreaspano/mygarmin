@@ -1,0 +1,13 @@
+# Dati personali dell'utente, presi da Garmin Connect (userprofile-service).
+# Garmin non conserva un cognome separato: fullName riporta solo "Andrea".
+garmin_id: 8343889
+first_name: Andrea
+surname: null
+display_name: estrorso
+email: andrea@spano.it
+gender: male
+date_of_birth: 1968-03-17
+height_cm: 190
+weight_kg: 100.0
+handedness: right
+measurement_system: metric

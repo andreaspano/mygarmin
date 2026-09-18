@@ -1,0 +1,31 @@
+[project]
+name = "training"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "andreaspano", email = "andrea@spano.it" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "fitparse>=1.2.0",
+    "garminconnect",
+    "pandas>=3.0.5",
+    "pyyaml>=6.0",
+    "streamlit>=1.63.0",
+]
+
+[project.scripts]
+training = "training:main"
+garmin-export-all = "training.garmin:main"
+training-fitness-status = "training.garmin.fitness_status:main"
+training-activity-reports = "training.interface.activity_report:main"
+
+[build-system]
+requires = ["uv_build>=0.12.6,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipython>=9.17.1",
+]

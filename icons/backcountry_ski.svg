@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <circle cx="256" cy="256" r="240" fill="#6741d9"/>
+  <!-- corpo -->
+  <g fill="none" stroke="#ffffff" stroke-width="30" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M276 202 L214 224"/>
+    <path d="M290 188 L346 216"/>
+    <path d="M292 178 L256 262"/>
+    <path d="M256 262 L210 326 L190 404"/>
+    <path d="M256 262 L298 300 L300 346"/>
+  </g>
+  <!-- sci e bastoncini -->
+  <g fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="346" y1="216" x2="368" y2="300"/>
+    <line x1="214" y1="224" x2="150" y2="342"/>
+    <path d="M100 424 L302 385 q 24 -5 30 -20"/>
+    <path d="M140 380 L342 341 q 24 -5 30 -20"/>
+  </g>
+  <circle cx="302" cy="134" r="31" fill="#ffffff"/>
+</svg>
