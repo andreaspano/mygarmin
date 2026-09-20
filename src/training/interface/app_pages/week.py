@@ -2,7 +2,6 @@
 week(s) selected in the table."""
 
 import warnings
-from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -15,14 +14,50 @@ from training.interface.db import list_activities
 from training.interface.filters import date_range
 
 
-# Configurazione condivisa dalle due tabelle: le colonne dei valori sono le
-# stesse, cambia solo la prima (settimana / sport).
-VALUE_COLUMNS = {
-    "n": st.column_config.NumberColumn("n", format="%d", width=60),
-    "distance": st.column_config.NumberColumn("Distance (km)", format="%.1f", width=130),
-    "time": st.column_config.NumberColumn("Time (h)", format="%.1f", width=110),
-    "d+": st.column_config.NumberColumn("D+ (m)", format="%.0f", width=110),
-    "hr": st.column_config.NumberColumn("Avg HR", format="%.0f", width=100),
+# Configurazione della tabella dei totali settimanali. Segue le convenzioni
+# della tabella delle attivita' (activity_table.py): numeri a destra, unita' di
+# misura nell'intestazione, larghezze fisse. Le due tabelle stanno nella stessa
+# pagina e devono leggersi come una cosa sola.
+WEEK_TABLE_COLUMNS = ["week_start", "n", "distance", "time", "d+", "hr"]
+
+WEEK_COLUMN_CONFIG = {
+    "week_start": st.column_config.DatetimeColumn(
+        "Week",
+        format="D MMM YYYY",
+        width=130,
+        help="Monday that opens the week (Mon-Sun).",
+    ),
+    "n": st.column_config.NumberColumn(
+        "Activities",
+        format="%d",
+        width=95,
+        alignment="right",
+        help="Number of activities in the week.",
+    ),
+    "distance": st.column_config.NumberColumn(
+        "Distance (km)", format="%.1f", width=120, alignment="right"
+    ),
+    "time": st.column_config.TextColumn(
+        "Time (h:mm)",
+        width=105,
+        alignment="right",
+        help="Total time of the week, hours:minutes.",
+    ),
+    "d+": st.column_config.NumberColumn(
+        "D+ (m)",
+        format="%.0f",
+        width=100,
+        alignment="right",
+        help="Total elevation gain.",
+    ),
+    "hr": st.column_config.NumberColumn(
+        "Avg HR (bpm)",
+        format="%.0f",
+        width=120,
+        alignment="right",
+        help="Average heart rate, weighted by activity duration. "
+        "Empty when no activity of the week recorded it.",
+    ),
 }
 
 st.title("Week")
@@ -34,6 +69,19 @@ def _activities() -> pd.DataFrame:
 
 def _week_label(week_start: pd.Timestamp) -> str:
     return f"{week_start:%d %b %Y} - {week_start + pd.Timedelta(days=6):%d %b %Y}"
+
+
+def _hm(hours: float) -> str:
+    """Ore decimali in "hh:mm" (1.8 -> "01:48").
+
+    st.dataframe non ha un formato per le durate, quindi la cella e' testo.
+    Le ore stanno sempre su due cifre: cosi' la colonna resta incolonnata e
+    l'ordinamento alfabetico coincide con quello cronologico. Si arrotondano i
+    minuti, non le ore, per non far comparire un "01:60"."""
+    if pd.isna(hours):
+        return ""
+    minutes = round(hours * 60)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
 def _totals(df: pd.DataFrame, key: str) -> pd.DataFrame:
@@ -309,7 +357,9 @@ if weekly.empty:
     st.stop()
 
 summary = weekly.reset_index()
-summary["week"] = [_week_label(w) for w in weekly.index]
+# Il tempo diventa testo "hh:mm" solo per la tabella: `weekly` resta numerico,
+# perche' alimenta anche i grafici e le schede per sport.
+summary["time"] = summary["time"].map(_hm)
 
 # La selezione e' per indice di riga: cambiando periodo cambiano le righe,
 # quindi la tabella va rimontata (key diversa) per non ereditare una
@@ -327,11 +377,20 @@ if forced_row is not None:
 elif table_key not in st.session_state:
     st.session_state[table_key] = {"selection": {"rows": [0], "columns": []}}
 
+st.subheader("Weekly totals")
+st.caption("Click a row to see the week below. Click a header to sort.")
+
 event = st.dataframe(
-    summary[["week", "n", "distance", "time", "d+", "hr"]],
-    column_config={"week": st.column_config.TextColumn("Week", width=200), **VALUE_COLUMNS},
+    summary[WEEK_TABLE_COLUMNS],
+    column_config=WEEK_COLUMN_CONFIG,
     hide_index=True,
-    height=600,
+    # Larga quanto le sue colonne, non quanto la finestra, e alta quanto serve
+    # fino a dieci righe: oltre, scorre al suo interno.
+    width="content",
+    height="auto",
+    # Solo la FC puo' mancare (settimane senza nessun dato di FC): lo stesso
+    # trattino delle schede per sport, non uno zero.
+    placeholder="-",
     on_select="rerun",
     selection_mode="single-row",
     key=table_key,
@@ -499,7 +558,7 @@ with summary_area:
             n_col, distance_col, time_col, ascent_col, hr_col = body_col.columns(5)
             n_col.metric("Activities", f"{totals['n']:.0f}")
             distance_col.metric("Distance", f"{totals['distance']:.1f} km")
-            time_col.metric("Time", f"{totals['time']:.1f} h")
+            time_col.metric("Time", _hm(totals["time"]))
             ascent_col.metric(
                 "Elevation", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
             )
