@@ -8,12 +8,12 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from training.garmin.config import DATA_DIR
 from training.interface.activity_detail import show_activity_detail
 from training.interface.activity_table import activity_table, sport_icon_path
 from training.interface.db import list_activities
 from training.interface.filters import date_range
 
-DATA_DIR = Path("data")
 
 # Configurazione condivisa dalle due tabelle: le colonne dei valori sono le
 # stesse, cambia solo la prima (settimana / sport).

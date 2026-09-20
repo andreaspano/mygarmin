@@ -9,9 +9,12 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 from fitparse import FitFile
 
+from training.garmin.config import DATA_DIR
+
 _ACTIVITY_ID_RE = re.compile(r"(\d+)_ACTIVITY\.fit$")
 _SEMICIRCLE_TO_DEGREES = 180 / 2**31
 _NAMES_FILENAME = "activity_names.json"
+_TYPES_FILENAME = "activity_types.json"
 LOCAL_TZ = ZoneInfo("Europe/Rome")
 
 
@@ -24,7 +27,17 @@ def _to_local(dt):
 
 
 def load_activity_names(data_dir: Path) -> dict:
-    path = Path(data_dir) / _NAMES_FILENAME
+    return _load_json_map(Path(data_dir) / _NAMES_FILENAME)
+
+
+def load_activity_types(data_dir: Path) -> dict:
+    """Il tipo attivita' secondo Garmin Connect (es. "running"), salvato da
+    training.garmin.activities: serve quando il FIT non lo sa (sport
+    "generic" delle attivita' registrate seguendo un percorso)."""
+    return _load_json_map(Path(data_dir) / _TYPES_FILENAME)
+
+
+def _load_json_map(path: Path) -> dict:
     if not path.exists():
         return {}
     with open(path, encoding="utf-8") as f:
@@ -35,7 +48,7 @@ def _semicircles_to_degrees(value: int | None) -> float | None:
     return value * _SEMICIRCLE_TO_DEGREES if value is not None else None
 
 
-def list_activity_files(data_dir: Path = Path("data")) -> list[Path]:
+def list_activity_files(data_dir: Path = DATA_DIR) -> list[Path]:
     return sorted(Path(data_dir).glob("*_ACTIVITY.fit"))
 
 

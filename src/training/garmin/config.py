@@ -12,8 +12,10 @@ import os
 from datetime import date
 from pathlib import Path
 
-# Cartella dove verra' salvato tutto (verra' creata se non esiste)
-OUTPUT_DIR = Path("./garmin_export")
+# Cartella dove verra' salvato tutto (verra' creata se non esiste): usata
+# sia dal backup completo sia dall'interfaccia e dallo stato di forma
+DATA_DIR = Path("~/adrive/data/garmin-export").expanduser()
+OUTPUT_DIR = DATA_DIR
 
 # Intervallo di date per le metriche giornaliere di salute.
 # Garmin Connect esiste dal 2013-2014: se il tuo primo dispositivo Garmin

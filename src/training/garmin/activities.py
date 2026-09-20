@@ -11,10 +11,11 @@ from garminconnect import Garmin
 
 from .auth import init_api
 from .client import safe_call
-from .config import REQUEST_DELAY
+from .config import DATA_DIR, REQUEST_DELAY
 
 _ACTIVITY_ID_RE = re.compile(r"(\d+)_ACTIVITY\.fit$")
 _NAMES_FILENAME = "activity_names.json"
+_TYPES_FILENAME = "activity_types.json"
 
 
 def _names_path(data_dir: Path) -> Path:
@@ -32,6 +33,37 @@ def _load_activity_names(data_dir: Path) -> dict:
 def _save_activity_names(data_dir: Path, names: dict) -> None:
     with open(_names_path(data_dir), "w", encoding="utf-8") as f:
         json.dump(names, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def _types_path(data_dir: Path) -> Path:
+    return Path(data_dir) / _TYPES_FILENAME
+
+
+def _load_activity_types(data_dir: Path) -> dict:
+    path = _types_path(data_dir)
+    if not path.exists():
+        return {}
+    with open(path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def _save_activity_types(data_dir: Path, types: dict) -> None:
+    with open(_types_path(data_dir), "w", encoding="utf-8") as f:
+        json.dump(types, f, ensure_ascii=False, indent=2, sort_keys=True)
+
+
+def _remember(act: dict, names: dict, types: dict) -> None:
+    """Nome e tipo dell'attivita' non stanno nel file FIT: arrivano solo con
+    l'elenco attivita', quindi li salviamo ora che li abbiamo. Il tipo serve
+    perche' un'attivita' registrata seguendo un percorso preimpostato finisce
+    nel FIT come sport "generic" (sotto-tipo "navigate"), mentre Garmin sa
+    che era, ad esempio, una corsa."""
+    activity_id = str(act["activityId"])
+    if act.get("activityName"):
+        names[activity_id] = act["activityName"]
+    type_key = (act.get("activityType") or {}).get("typeKey")
+    if type_key:
+        types[activity_id] = type_key
 
 
 def export_activities(api: Garmin, out_dir: Path) -> list:
@@ -92,7 +124,7 @@ def _existing_activity_ids(data_dir: Path) -> set:
 
 
 def download_activities_between(
-    api: Garmin, start_date: str, end_date: str, data_dir: Path = Path("data")
+    api: Garmin, start_date: str, end_date: str, data_dir: Path = DATA_DIR
 ) -> list:
     """Scarica in data_dir tutte le attivita' comprese tra start_date e
     end_date (formato 'YYYY-MM-DD', estremi inclusi) non ancora presenti."""
@@ -100,6 +132,7 @@ def download_activities_between(
     data_dir.mkdir(parents=True, exist_ok=True)
     existing_ids = _existing_activity_ids(data_dir)
     names = _load_activity_names(data_dir)
+    types = _load_activity_types(data_dir)
 
     print(f"Recupero le attivita' tra {start_date} e {end_date} da Garmin Connect...")
     activities = safe_call(api.get_activities_by_date, start_date, end_date)
@@ -109,14 +142,12 @@ def download_activities_between(
         activity_id = act.get("activityId")
         if activity_id is None:
             continue
-        # Il nome non e' contenuto nel file FIT: arriva solo con l'elenco
-        # delle attivita', quindi lo salviamo ora che ce l'abbiamo.
-        if act.get("activityName"):
-            names[str(activity_id)] = act["activityName"]
+        _remember(act, names, types)
         if activity_id not in existing_ids:
             to_download.append(act)
 
     _save_activity_names(data_dir, names)
+    _save_activity_types(data_dir, types)
 
     if not to_download:
         print(f"Nessuna nuova attivita' da scaricare per l'intervallo {start_date} .. {end_date}.")
@@ -145,7 +176,7 @@ def download_activities_between(
     return downloaded
 
 
-def update_activity(data_dir: Path = Path("data")) -> list:
+def update_activity(data_dir: Path = DATA_DIR) -> list:
     """Si connette a Garmin Connect e scarica in data_dir le attivita' piu'
     recenti di quella gia' presente, estraendo lo zip originale di ognuna.
 
@@ -156,6 +187,7 @@ def update_activity(data_dir: Path = Path("data")) -> list:
     data_dir.mkdir(parents=True, exist_ok=True)
     existing_ids = _existing_activity_ids(data_dir)
     names = _load_activity_names(data_dir)
+    types = _load_activity_types(data_dir)
 
     api = init_api()
 
@@ -172,8 +204,7 @@ def update_activity(data_dir: Path = Path("data")) -> list:
             activity_id = act.get("activityId")
             if activity_id is None:
                 continue
-            if act.get("activityName"):
-                names[str(activity_id)] = act["activityName"]
+            _remember(act, names, types)
             if activity_id in existing_ids:
                 stop = True
                 break
@@ -185,6 +216,7 @@ def update_activity(data_dir: Path = Path("data")) -> list:
         time.sleep(REQUEST_DELAY)
 
     _save_activity_names(data_dir, names)
+    _save_activity_types(data_dir, types)
 
     if not new_ids:
         print("Nessuna nuova attivita' da scaricare.")
@@ -212,20 +244,22 @@ def update_activity(data_dir: Path = Path("data")) -> list:
     return downloaded
 
 
-def backfill_activity_names(data_dir: Path = Path("data")) -> dict:
-    """Recupera da Garmin Connect i nomi di tutte le attivita' gia' presenti
-    in data_dir ma non ancora salvate in activity_names.json (ad es. quelle
-    scaricate prima che questa funzionalita' esistesse)."""
+def backfill_activity_names(data_dir: Path = DATA_DIR) -> dict:
+    """Recupera da Garmin Connect nome e tipo di tutte le attivita' gia'
+    presenti in data_dir ma non ancora salvate in activity_names.json /
+    activity_types.json (ad es. quelle scaricate prima che queste
+    funzionalita' esistessero)."""
     data_dir = Path(data_dir)
     existing_ids = _existing_activity_ids(data_dir)
     names = _load_activity_names(data_dir)
-    missing = {i for i in existing_ids if str(i) not in names}
+    types = _load_activity_types(data_dir)
+    missing = {i for i in existing_ids if str(i) not in names or str(i) not in types}
     if not missing:
-        print("Tutti i nomi delle attivita' sono gia' presenti.")
+        print("Nome e tipo di tutte le attivita' sono gia' presenti.")
         return names
 
     api = init_api()
-    print(f"Recupero i nomi di {len(missing)} attivita'...")
+    print(f"Recupero nome e tipo di {len(missing)} attivita'...")
     start, limit = 0, 100
     while missing:
         batch = safe_call(api.get_activities, start, limit)
@@ -233,8 +267,8 @@ def backfill_activity_names(data_dir: Path = Path("data")) -> dict:
             break
         for act in batch:
             activity_id = act.get("activityId")
-            if activity_id in missing and act.get("activityName"):
-                names[str(activity_id)] = act["activityName"]
+            if activity_id in missing:
+                _remember(act, names, types)
                 missing.discard(activity_id)
         if len(batch) < limit:
             break
@@ -242,6 +276,7 @@ def backfill_activity_names(data_dir: Path = Path("data")) -> dict:
         time.sleep(REQUEST_DELAY)
 
     _save_activity_names(data_dir, names)
+    _save_activity_types(data_dir, types)
     if missing:
-        print(f"ATTENZIONE: nome non trovato per {len(missing)} attivita': {sorted(missing)}")
+        print(f"ATTENZIONE: dati non trovati per {len(missing)} attivita': {sorted(missing)}")
     return names

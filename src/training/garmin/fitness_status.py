@@ -17,7 +17,7 @@ from typing import Any
 from .activities import download_activities_between
 from .auth import init_api
 from .client import safe_call
-from .config import FITNESS_STATUS_WINDOW_DAYS
+from .config import DATA_DIR, FITNESS_STATUS_WINDOW_DAYS
 from .health import DAILY_ENDPOINTS, export_daily_health
 
 
@@ -39,7 +39,7 @@ def _load_cached_health(data_dir: Path, start_date: date, end_date: date) -> dic
 
 
 def build_fitness_status(
-    data_dir: Path = Path("data"), days: int = FITNESS_STATUS_WINDOW_DAYS
+    data_dir: Path = DATA_DIR, days: int = FITNESS_STATUS_WINDOW_DAYS
 ) -> dict[str, Any]:
     data_dir = Path(data_dir)
     today = date.today()

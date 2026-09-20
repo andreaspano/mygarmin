@@ -25,7 +25,7 @@ USO
 
 Al primo avvio ti chiedera' email, password (non verra' mostrata a schermo)
 ed eventualmente il codice MFA se lo hai attivato. Il login successivo
-riusera' il token salvato in ~/.garminconnect senza richiedere di nuovo
+riusera' il token salvato in ~/token senza richiedere di nuovo
 la password, finche' il token resta valido.
 
 Lo script e' RIPRENDIBILE: se lo interrompi (Ctrl+C) o Garmin ti blocca
@@ -69,7 +69,7 @@ except ImportError:
 # ----------------------------------------------------------------------
 
 # Cartella dove verra' salvato tutto (verra' creata se non esiste)
-OUTPUT_DIR = Path("./garmin_export")
+OUTPUT_DIR = Path("~/adrive/data/garmin-export").expanduser()
 
 # Intervallo di date per le metriche giornaliere di salute.
 # Garmin Connect esiste dal 2013-2014: se il tuo primo dispositivo Garmin
@@ -84,7 +84,7 @@ REQUEST_DELAY = 0.3
 
 # Dove salvare/riusare il token di login (evita di reinserire la password
 # ogni volta che rilanci lo script)
-TOKEN_STORE = os.path.expanduser("~/.garminconnect")
+TOKEN_STORE = os.path.expanduser("~/token")
 
 
 # ----------------------------------------------------------------------

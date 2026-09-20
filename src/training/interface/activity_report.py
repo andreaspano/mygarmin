@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities, load_activity_records
 
 OUT_DIR = Path("summary/00.activity")
@@ -129,7 +130,7 @@ def load_activity_comments(activity_id: int, out_dir: Path = OUT_DIR) -> list[st
     return [line[2:].strip() for line in section.splitlines() if line.startswith("- ")]
 
 
-def generate_activity_reports(data_dir: Path = Path("data"), out_dir: Path = OUT_DIR) -> list[Path]:
+def generate_activity_reports(data_dir: Path = DATA_DIR, out_dir: Path = OUT_DIR) -> list[Path]:
     """Genera un file .md per ogni attivita' non ancora presente in out_dir
     (nominato per activity_id). Un'attivita' passata non cambia, quindi un
     report gia' scritto non viene mai rigenerato. Ritorna i path scritti."""

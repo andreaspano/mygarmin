@@ -18,22 +18,61 @@ from pathlib import Path
 
 import pandas as pd
 
+from training.garmin.config import DATA_DIR
 from training.interface.fit import (
     LOCAL_TZ,
     activity_id_from_path,
     list_activity_files,
     load_activity_names,
     load_activity_summary,
+    load_activity_types,
 )
 from training.interface.fit import load_activity_records as _parse_fit_records
 
 DB_FILENAME = "activities.db"
 
+# Il FIT di un'attivita' registrata seguendo un percorso preimpostato ha
+# sport "generic" (sotto-tipo "navigate"): in quel caso lo sport vero lo
+# sa solo Garmin Connect, che lo chiama con queste chiavi.
+_GENERIC_SPORTS = {None, "", "generic"}
+GARMIN_TYPE_TO_SPORT = {
+    "running": "running",
+    "trail_running": "running",
+    "treadmill_running": "running",
+    "track_running": "running",
+    "street_running": "running",
+    "cycling": "cycling",
+    "road_biking": "cycling",
+    "mountain_biking": "cycling",
+    "gravel_cycling": "cycling",
+    "cyclocross": "cycling",
+    "indoor_cycling": "cycling",
+    "virtual_ride": "cycling",
+    "e_bike_fitness": "cycling",
+    "hiking": "hiking",
+    "mountaineering": "hiking",
+    "walking": "walking",
+    "casual_walking": "walking",
+    "speed_walking": "walking",
+    "cross_country_skiing": "cross_country_skiing",
+    "cross_country_skiing_ws": "cross_country_skiing",
+    "skate_skiing": "cross_country_skiing",
+    "backcountry_skiing": "cross_country_skiing",
+}
+
+
+def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | None:
+    """Lo sport da mostrare: quello del FIT, se lo sa; altrimenti quello che
+    Garmin Connect associa all'attivita'."""
+    if sport not in _GENERIC_SPORTS or not type_key:
+        return sport
+    return GARMIN_TYPE_TO_SPORT.get(type_key, type_key)
+
 # Bump when parsing/derivation logic changes (e.g. the UTC->local timezone
 # fix): sync() compares this against the value stored in schema_meta and
 # transparently triggers a full rebuild() when they differ, instead of
 # silently serving rows computed under old logic.
-LOGIC_VERSION = "1"
+LOGIC_VERSION = "2"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -154,17 +193,21 @@ def _insert_records(conn: sqlite3.Connection, activity_id: int, records: pd.Data
     )
 
 
-def _parse_and_store(conn: sqlite3.Connection, path: Path, names: dict, parsed_at: str) -> bool:
+def _parse_and_store(
+    conn: sqlite3.Connection, path: Path, names: dict, types: dict, parsed_at: str
+) -> bool:
     summary = load_activity_summary(path)
     if summary["activity_id"] is None or summary["start_time"] is None:
         return False
     records = _parse_fit_records(path)
-    _insert_activity(conn, summary, names.get(str(summary["activity_id"])), parsed_at)
+    activity_id = str(summary["activity_id"])
+    summary["sport"] = sport_from_garmin_type(summary.get("sport"), types.get(activity_id))
+    _insert_activity(conn, summary, names.get(activity_id), parsed_at)
     _insert_records(conn, summary["activity_id"], records)
     return True
 
 
-def rebuild(data_dir: Path = Path("data")) -> int:
+def rebuild(data_dir: Path = DATA_DIR) -> int:
     """Drop and repopulate the cache from every .fit file in data_dir.
     Used after a parsing-logic change (LOGIC_VERSION bump) or on first run."""
     data_dir = Path(data_dir)
@@ -176,8 +219,11 @@ def rebuild(data_dir: Path = Path("data")) -> int:
     conn = _connect(data_dir)
     try:
         names = load_activity_names(data_dir)
+        types = load_activity_types(data_dir)
         parsed_at = datetime.now().isoformat(sep=" ")
-        count = sum(_parse_and_store(conn, p, names, parsed_at) for p in list_activity_files(data_dir))
+        count = sum(
+            _parse_and_store(conn, p, names, types, parsed_at) for p in list_activity_files(data_dir)
+        )
         conn.execute(
             "INSERT INTO schema_meta (key, value) VALUES ('logic_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -189,7 +235,7 @@ def rebuild(data_dir: Path = Path("data")) -> int:
     return count
 
 
-def sync(data_dir: Path = Path("data")) -> int:
+def sync(data_dir: Path = DATA_DIR) -> int:
     """Parse and cache only .fit files not yet in the DB (by activity_id,
     read cheaply from the filename, no FIT parse needed). Also refreshes
     activity_name for already-cached rows from activity_names.json. Falls
@@ -207,12 +253,22 @@ def sync(data_dir: Path = Path("data")) -> int:
         new_paths = [p for p in list_activity_files(data_dir) if activity_id_from_path(p) not in existing_ids]
 
         names = load_activity_names(data_dir)
+        types = load_activity_types(data_dir)
         parsed_at = datetime.now().isoformat(sep=" ")
-        added = sum(_parse_and_store(conn, p, names, parsed_at) for p in new_paths)
+        added = sum(_parse_and_store(conn, p, names, types, parsed_at) for p in new_paths)
 
         conn.executemany(
             "UPDATE activities SET activity_name=? WHERE activity_id=?",
             [(name, int(activity_id)) for activity_id, name in names.items()],
+        )
+        # Anche il tipo puo' cambiare dopo il download (attivita' riclassificata
+        # su Garmin Connect), quindi si aggiorna a ogni sync come il nome.
+        conn.executemany(
+            "UPDATE activities SET sport=? WHERE activity_id=? AND sport IN ('generic', '')",
+            [
+                (sport_from_garmin_type("generic", type_key), int(activity_id))
+                for activity_id, type_key in types.items()
+            ],
         )
         conn.commit()
         return added
@@ -220,7 +276,7 @@ def sync(data_dir: Path = Path("data")) -> int:
         conn.close()
 
 
-def list_activities(data_dir: Path = Path("data")) -> pd.DataFrame:
+def list_activities(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     data_dir = Path(data_dir)
     sync(data_dir)
     conn = _connect(data_dir)
@@ -233,7 +289,7 @@ def list_activities(data_dir: Path = Path("data")) -> pd.DataFrame:
     return df
 
 
-def load_activity_records(activity_id: int, data_dir: Path = Path("data")) -> pd.DataFrame:
+def load_activity_records(activity_id: int, data_dir: Path = DATA_DIR) -> pd.DataFrame:
     data_dir = Path(data_dir)
     conn = _connect(data_dir)
     try:

@@ -9,11 +9,11 @@ This task has three mandatory steps, in order. Do not stop after step 2 — savi
 
 ## Step 1 — get the data
 
-Run `cd /home/andrea/dev/training && uv run training-fitness-status` to get a JSON snapshot
+Run `cd /home/andrea/dev/mygarmin && uv run training-fitness-status` to get a JSON snapshot
 of the last `FITNESS_STATUS_WINDOW_DAYS` (14 by default) days. This command transparently:
 - backfills any missing activities/wellness data from Garmin Connect (reusing the saved
   login token — no credentials needed),
-- reuses the local cache under `data/` for anything already downloaded,
+- reuses the local cache under `~/adrive/data/garmin-export/` for anything already downloaded,
 - always re-fetches **today's** wellness metrics live, since those can still change during
   the day.
 
@@ -65,7 +65,7 @@ and skip straight to nothing (there is no Step 3 to do — no data means nothing
 ## Step 3 — save the report (always do this, every time you run step 1)
 
 Save a single combined report file to
-`/home/andrea/dev/training/summary/01.daily/<today's date, YYYY-MM-DD>.md` with this shape:
+`/home/andrea/dev/mygarmin/summary/01.daily/<today's date, YYYY-MM-DD>.md` with this shape:
 
 - A top heading `# Fitness status — <YYYY-MM-DD>`.
 - A line noting the window covered: `Window: <window.start> to <window.end> (<window.days> days)`.

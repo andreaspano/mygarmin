@@ -10,13 +10,13 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
+from training.garmin.config import DATA_DIR
 from training.interface.activity_report import load_activity_comments
 from training.interface.activity_table import sport_icons
 from training.interface.db import load_activity_records
 
 alt.data_transformers.disable_max_rows()
 
-DATA_DIR = Path("data")
 
 
 def _records(activity_id: int) -> pd.DataFrame:
