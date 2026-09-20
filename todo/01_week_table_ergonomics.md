@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Week: tabella dei totali settimanali piu' ergonomica
