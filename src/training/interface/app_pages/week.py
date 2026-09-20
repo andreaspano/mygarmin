@@ -197,8 +197,22 @@ def _chart(
         .melt(id_vars="week_start", var_name="series", value_name="value")
     )
     long["week_key"] = long["week_start"].dt.strftime("%Y-%m-%d")
+    # Numero di settimana ISO, calcolato qui e non nel grafico: serve al
+    # tooltip, ed e' anche il riscontro di quello che l'asse deve mostrare.
+    long["week_no"] = "w" + long["week_start"].dt.isocalendar().week.astype(int).map(
+        "{:02d}".format
+    )
 
-    x = alt.X("week_start:T", title="week")
+    # L'asse resta temporale (e' quello che tiene le distanze giuste fra le
+    # settimane, comprese le pause), ma i tick cadono su ogni lunedi' invece
+    # che sui confini di mese: cosi' ogni etichetta corrisponde davvero a un
+    # punto della serie. L'etichetta e' il numero di settimana ISO, w01..w53,
+    # e Vega nasconde da se' quelle che si sovrapporrebbero.
+    x = alt.X(
+        "week_start:T",
+        title="week",
+        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1}),
+    )
     y = alt.Y("value:Q", title=y_label)
     # Dominio esplicito: ogni layer vede solo una parte delle serie, senza
     # fissare la scala il totale si prenderebbe il colore del primo sport.
@@ -237,7 +251,8 @@ def _chart(
             y=y,
             color=color,
             tooltip=[
-                alt.Tooltip("week_start:T", title="Week", format="%d %b %Y"),
+                alt.Tooltip("week_no:N", title="Week"),
+                alt.Tooltip("week_start:T", title="Starting", format="%d %b %Y"),
                 alt.Tooltip("series:N", title="Series"),
                 alt.Tooltip("value:Q", title=y_label, format=".1f"),
             ],
@@ -339,11 +354,15 @@ activities["_hr_time"] = activities["total_time_min"].where(activities["avg_hear
 weekly = _totals(activities, "week_start").sort_index(ascending=False)
 
 # Lo stesso filtro a calendario della pagina Activities: stessa funzione,
-# non una copia.
+# non una copia. Qui pero' con le scorciatoie di periodo, perche' una pagina
+# settimanale si guarda quasi sempre sulle ultime settimane e non su tutto lo
+# storico (che sono quasi novanta righe e altrettanti punti per grafico).
 start_date, end_date = date_range(
     activities,
     st.container(horizontal=True),
     "'From' is later than 'To': swap the two dates to see the weeks.",
+    presets=True,
+    key="week_dates",
 )
 
 # Una settimana entra se si sovrappone all'intervallo, non solo se ci cade
@@ -367,40 +386,13 @@ summary["time"] = summary["time"].map(_hm)
 period_key = f"{start_date}_{end_date}"
 table_key = f"weekly_{period_key}"
 
-# Riga da spuntare: quella chiesta da un click su un grafico (vedi in fondo),
-# altrimenti - alla prima apertura e a ogni cambio di periodo - la settimana
-# piu' recente, cioe' la riga 0, perche' `weekly` e' ordinata dalla piu' nuova
-# alla piu' vecchia.
-forced_row = st.session_state.pop("_force_week_row", None)
-if forced_row is not None:
-    st.session_state[table_key] = {"selection": {"rows": [forced_row], "columns": []}}
-elif table_key not in st.session_state:
-    st.session_state[table_key] = {"selection": {"rows": [0], "columns": []}}
-
-st.subheader("Weekly totals")
-st.caption("Click a row to see the week below. Click a header to sort.")
-
-event = st.dataframe(
-    summary[WEEK_TABLE_COLUMNS],
-    column_config=WEEK_COLUMN_CONFIG,
-    hide_index=True,
-    # Larga quanto le sue colonne, non quanto la finestra, e alta quanto serve
-    # fino a dieci righe: oltre, scorre al suo interno.
-    width="content",
-    height="auto",
-    # Solo la FC puo' mancare (settimane senza nessun dato di FC): lo stesso
-    # trattino delle schede per sport, non uno zero.
-    placeholder="-",
-    on_select="rerun",
-    selection_mode="single-row",
-    key=table_key,
-)
-
-# Le tabelle stanno sopra i grafici, ma quello che mostrano dipende anche da
-# dove si clicca nei grafici: prenotiamo qui il loro spazio e lo riempiamo
-# piu' sotto, quando la settimana scelta e' nota.
-summary_area = st.container()
-activities_area = st.container()
+# La tabella si legge per prima ma va creata per ultima. Lo stato di un widget
+# si puo' impostare solo prima di crearlo: disegnando i grafici per primi, al
+# momento di creare la tabella sappiamo gia' su quale settimana e' caduto il
+# click, e possiamo spuntare la riga giusta subito. E' il motivo per cui qui
+# non serve piu' rilanciare lo script: un click su un grafico costa un giro
+# invece di due. Prenotiamo il posto, riempiamo piu' sotto.
+table_area = st.container()
 
 st.subheader("Weekly volume by sport")
 in_range = activities[activities["week_start"].isin(weekly.index)]
@@ -497,13 +489,23 @@ else:
 # Tabella e grafici sono due modi di scegliere la stessa cosa: vince quello
 # toccato per ultimo, altrimenti un click sul grafico resterebbe prigioniero
 # di una riga selezionata prima (e viceversa).
-selected_rows = list(event.selection.rows)
-table_week = weekly.index[selected_rows[0]] if selected_rows else None
+#
+# La riga della tabella si legge dallo stato di sessione e non dal widget:
+# Streamlit ci scrive la selezione dell'utente prima di far partire lo script,
+# quindi la sappiamo gia' qui, prima ancora di creare la tabella.
+table_rows = st.session_state.get(table_key, {}).get("selection", {}).get("rows", [])
+table_week = weekly.index[table_rows[0]] if table_rows else None
 chart_week = pd.Timestamp(clicked_weeks[0]) if clicked_weeks else None
 
-if chart_week != st.session_state.get("_prev_chart_week") and chart_week is not None:
+chart_changed = chart_week != st.session_state.get("_prev_chart_week")
+table_changed = table_week != st.session_state.get("_prev_table_week")
+if chart_changed and chart_week is not None:
     source = "chart"
-elif table_week != st.session_state.get("_prev_table_week") and table_week is not None:
+elif table_changed and table_week is not None:
+    source = "table"
+elif chart_changed:
+    # Doppio click su un grafico: la selezione li' e' stata azzerata, quindi
+    # torna a comandare la riga della tabella, che e' rimasta evidenziata.
     source = "table"
 else:
     source = st.session_state.get("_week_source", "table")
@@ -516,72 +518,100 @@ picked_week = chart_week if source == "chart" else table_week
 if picked_week not in weekly.index:
     picked_week = None
 
-# Cliccando un grafico si deve spuntare anche la riga corrispondente. La
-# tabella e' gia' stata disegnata in questo giro (sta piu' in alto), e lo
-# stato di un widget non si puo' toccare dopo averlo creato: si lascia detta
-# la riga in una chiave a parte e si rilancia lo script, che la ritrova prima
-# di ridisegnare la tabella.
-if source == "chart" and picked_week is not None and picked_week != table_week:
-    st.session_state["_force_week_row"] = int(weekly.index.get_loc(picked_week))
-    st.rerun()
-
 # Rete di sicurezza: se resta tutto deselezionato (o si clicca il punto di una
 # settimana vuota) mostriamo comunque l'ultima settimana invece di una pagina
-# a meta'.
+# a meta'. `weekly` e' ordinata dalla piu' recente, quindi e' la riga 0.
 showing_latest = picked_week is None
 if showing_latest:
     picked_week = weekly.index.max()
 
-picked = activities[activities["week_start"] == picked_week]
+# La riga da spuntare, decisa prima che la tabella esista.
+st.session_state[table_key] = {
+    "selection": {"rows": [int(weekly.index.get_loc(picked_week))], "columns": []}
+}
+
+with table_area:
+    st.subheader("Weekly totals")
+    st.caption("Click a row to see the week below. Click a header to sort.")
+
+    st.dataframe(
+        summary[WEEK_TABLE_COLUMNS],
+        column_config=WEEK_COLUMN_CONFIG,
+        hide_index=True,
+        # Larga quanto le sue colonne, non quanto la finestra, e alta quanto
+        # serve fino a dieci righe: oltre, scorre al suo interno.
+        width="content",
+        height="auto",
+        # Solo la FC puo' mancare (settimane senza nessun dato di FC): lo
+        # stesso trattino delle schede per sport, non uno zero.
+        placeholder="-",
+        on_select="rerun",
+        selection_mode="single-row",
+        key=table_key,
+    )
+
+week_activities = activities[activities["week_start"] == picked_week]
 picked_label = _week_label(picked_week)
 
-with summary_area:
-    if showing_latest:
-        st.caption("Latest week - select a week in the table, or click a point in a chart.")
+st.subheader(f"By sport - {picked_label}")
+# Una riga sempre presente, non solo quando si sta guardando l'ultima
+# settimana: se comparisse e sparisse, la pagina sotto si sposterebbe di una
+# riga a ogni click.
+st.caption(
+    "Latest week - select a week in the table, or click a point in a chart."
+    if showing_latest
+    else "Selected week - the totals below cover it sport by sport."
+)
 
-    st.subheader(f"By sport - {picked_label}")
+# Una scheda per sport, con lo stesso impianto della singola attivita' nella
+# pagina Activities (icona, titolo, metriche): qui pero' i numeri sono i
+# totali di tutte le attivita' di quello sport nella settimana. Affiancate
+# fino a tre per riga: impilate a tutta larghezza erano quasi una schermata.
+by_sport = _totals(week_activities, "sport").sort_values("time", ascending=False)
 
-    # Una scheda per sport, con lo stesso impianto della singola attivita' nella
-    # pagina Activities (icona, titolo, metriche): qui pero' i numeri sono i
-    # totali di tutte le attivita' di quello sport nella settimana.
-    by_sport = _totals(picked, "sport").sort_values("time", ascending=False)
-
-    for sport, totals in by_sport.iterrows():
-        with st.container(border=True):
-            icon_col, body_col = st.columns([1, 9])
-
+CARDS_PER_ROW = 3
+sports = list(by_sport.index)
+for row_start in range(0, len(sports), CARDS_PER_ROW):
+    row_sports = sports[row_start : row_start + CARDS_PER_ROW]
+    # Sempre tre colonne anche con una scheda sola: cosi' una settimana di un
+    # solo sport non si ritrova una scheda larga quanto la pagina.
+    for column, sport in zip(st.columns(CARDS_PER_ROW), row_sports):
+        totals = by_sport.loc[sport]
+        with column.container(border=True):
+            head = st.container(horizontal=True, vertical_alignment="center")
             icon_path = sport_icon_path(sport)
             if icon_path:
-                icon_col.image(icon_path, width=56)
+                head.image(icon_path, width=40)
+            head.markdown(f"**{(sport or '?').replace('_', ' ')}**")
 
-            body_col.markdown(f"**{(sport or '?').replace('_', ' ')}**")
-            n_col, distance_col, time_col, ascent_col, hr_col = body_col.columns(5)
+            n_col, distance_col, time_col = st.columns(3)
             n_col.metric("Activities", f"{totals['n']:.0f}")
             distance_col.metric("Distance", f"{totals['distance']:.1f} km")
             time_col.metric("Time", _hm(totals["time"]))
+            ascent_col, hr_col = st.columns(2)
             ascent_col.metric(
                 "Elevation", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
             )
             hr_col.metric("Avg HR", f"{totals['hr']:.0f} bpm" if pd.notna(totals["hr"]) else "-")
 
-with activities_area:
-    # Le stesse attivita' che compongono i totali qui sopra, elencate una per una
-    # come nella pagina Activities: stessa tabella, stessa scheda di dettaglio
-    # quando si clicca una riga.
-    st.subheader(f"Activities - {picked_label}")
-    st.caption("Click a row to see the details.")
-    week_activities = picked.sort_values("start_time", ascending=False)
-    # Nessun `key`: cosi' l'identita' della tabella dipende dai dati e cambiando
-    # settimana la selezione riparte da zero invece di puntare a un'altra riga.
-    activity_event = activity_table(
-        week_activities,
-        on_select="rerun",
-        selection_mode="single-row",
-        # Altezza fissa: con settimane lunghe la tabella scorre al suo interno,
-        # cosi' la scheda dell'attivita' resta a portata di occhio subito sotto.
-        height=300,
-    )
+# Le stesse attivita' che compongono i totali qui sopra, elencate una per una
+# come nella pagina Activities: stessa tabella, stessa scheda di dettaglio
+# quando si clicca una riga. Sta in fondo perche' la scheda di dettaglio e' il
+# blocco piu' alto della pagina: in mezzo avrebbe allontanato tutto il resto.
+st.subheader(f"Activities - {picked_label}")
+st.caption("Click a row to see the details.")
+week_activities = week_activities.sort_values("start_time", ascending=False)
+# Nessun `key`: cosi' l'identita' della tabella dipende dai dati e cambiando
+# settimana la selezione riparte da zero invece di puntare a un'altra riga.
+activity_event = activity_table(
+    week_activities,
+    on_select="rerun",
+    selection_mode="single-row",
+    # Alta quanto le righe che ha, fino a dieci: l'altezza fissa lasciava
+    # mezza griglia vuota nelle settimane con una o due uscite.
+    height="auto",
+)
 
-    activity_rows = list(activity_event.selection.rows)
-    if activity_rows:
-        show_activity_detail(week_activities.iloc[activity_rows[0]])
+activity_rows = list(activity_event.selection.rows)
+if activity_rows:
+    show_activity_detail(week_activities.iloc[activity_rows[0]])
