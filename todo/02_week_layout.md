@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Week: ordine e ingombro della pagina
@@ -111,3 +111,20 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Aggiunta fuori scope, decisa in corsa
+
+Guardando la pagina riordinata e' emerso che le etichette dell'asse x dei
+grafici non erano coerenti: l'asse e' temporale e Vega piazzava i tick sui
+confini di mese, quindi l'etichetta non corrispondeva a nessuna settimana della
+serie. Corretto qui invece che in un todo a parte, su richiesta di Andrea:
+
+- tick su ogni lunedi' (`tickCount={"interval": "week", "step": 1}`);
+- etichetta come numero di settimana ISO (`format="w%V"` -> w01..w53);
+- numero di settimana anche nel tooltip, calcolato in pandas, cosi' c'e' un
+  riscontro indipendente da come Vega rende il formato.
+
+L'asse resta temporale: un asse ordinale sulle etichette garantirebbe le
+scritte ma farebbe collassare nella stessa posizione settimane con lo stesso
+numero di anni diversi (w38 del 2025 e w38 del 2026), fondendo due settimane in
+un punto solo.
