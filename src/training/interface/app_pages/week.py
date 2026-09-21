@@ -208,6 +208,26 @@ def _series_label(name: str) -> str:
     return name if name == TOTAL_SERIES else sport_label(name)
 
 
+# Il grigio delle voci spente: lo stesso della verticale del crosshair.
+_OFF_COLOR = "#9ca3af"
+
+
+def _series_symbol(name: str, colors: dict[str, str], on: bool) -> str:
+    """L'etichetta di una voce della riga di legenda: simbolo colorato e nome.
+
+    Il simbolo e' un'icona Material dentro la direttiva `:color[...]{...}` del
+    Markdown di Streamlit, che accetta un esadecimale qualunque: l'icona non
+    ha un colore suo e prende quello. Accesa e' l'anello con il pallino in
+    mezzo, del colore della serie; spenta e' l'anello vuoto, grigio.
+
+    La stringa non deve cominciare con l'icona nuda: Streamlit la staccherebbe
+    dall'etichetta per disegnarla a parte, fuori dal Markdown, e il colore
+    andrebbe perso. Cominciando con `:color[` resta tutta nel Markdown."""
+    icon = "radio_button_checked" if on else "radio_button_unchecked"
+    color = (TOTAL_COLOR if name == TOTAL_SERIES else colors[name]) if on else _OFF_COLOR
+    return f':color[:material/{icon}:]{{foreground="{color}"}} {_series_label(name)}'
+
+
 def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
     """La stessa scala per tutti e sei i grafici e per la legenda.
 
@@ -280,21 +300,15 @@ def _chart(
         else None,
     )
     y = alt.Y("value:Q", title=y_label)
-    # La legenda la dichiarano tutti i pannelli, ma la scala dei colori e'
-    # condivisa (`resolve_scale(color="shared")` in `_charts_spec()`), quindi
-    # Vega ne disegna una sola per tutto il blocco. Non serve piu' la striscia
-    # separata che la reggeva quando i grafici erano sei viste distinte.
-    #
-    # Sopra e non a destra: a destra la sua larghezza entrava nel bilancio
-    # orizzontale, e quella larghezza dipende da quanto e' lungo il nome dello
-    # sport piu' lungo ("Cross country skiing" e' ~90px piu' di "Cycling").
-    # Sopra, il bilancio in larghezza non dipende piu' dai dati.
+    # Legenda spenta: la legenda e' la riga di pills sopra i grafici, che porta
+    # gli stessi colori e in piu' si clicca. Due elenchi delle stesse voci, uno
+    # sopra l'altro, erano il problema da togliere.
     series_names = [str(c) for c in by_week_sport.columns]
     color = alt.Color(
         "series:N",
         title=None,
         scale=_color_scale(series_names, colors),
-        legend=alt.Legend(orient="top", direction="horizontal"),
+        legend=None,
     )
 
     layers = []
@@ -546,12 +560,25 @@ sport_key = f"plot_sports_{period_key}"
 if sport_key not in st.session_state:
     st.session_state[sport_key] = [s for s in sport_options if s not in sports_off]
 
-plotted_sports = st.pills(
+# Una riga sola fa da legenda e da filtro: ogni voce porta il colore della sua
+# serie, e cliccandola si spegne (diventa grigia, e la linea sparisce dai
+# grafici). Sono due widget affiancati e non uno, per via del totale: vedi
+# sotto.
+legend_row = st.container(horizontal=True)
+
+# `format_func` sa quali voci sono accese leggendo lo stato del widget, che
+# Streamlit scrive prima di far partire lo script: e' gia' quello di questo
+# giro, non del precedente.
+plotted_sports = legend_row.pills(
     "Sports",
     sport_options,
-    format_func=sport_label,
+    format_func=lambda sport: _series_symbol(
+        sport, sport_colors, sport in st.session_state.get(sport_key, ())
+    ),
     selection_mode="multi",
     key=sport_key,
+    label_visibility="collapsed",
+    wrap=False,
 )
 
 # Gli sport spenti adesso, piu' quelli spenti in periodi dove non compaiono:
@@ -560,28 +587,39 @@ st.session_state["_week_sports_off"] = sorted(
     (sports_off - set(sport_options)) | (set(sport_options) - set(plotted_sports))
 )
 
-# Il totale e' una serie, non uno sport: sta fuori dalla fila dei filtri.
-# E' anche una serie che esiste solo da due sport in su, perche' con uno solo
-# ricalcherebbe la sua linea (vedi `_weekly_sum`): invece di lasciare un
-# controllo che si clicca e non fa niente, li' si spegne e dice perche'.
+# Il totale sta nella stessa riga ma in un widget suo. E' una serie che esiste
+# solo da due sport in su (con uno solo ricalcherebbe la sua linea, vedi
+# `_weekly_sum`), e in quel caso la voce deve restare li', grigia e non
+# cliccabile: `disabled` pero' vale per un widget intero, non per una voce
+# sola. Da quinta pill del primo widget sarebbe stata solo grigia d'aspetto.
 total_available = len(plotted_sports) > 1
-total_key = f"plot_total_{period_key}"
+# Chiave nuova rispetto al toggle di prima: li' lo stato era un booleano, qui
+# e' una lista, e una sessione rimasta aperta li avrebbe confusi.
+total_key = f"plot_total_pill_{period_key}"
 if total_key not in st.session_state:
     # Spento resta spento anche cambiando intervallo, come per gli sport.
-    st.session_state[total_key] = not st.session_state.get("_week_total_off", False)
+    st.session_state[total_key] = (
+        [] if st.session_state.get("_week_total_off", False) else [TOTAL_SERIES]
+    )
 
-plot_total = st.toggle(
-    "Show total",
+total_picked = legend_row.pills(
+    "Total",
+    [TOTAL_SERIES],
+    format_func=lambda name: _series_symbol(
+        name, sport_colors, total_available and name in st.session_state.get(total_key, ())
+    ),
+    selection_mode="multi",
     key=total_key,
     disabled=not total_available,
+    label_visibility="collapsed",
     help="The sum of the selected sports. Needs at least two sports: with one, "
     "the total would just retrace its line.",
 )
-# Con un solo sport il toggle e' spento e non ha voce in capitolo: non si
+# Con un solo sport la voce e' disabilitata e non ha voce in capitolo: non si
 # registra come una scelta dell'utente.
 if total_available:
-    st.session_state["_week_total_off"] = not plot_total
-plot_total = plot_total and total_available
+    st.session_state["_week_total_off"] = TOTAL_SERIES not in total_picked
+plot_total = total_available and TOTAL_SERIES in total_picked
 
 chart_week = None
 if not plotted_sports:
