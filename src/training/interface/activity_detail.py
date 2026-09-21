@@ -92,7 +92,7 @@ def show_activity_detail(activity) -> None:
     with header_col:
         st.subheader(f"{sport_label(activity.sport)} — {activity.start_time:%d %b %Y, %H:%M}")
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         col1.metric("Distance", f"{activity.total_distance_km:.1f} km")
         col2.metric("Duration", f"{activity.total_time_min:.0f} min")
         col3.metric("Avg HR", f"{activity.avg_heart_rate or '-'} bpm")
@@ -101,6 +101,15 @@ def show_activity_detail(activity) -> None:
             f"+{activity.total_ascent_m:.0f} / -{activity.total_descent_m:.0f} m"
             if pd.notna(activity.total_ascent_m)
             else "-",
+        )
+        # La stima dell'orologio a fine attivita' (vedi `fit._vo2max`): manca
+        # per le attivita' che l'orologio non considera, come le corse su
+        # sentiero. Il `help` e' lo stesso avviso della colonna in tabella.
+        col5.metric(
+            "VO2max",
+            f"{activity.vo2max:.1f} ml/kg/min" if pd.notna(activity.vo2max) else "-",
+            help="The watch's VO2max estimate at the end of the activity. Runs update "
+            "it; other activities carry the last value.",
         )
 
     with icon_col:

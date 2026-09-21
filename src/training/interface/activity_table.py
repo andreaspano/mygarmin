@@ -31,6 +31,7 @@ ACTIVITY_COLUMNS = [
     "avg_heart_rate",
     "avg_speed_kmh",
     "total_ascent_m",
+    "vo2max",
 ]
 
 ACTIVITY_COLUMN_CONFIG = {
@@ -54,6 +55,16 @@ ACTIVITY_COLUMN_CONFIG = {
     ),
     "total_ascent_m": st.column_config.NumberColumn(
         "Elevation gain (m)", format="%.0f", width=140, alignment="right"
+    ),
+    # Il `help` dice cos'e' davvero il numero: senza, un 40.0 sulla riga di una
+    # camminata sembra una stima fatta su quella camminata, e non lo e'.
+    "vo2max": st.column_config.NumberColumn(
+        "VO2max (ml/kg/min)",
+        format="%.1f",
+        width=160,
+        alignment="right",
+        help="The watch's VO2max estimate at the end of the activity. Runs update "
+        "it; other activities carry the last value. Empty when the watch stored none.",
     ),
 }
 

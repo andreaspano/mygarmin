@@ -57,6 +57,42 @@ def activity_id_from_path(path: Path) -> int | None:
     return int(match.group(1)) if match else None
 
 
+# Il VO2max stimato dall'orologio sta in un messaggio non documentato, il
+# numero 140 (lo scrive il motore Firstbeat), nel campo 7, come intero scalato:
+# VO2max = raw * 3.5 / 65536 (753282 -> 40.2 ml/kg/min). La formula viene dal
+# lavoro di chi ha decodificato i file a mano, ed e' stata controllata contro
+# i `vO2MaxValue` che l'API Garmin ha dato a `fitness-status` per le stesse
+# corse (settembre 2026: 40.0/40, 39.5/39, 39.4/39, 40.1/40): combaciano, con
+# un decimale in piu' nel file.
+#
+# Non e' sempre una stima fatta *su quella* attivita': e' il valore corrente
+# dell'orologio a fine attivita'. Le corse che si qualificano lo aggiornano,
+# le altre attivita' se lo portano dietro (lo hanno anche sci e camminate).
+_VO2MAX_MESSAGE = 140
+_VO2MAX_FIELD = 7
+_VO2MAX_SCALE = 3.5 / 65536
+# Fuori da qui il numero non e' un VO2max di una persona: il campo non e'
+# documentato, un firmware nuovo potrebbe spostarlo, e una cella vuota e'
+# meglio di un valore assurdo.
+_VO2MAX_PLAUSIBLE = (10.0, 100.0)
+
+
+def _vo2max(fit: FitFile) -> float | None:
+    """Il VO2max dell'orologio a fine attivita', o None se non c'e'.
+
+    Vuole lo stesso `FitFile` gia' aperto per `session`: fitparse il file lo
+    legge tutto alla prima richiesta, quindi questa non costa un altro parsing.
+    Un campo a zero vuol dire "nessuna stima" (succede per le corse che
+    l'orologio non considera, come quelle su sentiero)."""
+    for message in fit.get_messages(_VO2MAX_MESSAGE):
+        for field in message.fields:
+            if field.def_num == _VO2MAX_FIELD and isinstance(field.value, (int, float)):
+                value = field.value * _VO2MAX_SCALE
+                low, high = _VO2MAX_PLAUSIBLE
+                return round(value, 1) if low <= value <= high else None
+    return None
+
+
 def load_activity_summary(path: Path) -> dict:
     """Legge il messaggio 'session' del file FIT: una riga di riepilogo."""
     fit = FitFile(str(path))
@@ -77,6 +113,7 @@ def load_activity_summary(path: Path) -> dict:
         "total_calories": values.get("total_calories"),
         "total_ascent_m": values.get("total_ascent"),
         "total_descent_m": values.get("total_descent"),
+        "vo2max": _vo2max(fit),
     }
 
 
