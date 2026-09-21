@@ -6,7 +6,10 @@ Run: `uv run streamlit run src/training/interface/app.py`
 
 import streamlit as st
 
-st.set_page_config(page_title="Activities", layout="wide")
+# Il titolo vale per tutta l'app, non per la pagina aperta: "Activities" nella
+# scheda del browser era sbagliato due volte su tre. `st.navigation` ci
+# aggiunge da se' il nome della pagina corrente.
+st.set_page_config(page_title="Training", layout="wide")
 
 pg = st.navigation(
     [

@@ -1,37 +1,29 @@
 """Activities page: browse FIT activities downloaded into data/."""
 
-from pathlib import Path
-
-import pandas as pd
 import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_detail import show_activity_detail
-from training.interface.activity_table import activity_table
-from training.interface.db import list_activities
+from training.interface.activity_table import activity_table, sport_label
+from training.interface.data import load_activities
 from training.interface.filters import date_range
 
 
 st.title("My activities")
 
-
-def _activities() -> pd.DataFrame:
-    # Backed by the SQLite cache (db.py): sync() runs on every call and only
-    # (re)parses .fit files not yet cached, so this stays cheap and new
-    # activities show up without a manual cache-clear/restart.
-    return list_activities(DATA_DIR)
-
-
-activities = _activities()
+activities = load_activities(DATA_DIR)
 
 if activities.empty:
     st.info(f"No *_ACTIVITY.fit file found in {DATA_DIR.resolve()}.")
     st.stop()
 
 filter_row = st.container(horizontal=True)
+# I valori restano le chiavi (e' su quelle che si filtra), ma si leggono con
+# le stesse etichette delle tabelle.
 sports = filter_row.multiselect(
     "Sport",
     sorted(activities["sport"].dropna().unique()),
+    format_func=sport_label,
     placeholder="All",
     width=200,
 )

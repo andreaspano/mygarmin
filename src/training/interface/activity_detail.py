@@ -4,15 +4,13 @@ e traccia.
 Sta qui e non nella pagina Activities perche' la stessa scheda si apre anche
 dalla pagina Week, cliccando una riga della tabella delle attivita'."""
 
-from pathlib import Path
-
 import altair as alt
 import pandas as pd
 import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_report import load_activity_comments
-from training.interface.activity_table import sport_icons
+from training.interface.activity_table import sport_icons, sport_label
 from training.interface.db import load_activity_records
 
 alt.data_transformers.disable_max_rows()
@@ -92,7 +90,7 @@ def show_activity_detail(activity) -> None:
     icon_col, header_col = st.columns([1, 6])
 
     with header_col:
-        st.subheader(f"{activity.sport or '?'} — {activity.start_time:%d %b %Y, %H:%M}")
+        st.subheader(f"{sport_label(activity.sport)} — {activity.start_time:%d %b %Y, %H:%M}")
 
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Distance", f"{activity.total_distance_km:.1f} km")

@@ -7,8 +7,8 @@ import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_detail import show_activity_detail
-from training.interface.activity_table import activity_table, sport_icon_path
-from training.interface.db import list_activities
+from training.interface.activity_table import activity_table, sport_icon_path, sport_label
+from training.interface.data import load_activities
 from training.interface.filters import date_range
 
 
@@ -16,6 +16,15 @@ from training.interface.filters import date_range
 # della tabella delle attivita' (activity_table.py): numeri a destra, unita' di
 # misura nell'intestazione, larghezze fisse. Le due tabelle stanno nella stessa
 # pagina e devono leggersi come una cosa sola.
+#
+# L'unita' compare una volta sola per numero, e dove compare dipende da dove si
+# legge il numero:
+#   - tabelle: nell'intestazione ("Distance (km)"), mai nella cella;
+#   - schede:  nel valore ("77.5 km"), l'etichetta resta nuda ("Distance");
+#   - grafici: nel titolo dell'asse ("km"), perche' il titolo del grafico dice
+#              gia' di che grandezza si tratta.
+# L'eccezione sono le durate: "08:28" porta con se' il proprio formato, e
+# ripetere l'unita' accanto non aggiungerebbe niente.
 WEEK_TABLE_COLUMNS = ["week_start", "n", "distance", "time", "d+", "hr"]
 
 WEEK_COLUMN_CONFIG = {
@@ -36,17 +45,17 @@ WEEK_COLUMN_CONFIG = {
         "Distance (km)", format="%.1f", width=120, alignment="right"
     ),
     "time": st.column_config.TextColumn(
-        "Time (h:mm)",
-        width=105,
+        "Duration (h:mm)",
+        width=130,
         alignment="right",
-        help="Total time of the week, hours:minutes.",
+        help="Total duration of the week, hours:minutes.",
     ),
     "d+": st.column_config.NumberColumn(
-        "D+ (m)",
+        "Elevation gain (m)",
         format="%.0f",
-        width=100,
+        width=150,
         alignment="right",
-        help="Total elevation gain.",
+        help="Total elevation gain of the week.",
     ),
     "hr": st.column_config.NumberColumn(
         "Avg HR (bpm)",
@@ -61,12 +70,11 @@ WEEK_COLUMN_CONFIG = {
 st.title("Week")
 
 
-def _activities() -> pd.DataFrame:
-    return list_activities(DATA_DIR)
-
-
 def _week_label(week_start: pd.Timestamp) -> str:
-    return f"{week_start:%d %b %Y} - {week_start + pd.Timedelta(days=6):%d %b %Y}"
+    """L'intervallo della settimana, con il trattino medio degli intervalli:
+    quello lungo separa le frasi nei sottotitoli, e i due ruoli non vanno
+    confusi ora che compaiono nella stessa riga."""
+    return f"{week_start:%d %b %Y} – {week_start + pd.Timedelta(days=6):%d %b %Y}"
 
 
 def _hm(hours: float) -> str:
@@ -127,7 +135,7 @@ def _weekly_sum(
     by_week_sport = by_week_sport.reindex(weeks).fillna(0) * scale
     # Con un solo sport il totale ricalcherebbe esattamente la sua linea.
     if with_total and by_week_sport.shape[1] > 1:
-        by_week_sport["Total"] = by_week_sport.sum(axis=1)
+        by_week_sport[TOTAL_SERIES] = by_week_sport.sum(axis=1)
     return by_week_sport
 
 
@@ -139,6 +147,10 @@ CHART_HEIGHT = 320
 # L'area del totale ha un colore suo, arancione, invece di pescare dalla
 # tavolozza categorica (dove finiva su un marrone smorto). Le linee dei sport
 # usano la tavolozza di default meno l'arancione, per non confondersi con lei.
+# Il totale non e' uno sport: e' una serie in piu', e questo e' il suo nome
+# ovunque, dalla colonna del pivot alla voce di legenda.
+TOTAL_SERIES = "Total"
+
 TOTAL_COLOR = "#f97316"
 _SPORT_COLORS = [
     "#4c78a8",
@@ -160,8 +172,19 @@ def _sport_colors(sports: list[str]) -> dict[str, str]:
     return {sport: _SPORT_COLORS[i % len(_SPORT_COLORS)] for i, sport in enumerate(sports)}
 
 
+def _series_label(name: str) -> str:
+    """Il nome di una serie come si legge nei grafici.
+
+    Le serie sono gli sport piu' "Total": gli sport passano da `sport_label()`
+    come ovunque altrove, il totale non e' uno sport e resta com'e'."""
+    return name if name == TOTAL_SERIES else sport_label(name)
+
+
 def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
     """La stessa scala per tutti e sei i grafici e per la legenda.
+
+    Prende i nomi grezzi e restituisce la scala gia' con le etichette: dominio
+    e colori si costruiscono insieme, cosi' non possono sfasarsi.
 
     Dominio esplicito: dentro un grafico ogni layer vede solo una parte delle
     serie, e senza fissare la scala il totale si prenderebbe il colore del
@@ -169,8 +192,8 @@ def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
     stesso sport resti dello stesso colore, ora che non c'e' piu' una vista
     unica a condividere la scala."""
     return alt.Scale(
-        domain=series_names,
-        range=[TOTAL_COLOR if name == "Total" else colors[name] for name in series_names],
+        domain=[_series_label(name) for name in series_names],
+        range=[TOTAL_COLOR if name == TOTAL_SERIES else colors[name] for name in series_names],
     )
 
 
@@ -231,6 +254,10 @@ def _chart(
         .reset_index()
         .melt(id_vars="week_start", var_name="series", value_name="value")
     )
+    # Da qui in poi `series` e' l'etichetta, non la chiave: e' quello che
+    # finisce in legenda e nel tooltip. `TOTAL_SERIES` attraversa la mappatura
+    # immutato, quindi i confronti qui sotto continuano a valere.
+    long["series"] = long["series"].map(_series_label)
     long["week_key"] = long["week_start"].dt.strftime("%Y-%m-%d")
     # Numero di settimana ISO, calcolato qui e non nel grafico: serve al
     # tooltip, ed e' anche il riscontro di quello che l'asse deve mostrare.
@@ -265,13 +292,13 @@ def _chart(
 
     # Il totale e' solo un'area riempita sullo sfondo, senza bordo: fa da ombra
     # sotto ai singoli sport, che ci passano sopra leggibili.
-    total = long[long["series"] == "Total"]
+    total = long[long["series"] == TOTAL_SERIES]
     if not total.empty:
         layers.append(
             alt.Chart(total).mark_area(fillOpacity=0.25).encode(x=x, y=y, color=color)
         )
 
-    by_sport = long[long["series"] != "Total"]
+    by_sport = long[long["series"] != TOTAL_SERIES]
     if not by_sport.empty:
         layers.append(alt.Chart(by_sport).mark_line().encode(x=x, y=y, color=color))
 
@@ -350,7 +377,7 @@ def _pair(
     # Con un solo sport selezionato il totale sparisce da tutti e due i
     # grafici: si sta guardando quello sport, non il quadro d'insieme.
     if with_total and cumulative.shape[1] > 1:
-        cumulative["Total"] = _weekly_total(everything, value, weeks, scale).cumsum()
+        cumulative[TOTAL_SERIES] = _weekly_total(everything, value, weeks, scale).cumsum()
 
     return (
         _chart(
@@ -384,7 +411,7 @@ def _clicked_weeks(events: list) -> list:
     return weeks
 
 
-activities = _activities()
+activities = load_activities(DATA_DIR)
 
 if activities.empty:
     st.info(f"No *_ACTIVITY.fit file found in {DATA_DIR.resolve()}.")
@@ -436,6 +463,15 @@ summary["time"] = summary["time"].map(_hm)
 period_key = f"{start_date}_{end_date}"
 table_key = f"weekly_{period_key}"
 
+# Anche la memoria di cosa era selezionato porta il periodo. I widget si
+# azzerano da soli cambiando intervallo (la key cambia), ma queste chiavi no:
+# senza il suffisso, il primo giro dopo il cambio confrontava la selezione
+# nuova con settimane del periodo precedente.
+prev_chart_key = f"_prev_chart_week_{period_key}"
+prev_charts_key = f"_prev_chart_weeks_{period_key}"
+prev_table_key = f"_prev_table_week_{period_key}"
+source_key = f"_week_source_{period_key}"
+
 # La tabella si legge per prima ma va creata per ultima. Lo stato di un widget
 # si puo' impostare solo prima di crearlo: disegnando i grafici per primi, al
 # momento di creare la tabella sappiamo gia' su quale settimana e' caduto il
@@ -447,18 +483,64 @@ table_area = st.container()
 st.subheader("Weekly volume by sport")
 in_range = activities[activities["week_start"].isin(weekly.index)]
 
-# Il filtro vale solo per il grafico: le tabelle restano su tutti gli sport.
-# Una casella per sport, tutte attive di default.
+# Che questo filtro valga solo per i grafici era scritto unicamente qui nel
+# sorgente: ora lo dice la pagina, perche' e' chi guarda che deve saperlo.
+st.caption("Charts only — the tables on this page always cover every sport.")
+
 sport_options = sorted(in_range["sport"].dropna().unique())
-sport_row = st.container(horizontal=True)
-plotted_sports = [
-    sport
-    for sport in sport_options
-    if sport_row.checkbox(sport.replace("_", " "), value=True, key=f"plot_sport_{sport}")
-]
-# Il totale degli sport selezionati e' una serie come le altre: si accende e
-# si spegne dalla stessa fila di caselle.
-plot_total = sport_row.checkbox("Total", value=True, key="plot_sport_total")
+
+# La chiave porta il periodo come gia' fanno tabella e grafici: le voci
+# disponibili cambiano con l'intervallo, e il widget deve rimontarsi con loro.
+#
+# Ma la chiave da sola non basta, ed e' il punto del problema: Streamlit
+# scarta lo stato dei widget che un giro non ha disegnato. Prima succedeva a
+# uno sport uscito dall'intervallo (la sua casella spariva, e al rientro era
+# di nuovo accesa); con una chiave per periodo succederebbe a tutta la fila
+# ogni volta che si cambia intervallo. Percio' quello che l'utente ha spento
+# si ricorda a parte, in una chiave che non appartiene a nessun widget e che
+# quindi nessuno ripulisce: uno sport spento resta spento anche se sparisce
+# dall'intervallo e poi ritorna.
+sports_off = set(st.session_state.get("_week_sports_off", ()))
+sport_key = f"plot_sports_{period_key}"
+if sport_key not in st.session_state:
+    st.session_state[sport_key] = [s for s in sport_options if s not in sports_off]
+
+plotted_sports = st.pills(
+    "Sports",
+    sport_options,
+    format_func=sport_label,
+    selection_mode="multi",
+    key=sport_key,
+)
+
+# Gli sport spenti adesso, piu' quelli spenti in periodi dove non compaiono:
+# la memoria vale per tutta la sessione, non per l'intervallo aperto.
+st.session_state["_week_sports_off"] = sorted(
+    (sports_off - set(sport_options)) | (set(sport_options) - set(plotted_sports))
+)
+
+# Il totale e' una serie, non uno sport: sta fuori dalla fila dei filtri.
+# E' anche una serie che esiste solo da due sport in su, perche' con uno solo
+# ricalcherebbe la sua linea (vedi `_weekly_sum`): invece di lasciare un
+# controllo che si clicca e non fa niente, li' si spegne e dice perche'.
+total_available = len(plotted_sports) > 1
+total_key = f"plot_total_{period_key}"
+if total_key not in st.session_state:
+    # Spento resta spento anche cambiando intervallo, come per gli sport.
+    st.session_state[total_key] = not st.session_state.get("_week_total_off", False)
+
+plot_total = st.toggle(
+    "Show total",
+    key=total_key,
+    disabled=not total_available,
+    help="The sum of the selected sports. Needs at least two sports: with one, "
+    "the total would just retrace its line.",
+)
+# Con un solo sport il toggle e' spento e non ha voce in capitolo: non si
+# registra come una scelta dell'utente.
+if total_available:
+    st.session_state["_week_total_off"] = not plot_total
+plot_total = plot_total and total_available
 
 chart_week = None
 if not plotted_sports:
@@ -513,7 +595,7 @@ else:
                 "total_time_min",
                 all_weeks,
                 "h",
-                "Time",
+                "Duration",
                 picked,
                 hover,
                 sport_colors,
@@ -529,7 +611,7 @@ else:
                 "total_ascent_m",
                 all_weeks,
                 "m",
-                "D+",
+                "Elevation gain",
                 picked,
                 hover,
                 sport_colors,
@@ -538,12 +620,12 @@ else:
         ),
     ]
 
-    # Le serie sono le stesse in tutti e sei i grafici: il totale compare solo
-    # se e' acceso e se c'e' piu' di uno sport (con uno solo ricalcherebbe la
-    # sua linea), la stessa regola che seguono `_weekly_sum` e `_pair`.
+    # Le serie sono le stesse in tutti e sei i grafici. `plot_total` e' gia'
+    # spento quando gli sport sono meno di due, cioe' la stessa regola che
+    # seguono `_weekly_sum` e `_pair`: qui basta rispettarlo.
     series_names = list(plotted_sports)
-    if plot_total and len(plotted_sports) > 1:
-        series_names.append("Total")
+    if plot_total:
+        series_names.append(TOTAL_SERIES)
     st.altair_chart(_legend(series_names, sport_colors), width="stretch")
 
     # Tre righe di due grafici: le colonne Streamlit li affiancano, e ognuno
@@ -572,18 +654,18 @@ else:
     # dov'erano. Un grafico tornato a vuoto e' un doppio click, e conta come
     # cambiamento: azzera la scelta invece di lasciarla dove stava.
     chart_weeks = _clicked_weeks(events)
-    previous = st.session_state.get("_prev_chart_weeks", [])
+    previous = st.session_state.get(prev_charts_key, [])
     if len(previous) != len(chart_weeks):
         previous = [None] * len(chart_weeks)
     changed = [week for week, before in zip(chart_weeks, previous) if week != before]
-    st.session_state["_prev_chart_weeks"] = chart_weeks
+    st.session_state[prev_charts_key] = chart_weeks
 
     just_clicked = [week for week in changed if week]
     if just_clicked:
         chart_week = pd.Timestamp(just_clicked[0])
     elif not changed:
         # Nessun grafico toccato: resta valida la settimana scelta prima.
-        chart_week = st.session_state.get("_prev_chart_week")
+        chart_week = st.session_state.get(prev_chart_key)
 
 # Tabella e grafici sono due modi di scegliere la stessa cosa: vince quello
 # toccato per ultimo, altrimenti un click sul grafico resterebbe prigioniero
@@ -595,8 +677,8 @@ else:
 table_rows = st.session_state.get(table_key, {}).get("selection", {}).get("rows", [])
 table_week = weekly.index[table_rows[0]] if table_rows else None
 
-chart_changed = chart_week != st.session_state.get("_prev_chart_week")
-table_changed = table_week != st.session_state.get("_prev_table_week")
+chart_changed = chart_week != st.session_state.get(prev_chart_key)
+table_changed = table_week != st.session_state.get(prev_table_key)
 if chart_changed and chart_week is not None:
     source = "chart"
 elif table_changed and table_week is not None:
@@ -606,10 +688,10 @@ elif chart_changed:
     # torna a comandare la riga della tabella, che e' rimasta evidenziata.
     source = "table"
 else:
-    source = st.session_state.get("_week_source", "table")
-st.session_state["_prev_chart_week"] = chart_week
-st.session_state["_prev_table_week"] = table_week
-st.session_state["_week_source"] = source
+    source = st.session_state.get(source_key, "table")
+st.session_state[prev_chart_key] = chart_week
+st.session_state[prev_table_key] = table_week
+st.session_state[source_key] = source
 
 picked_week = chart_week if source == "chart" else table_week
 # Un click su una settimana vuota (barra a zero) non ha nulla da mostrare.
@@ -651,14 +733,14 @@ with table_area:
 week_activities = activities[activities["week_start"] == picked_week]
 picked_label = _week_label(picked_week)
 
-st.subheader(f"By sport - {picked_label}")
+st.subheader(f"By sport — {picked_label}")
 # Una riga sempre presente, non solo quando si sta guardando l'ultima
 # settimana: se comparisse e sparisse, la pagina sotto si sposterebbe di una
 # riga a ogni click.
 st.caption(
-    "Latest week - select a week in the table, or click a point in a chart."
+    "Latest week — select a week in the table, or click a point in a chart."
     if showing_latest
-    else "Selected week - the totals below cover it sport by sport."
+    else "Selected week — the totals below cover it sport by sport."
 )
 
 # Una scheda per sport, con lo stesso impianto della singola attivita' nella
@@ -680,15 +762,15 @@ for row_start in range(0, len(sports), CARDS_PER_ROW):
             icon_path = sport_icon_path(sport)
             if icon_path:
                 head.image(icon_path, width=40)
-            head.markdown(f"**{(sport or '?').replace('_', ' ')}**")
+            head.markdown(f"**{sport_label(sport)}**")
 
             n_col, distance_col, time_col = st.columns(3)
             n_col.metric("Activities", f"{totals['n']:.0f}")
             distance_col.metric("Distance", f"{totals['distance']:.1f} km")
-            time_col.metric("Time", _hm(totals["time"]))
+            time_col.metric("Duration", _hm(totals["time"]))
             ascent_col, hr_col = st.columns(2)
             ascent_col.metric(
-                "Elevation", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
+                "Elevation gain", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
             )
             hr_col.metric("Avg HR", f"{totals['hr']:.0f} bpm" if pd.notna(totals["hr"]) else "-")
 
@@ -696,7 +778,9 @@ for row_start in range(0, len(sports), CARDS_PER_ROW):
 # come nella pagina Activities: stessa tabella, stessa scheda di dettaglio
 # quando si clicca una riga. Sta in fondo perche' la scheda di dettaglio e' il
 # blocco piu' alto della pagina: in mezzo avrebbe allontanato tutto il resto.
-st.subheader(f"Activities - {picked_label}")
+# "Activities" e' il conteggio (colonna di tabella e metrica di scheda): per
+# l'elenco vero e proprio serve un nome che non sia lo stesso.
+st.subheader(f"Activity list — {picked_label}")
 st.caption("Click a row to see the details.")
 week_activities = week_activities.sort_values("start_time", ascending=False)
 # Nessun `key`: cosi' l'identita' della tabella dipende dai dati e cambiando

@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # Week: coerenza dei nomi e costo dei rerun
@@ -98,3 +98,61 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Esito: implementato
+
+Convenzioni scelte e applicate:
+
+- **Un nome per grandezza.** Il dislivello e' "Elevation gain" ovunque (era
+  `D+`, `D+ (m)`, `Elevation`, `Elevation gain (m)`). La durata e' "Duration"
+  ovunque (era `Time` nella pagina Week e `Duration` nella tabella condivisa e
+  nel dettaglio: sulla stessa pagina si leggevano tutti e due). "Activities"
+  resta il conteggio (colonna e metrica); l'elenco si chiama "Activity list",
+  cosi' le tre occorrenze non dicono piu' tre cose diverse.
+- **Un posto per le unita'** (la regola sta scritta in testa a `week.py`):
+  nell'intestazione in tabella, nel valore nelle schede, nel titolo dell'asse
+  nei grafici. L'unica eccezione dichiarata sono le durate "08:28", che
+  portano il formato con se'. Correzione trovata applicandola: `Avg HR` nella
+  tabella condivisa non aveva unita', ora e' `Avg HR (bpm)`.
+- **Nomi degli sport**: un solo `sport_label()` in `activity_table.py`, che
+  riusa la convenzione di `profile.py` (iniziale maiuscola). Passa di li'
+  tutto: colonne `sport`/`sub_sport`, pills, schede, legenda dei grafici,
+  sottotitolo del dettaglio, opzioni del multiselect di Activities. I dati
+  restano con le chiavi, si cambia solo quello che si legge.
+- **Trattini**: quello lungo separa le frasi nei sottotitoli (come faceva gia'
+  `activity_detail.py`), quello medio gli intervalli di data. `activity_report.py`
+  non e' stato toccato: scrive nei report, e cambiarlo cambierebbe file gia'
+  prodotti.
+
+Controllo di selezione sport:
+
+- `st.pills` in multi-selezione al posto della fila di checkbox, "Total"
+  separato come toggle, e una didascalia che dice cosa filtra ("Charts only").
+- Il toggle "Total" si **disabilita** con un solo sport, con un `help` che
+  spiega perche': non e' piu' un controllo che si clicca senza effetto.
+- **Le chiavi per periodo da sole non bastavano**, ed e' la scoperta del giro:
+  Streamlit scarta lo stato dei widget che un giro non ha disegnato, quindi
+  legando la chiave al periodo il problema si spostava soltanto (tutta la fila
+  si riaccendeva a ogni cambio di intervallo). Quello che l'utente spegne si
+  ricorda in `_week_sports_off`, che non appartiene a nessun widget e quindi
+  nessuno ripulisce. Stesso trattamento per il toggle del totale.
+
+Costo dei rerun:
+
+- `data.load_activities()` (nuovo modulo) mette `@st.cache_data(ttl=60)`
+  davanti a `list_activities`. Il decoratore sta li' e non su `list_activities`
+  perche' quella la usa anche `training-activity-reports`, che gira fuori da
+  Streamlit.
+- ttl corto invece di un pulsante di aggiornamento, come consentito dal
+  vincolo. Misurato: su albero gia' sincronizzato il risparmio e' modesto
+  (3ms -> 0.3ms a rerun, perche' i 125 file sono gia' in SQLite); dove conta
+  davvero e' quando c'e' da fare il parsing FIT, che su quattro file misurava
+  2.8s.
+
+Chiavi di sessione: `_prev_chart_week`, `_prev_chart_weeks`, `_prev_table_week`
+e `_week_source` portano ora il suffisso del periodo.
+
+Pulizia: tolti i due `from pathlib import Path` inutilizzati; `page_title` e'
+"Training" invece di "Activities". `summary_area` non esisteva piu': il todo 02
+l'aveva gia' rinominato in `table_area`, che contiene davvero la tabella dei
+totali.

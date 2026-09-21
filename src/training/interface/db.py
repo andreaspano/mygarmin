@@ -10,6 +10,10 @@ them via rebuild().
 Two entry points matter to callers: list_activities() and
 load_activity_records() — both call sync() first, so new .fit files are
 picked up automatically without a manual cache-clear or restart.
+
+The Streamlit pages do not call list_activities() directly: passano da
+data.load_activities(), che ci mette davanti una cache con un ttl breve per
+non rifare la scansione a ogni rerun.
 """
 
 import sqlite3
