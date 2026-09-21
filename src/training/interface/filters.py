@@ -49,10 +49,16 @@ def date_range(
     `container` e' dove metterle (es. una riga orizzontale condivisa con
     altri filtri); senza, vanno sulla pagina.
 
-    Con `presets` si antepone una fila di scorciatoie (ultime 4/8/12
-    settimane, anno corrente, tutto) e si parte da `_DEFAULT_PRESET` invece
-    che dallo storico intero: le due caselle restano modificabili a mano, e
-    toccarle non cancella la scorciatoia, la sorpassa e basta. Senza
+    Con `presets` si mette sopra una fila di scorciatoie (ultime 4/8/12
+    settimane, anno corrente, tutto), con le due caselle affiancate nella riga
+    sotto: le scorciatoie sono la scelta di tutti i giorni, le date a mano
+    sono la rifinitura, e una sotto l'altra si leggono in quell'ordine. Per
+    questo con `presets` il `container` deve essere verticale (o mancare): in
+    una riga orizzontale finirebbe tutto affiancato.
+
+    Si parte da `_DEFAULT_PRESET` invece che dallo storico intero: le due
+    caselle restano modificabili a mano, e toccarle non cancella la
+    scorciatoia, la sorpassa e basta. Senza
     `presets` la funzione si comporta esattamente come prima, caselle senza
     stato incluse, perche' la pagina Activities non deve cambiare."""
     where = container if container is not None else st
@@ -94,10 +100,11 @@ def date_range(
         )
     st.session_state[f"{preset_key}_prev"] = preset
 
-    start_date = where.date_input(
+    dates_row = where.container(horizontal=True)
+    start_date = dates_row.date_input(
         "From", min_value=min_date, max_value=max_date, width=160, key=from_key
     )
-    end_date = where.date_input(
+    end_date = dates_row.date_input(
         "To", min_value=min_date, max_value=max_date, width=160, key=to_key
     )
     return _checked(start_date, end_date, invalid_message)

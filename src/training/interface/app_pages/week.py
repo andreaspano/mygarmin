@@ -142,9 +142,9 @@ def _weekly_sum(
 
 
 # La larghezza in pixel non e' una pigrizia, e' l'unica strada: la griglia
-# 3x2 e il crosshair condiviso si pagano cosi'.
+# a due colonne e il crosshair condiviso si pagano cosi'.
 #
-# Il crosshair su tutti i pannelli vuole i sei in una vista Vega sola (fra
+# Il crosshair su tutti i pannelli li vuole tutti in una vista Vega sola (fra
 # viste distinte i segnali non passano). Ma una vista sola disposta a griglia
 # e' un `vconcat` di `hconcat`, e quella forma non sa adattarsi al
 # contenitore: provato, `autosize: fit-x` la fa collassare a larghezza zero,
@@ -229,7 +229,7 @@ def _series_symbol(name: str, colors: dict[str, str], on: bool) -> str:
 
 
 def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
-    """La stessa scala per tutti e sei i grafici e per la legenda.
+    """La stessa scala per tutti i pannelli e per la riga di legenda.
 
     Prende i nomi grezzi e restituisce la scala gia' con le etichette: dominio
     e colori si costruiscono insieme, cosi' non possono sfasarsi.
@@ -253,18 +253,23 @@ def _chart(
     hover: alt.Parameter,
     colors: dict[str, str],
     show_x_axis: bool = True,
+    integer: bool = False,
 ) -> alt.LayerChart:
     """Costruisce (senza disegnarlo) un pannello: l'area del totale, le linee
     per sport, il crosshair e i punti che raccolgono il click.
 
     `picked` e `hover` arrivano da fuori e sono lo stesso oggetto per tutti i
-    pannelli, e qui il segnale **e'** condiviso: i sei stanno in una vista Vega
+    pannelli, e qui il segnale **e'** condiviso: stanno tutti in una vista Vega
     sola, quindi la verticale tratteggiata si muove su tutti insieme, alla
     stessa settimana.
 
-    `show_x_axis` lo accende solo sull'ultima riga della griglia: le tre righe
-    hanno lo stesso asse dei tempi, e ripeterlo tre volte non dice niente di
-    nuovo mentre allunga il blocco.
+    `show_x_axis` lo accende solo sull'ultima riga della griglia: le righe
+    hanno tutte lo stesso asse dei tempi, e ripeterlo non dice niente di nuovo
+    mentre allunga il blocco.
+
+    `integer` e' per le grandezze che si contano invece di misurarsi (il
+    numero di attivita'): l'asse non scende sotto il passo di uno, che con
+    poche attivita' darebbe tacche a 0,5, e il tooltip non mostra decimali.
 
     La selezione viaggia su `week_key` (stringa) e non sulla data: cosi'
     torna indietro da Vega tale e quale, senza passare da epoch/millisecondi.
@@ -299,7 +304,11 @@ def _chart(
         if show_x_axis
         else None,
     )
-    y = alt.Y("value:Q", title=y_label)
+    y = alt.Y(
+        "value:Q",
+        title=y_label,
+        axis=alt.Axis(tickMinStep=1) if integer else alt.Undefined,
+    )
     # Legenda spenta: la legenda e' la riga di pills sopra i grafici, che porta
     # gli stessi colori e in piu' si clicca. Due elenchi delle stesse voci, uno
     # sopra l'altro, erano il problema da togliere.
@@ -339,7 +348,7 @@ def _chart(
                 alt.Tooltip("week_no:N", title="Week"),
                 alt.Tooltip("week_start:T", title="Starting", format="%d %b %Y"),
                 alt.Tooltip("series:N", title="Series"),
-                alt.Tooltip("value:Q", title=y_label, format=".1f"),
+                alt.Tooltip("value:Q", title=y_label, format=".0f" if integer else ".1f"),
             ],
         )
         .add_params(picked, hover)
@@ -363,10 +372,10 @@ def _chart(
 
 
 def _charts_spec(rows: list[list[alt.LayerChart]]) -> dict:
-    """Le tre righe da due pannelli in **una sola** vista Vega.
+    """Le righe da due pannelli in **una sola** vista Vega.
 
-    Una vista sola e' quello che fa muovere il crosshair su tutti e sei i
-    pannelli insieme: fra viste Vega distinte i segnali non passano, provato
+    Una vista sola e' quello che fa muovere il crosshair su tutti i pannelli
+    insieme: fra viste Vega distinte i segnali non passano, provato
     nel todo 03, che per questo aveva dovuto rinunciarci.
 
     Il prezzo e' la larghezza fissa, spiegato su `CHARTS_TOTAL_WIDTH`: a
@@ -377,7 +386,7 @@ def _charts_spec(rows: list[list[alt.LayerChart]]) -> dict:
     pixel.
 
     `resolve_scale(color="shared")` tiene lo stesso colore per lo stesso sport
-    in tutti i pannelli e riduce le sei legende a una."""
+    in tutti i pannelli e riduce le legende a una sola."""
     # Passare lo stesso `picked`/`hover` a tutti i pannelli e' il punto di
     # tutto: e' cosi' che il segnale e' uno solo. Dentro una specifica sola
     # pero' Altair vede il parametro ripetuto, lo deduplica (che e' quello che
@@ -411,6 +420,7 @@ def _pair(
     scale: float = 1.0,
     with_total: bool = True,
     show_x_axis: bool = False,
+    integer: bool = False,
 ) -> list[alt.LayerChart]:
     """La stessa grandezza due volte: prima settimana per settimana, poi il
     cumulato dall'inizio del periodo (quanto si e' messo insieme finora).
@@ -439,6 +449,7 @@ def _pair(
             hover,
             colors,
             show_x_axis=show_x_axis,
+            integer=integer,
         ),
         _chart(
             cumulative,
@@ -448,6 +459,7 @@ def _pair(
             hover,
             colors,
             show_x_axis=show_x_axis,
+            integer=integer,
         ),
     ]
 
@@ -483,6 +495,9 @@ sport_colors = _sport_colors(sorted(activities["sport"].dropna().unique()))
 
 activities["_hr_weighted"] = activities["avg_heart_rate"] * activities["total_time_min"]
 activities["_hr_time"] = activities["total_time_min"].where(activities["avg_heart_rate"].notna())
+# Un uno per attivita': i grafici sommano una colonna per settimana e sport, e
+# sommando questa si ottiene il conteggio senza una strada a parte.
+activities["_count"] = 1
 
 weekly = _totals(activities, "week_start").sort_index(ascending=False)
 
@@ -492,7 +507,7 @@ weekly = _totals(activities, "week_start").sort_index(ascending=False)
 # storico (che sono quasi novanta righe e altrettanti punti per grafico).
 start_date, end_date = date_range(
     activities,
-    st.container(horizontal=True),
+    None,
     "'From' is later than 'To': swap the two dates to see the weeks.",
     presets=True,
     key="week_dates",
@@ -628,13 +643,11 @@ else:
     plotted = in_range[in_range["sport"].isin(plotted_sports)]
     all_weeks = pd.date_range(weekly.index.min(), weekly.index.max(), freq="W-MON")
 
-    # Un solo oggetto per il click e uno per il crosshair, passati a tutti e
-    # sei i grafici: non per condividere il segnale (fra viste Vega distinte
-    # non passa, verificato nel browser) ma per tenerne fermo il nome, che e'
-    # la chiave con cui si rilegge la selezione dall'evento. Il crosshair si
-    # muove percio' sul solo grafico sotto il mouse: e' il prezzo pagato per
-    # avere sei viste separate, e quindi sei grafici che si adattano alla
-    # finestra invece di un blocco largo un numero fisso di pixel.
+    # Un solo oggetto per il click e uno per il crosshair, passati a tutti i
+    # pannelli. Stando tutti in una vista Vega sola (`_charts_spec()`),
+    # il segnale e' davvero uno: la verticale si muove su tutti insieme, e il
+    # click torna come una selezione sola. Il nome esplicito e' la chiave con
+    # cui la selezione si rilegge dall'evento.
     picked = alt.selection_point(
         name="picked", fields=["week_key"], on="click", clear="dblclick", toggle=False
     )
@@ -650,11 +663,25 @@ else:
         clear="pointerout",
     )
 
-    # Tre righe da due pannelli: a sinistra la grandezza settimana per
-    # settimana, a destra il suo cumulato. L'asse dei tempi lo disegna solo
-    # l'ultima riga: le tre righe ce l'hanno uguale, e ripeterlo allungava il
-    # blocco per niente.
+    # Quattro righe da due pannelli, nell'ordine delle colonne della tabella
+    # dei totali (Activities, Distance, Duration, Elevation gain): a sinistra
+    # la grandezza settimana per settimana, a destra il suo cumulato. L'asse
+    # dei tempi lo disegna solo l'ultima riga: le righe ce l'hanno uguale, e
+    # ripeterlo allungava il blocco per niente.
     rows = [
+        _pair(
+            plotted,
+            in_range,
+            "_count",
+            all_weeks,
+            "count",
+            "Activities",
+            picked,
+            hover,
+            sport_colors,
+            with_total=plot_total,
+            integer=True,
+        ),
         _pair(
             plotted,
             in_range,
