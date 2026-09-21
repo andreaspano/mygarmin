@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # Week: una riga sola per legenda e scelta degli sport
@@ -135,3 +135,48 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Esito: implementato
+
+**La verifica che decideva e' passata**: nel browser l'anello dentro la pill
+prende il colore esatto della serie (`rgb(228, 87, 86)` per Cycling, cioe'
+`#e45756`, e cosi' via), spento diventa l'anello vuoto grigio. Niente ripiego
+sulla tavolozza con nome: `_SPORT_COLORS` non e' stato toccato.
+
+Una riga sola, `st.container(horizontal=True)`, con due `st.pills`: gli sport, e
+Total in un widget suo per poterlo disabilitare. Provato nel browser, in
+sequenza: spegnere Hiking (simbolo grigio, linea via da tutti i pannelli),
+cambiare periodo e tornare (resta spento), spegnere e riaccendere Total, ridursi
+a un solo sport (Total grigio e `disabled`, serie Total assente). Il colore
+segue il click nello stesso giro, senza restare indietro.
+
+Il todo era stato scritto prima del 06, e due cose sono cambiate di
+conseguenza:
+
+- `_legend()` non c'era piu' da togliere: l'aveva gia' tolta il 06, che aveva
+  rimesso la legenda dentro lo spec. **Quella legenda ora e' spenta**
+  (`legend=None`): la riga di pills e' la legenda, e tenerle tutte e due era
+  esattamente il doppione da eliminare. Il blocco dei grafici scende da 1.031 a
+  977px.
+- La strada `bind="legend"` che il 06 suggeriva di riconsiderare e' stata
+  scartata per il motivo che il todo dava gia': la sua semantica e' "seleziona
+  solo questa", non "spegni questa", e Total grigio-e-non-cliccabile li' non si
+  puo' fare.
+
+Da sapere:
+
+- **La chiave del totale e' cambiata** (`plot_total_pill_{periodo}`): prima lo
+  stato era un booleano (toggle), ora e' una lista (pills), e una sessione
+  rimasta aperta li avrebbe confusi.
+- **Le etichette che cambiano con la selezione non rimontano il widget**: con
+  una `key`, l'identita' di `st.pills` e' la chiave piu' `click_mode`
+  (`key_as_main_identity` in `button_group.py`), le opzioni formattate non ne
+  fanno parte.
+- **`AppTest` non sa pilotare queste pills**: confronta i valori grezzi con le
+  etichette disegnate, che ora sono Markdown, e svuota la selezione. E' un
+  limite del banco di prova, non dell'app: le verifiche di comportamento sono
+  state fatte nel browser. `AppTest` resta valido per "la pagina gira senza
+  eccezioni".
+- A 1920, 1440 e 1280 la riga sta su una riga sola (finisce a 826px). Il limite
+  dei grafici a 1280 con la sidebar aperta e' quello gia' noto del todo 06, e
+  non dipende da questa riga.
