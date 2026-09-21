@@ -25,46 +25,52 @@ ACTIVITY_COLUMNS = [
     "start_time",
     "activity_name",
     "sport",
-    "sub_sport",
     "total_distance_km",
     "total_time_min",
     "avg_heart_rate",
+    "vo2max",
     "avg_speed_kmh",
     "total_ascent_m",
-    "vo2max",
 ]
 
+# Le larghezze sono tarate perche' la tabella stia tutta in una finestra da
+# 1680 e arrivi fino alla velocita' in una da 1440 (contenitore da 1.080px, con
+# la sidebar a 200). Il sotto-tipo (`sub_sport`: "Road", "Generic",
+# ...) non ha una colonna: diceva poco, e il suo posto serviva. Resta nei dati.
 ACTIVITY_COLUMN_CONFIG = {
     "icon": st.column_config.ImageColumn("", width=50),
     "activity_id": st.column_config.NumberColumn("ID", format="%d", width=100, alignment="right"),
-    "start_time": st.column_config.DatetimeColumn("Date", format="D MMM YYYY, HH:mm", width=170),
-    "activity_name": st.column_config.TextColumn("Name", width=220),
-    "sport": st.column_config.TextColumn("Sport", width=90),
-    "sub_sport": st.column_config.TextColumn("Type", width=90),
+    "start_time": st.column_config.DatetimeColumn("Date", format="D MMM YYYY, HH:mm", width=160),
+    "activity_name": st.column_config.TextColumn("Name", width=185),
+    "sport": st.column_config.TextColumn("Sport", width=85),
+    # Intestazioni corte, la sola unita': e' una tabella che si scorre con gli
+    # occhi riga per riga, e "km", "Min", "Bpm" si leggono al volo. Il nome
+    # della grandezza sta nel `help`, per chi passa sopra l'intestazione.
     "total_distance_km": st.column_config.NumberColumn(
-        "Distance (km)", format="%.1f", width=110, alignment="right"
+        "km", format="%.1f", width=80, alignment="right", help="Distance."
     ),
     "total_time_min": st.column_config.NumberColumn(
-        "Duration (min)", format="%.0f", width=100, alignment="right"
+        "Min", format="%.0f", width=70, alignment="right", help="Duration, in minutes."
     ),
     "avg_heart_rate": st.column_config.NumberColumn(
-        "Avg HR (bpm)", format="%.0f", width=110, alignment="right"
-    ),
-    "avg_speed_kmh": st.column_config.NumberColumn(
-        "Avg speed (km/h)", format="%.1f", width=160, alignment="right"
-    ),
-    "total_ascent_m": st.column_config.NumberColumn(
-        "Elevation gain (m)", format="%.0f", width=140, alignment="right"
+        "Bpm", format="%.0f", width=70, alignment="right", help="Average heart rate."
     ),
     # Il `help` dice cos'e' davvero il numero: senza, un 40.0 sulla riga di una
     # camminata sembra una stima fatta su quella camminata, e non lo e'.
     "vo2max": st.column_config.NumberColumn(
-        "VO2max (ml/kg/min)",
+        "VO2Max",
         format="%.1f",
-        width=160,
+        width=80,
         alignment="right",
-        help="The watch's VO2max estimate at the end of the activity. Runs update "
-        "it; other activities carry the last value. Empty when the watch stored none.",
+        help="The watch's VO2max estimate at the end of the activity, in ml/kg/min. "
+        "Runs update it; other activities carry the last value. Empty when the "
+        "watch stored none.",
+    ),
+    "avg_speed_kmh": st.column_config.NumberColumn(
+        "km/h", format="%.1f", width=80, alignment="right", help="Average speed."
+    ),
+    "total_ascent_m": st.column_config.NumberColumn(
+        "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."
     ),
 }
 
@@ -121,8 +127,7 @@ def activity_table(activities: pd.DataFrame, **kwargs):
     # Solo per la vista: `activities` resta con le chiavi, che e' su quelle che
     # filtrano e raggruppano le pagine.
     activities = activities.copy()
-    for column in ("sport", "sub_sport"):
-        activities[column] = activities[column].map(sport_label)
+    activities["sport"] = activities["sport"].map(sport_label)
     return st.dataframe(
         activities[ACTIVITY_COLUMNS],
         column_config=ACTIVITY_COLUMN_CONFIG,
