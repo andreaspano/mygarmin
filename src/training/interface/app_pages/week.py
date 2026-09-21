@@ -896,14 +896,19 @@ st.caption(
 # Una scheda per sport, con lo stesso impianto della singola attivita' nella
 # pagina Activities (icona, titolo, metriche): qui pero' i numeri sono i
 # totali di tutte le attivita' di quello sport nella settimana. Affiancate
-# fino a tre per riga: impilate a tutta larghezza erano quasi una schermata.
+# a due per riga: impilate a tutta larghezza erano quasi una schermata, e a
+# tre per riga una scheda era troppo stretta per i valori grandi delle
+# metriche, che Streamlit tagliava con i puntini ("24.5 km", "50.4 km" gia' a
+# 1440px). A due, e con la colonna del conteggio piu' stretta, ci stanno
+# anche i piu' larghi dello storico ("181.2 km", "50:48", "+3383 m"),
+# misurati nel browser a 1920, 1440 e 1280.
 by_sport = _totals(week_activities, "sport").sort_values("time", ascending=False)
 
-CARDS_PER_ROW = 3
+CARDS_PER_ROW = 2
 sports = list(by_sport.index)
 for row_start in range(0, len(sports), CARDS_PER_ROW):
     row_sports = sports[row_start : row_start + CARDS_PER_ROW]
-    # Sempre tre colonne anche con una scheda sola: cosi' una settimana di un
+    # Sempre due colonne anche con una scheda sola: cosi' una settimana di un
     # solo sport non si ritrova una scheda larga quanto la pagina.
     for column, sport in zip(st.columns(CARDS_PER_ROW), row_sports):
         totals = by_sport.loc[sport]
@@ -914,7 +919,9 @@ for row_start in range(0, len(sports), CARDS_PER_ROW):
                 head.image(icon_path, width=40)
             head.markdown(f"**{sport_label(sport)}**")
 
-            n_col, distance_col, time_col = st.columns(3)
+            # Il conteggio e' sempre una cifra o due: la colonna stretta, e lo
+            # spazio a distanza e durata, che sono i valori piu' larghi.
+            n_col, distance_col, time_col = st.columns([1, 2, 2])
             n_col.metric("Activities", f"{totals['n']:.0f}")
             distance_col.metric("Distance", f"{totals['distance']:.1f} km")
             time_col.metric("Duration", _hm(totals["time"]))

@@ -10,11 +10,19 @@ import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_report import load_activity_comments
-from training.interface.activity_table import sport_icons, sport_label
+from training.interface.activity_table import sport_icon_path, sport_label
 from training.interface.db import load_activity_records
 
 alt.data_transformers.disable_max_rows()
 
+
+
+def _hm(minutes: float) -> str:
+    """Minuti in "hh:mm", come le durate della pagina Week (114 -> "01:54")."""
+    if pd.isna(minutes):
+        return "-"
+    minutes = round(minutes)
+    return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
 def _records(activity_id: int) -> pd.DataFrame:
@@ -87,16 +95,33 @@ def show_activity_detail(activity) -> None:
     """Disegna il dettaglio di `activity` (una riga di `list_activities`)."""
     records = _records(activity.activity_id)
 
-    icon_col, header_col = st.columns([1, 6])
+    # La scheda ha lo stesso impianto di quelle per sport della pagina Week:
+    # riquadro con bordo, icona e titolo sulla stessa riga, metriche su due
+    # righe da tre e due. Il commento sta accanto invece di finire sotto.
+    #
+    # Tre quinti della pagina e non un terzo come le schede della Week: a un
+    # terzo i valori grandi delle metriche ("+164 / -163 m", "135 bpm") non ci
+    # stanno e Streamlit li taglia con i puntini, e a meta' succedeva ancora a
+    # 1280px. Misurato nel browser a 1440 e a 1280.
+    card_col, comment_col = st.columns([3, 2])
+    with card_col.container(border=True):
+        head = st.container(horizontal=True, vertical_alignment="center")
+        icon_path = sport_icon_path(activity.sport)
+        if icon_path:
+            head.image(icon_path, width=40)
+        head.markdown(
+            f"**{sport_label(activity.sport)}** — {activity.start_time:%d %b %Y, %H:%M}"
+        )
 
-    with header_col:
-        st.subheader(f"{sport_label(activity.sport)} — {activity.start_time:%d %b %Y, %H:%M}")
-
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Distance", f"{activity.total_distance_km:.1f} km")
-        col2.metric("Duration", f"{activity.total_time_min:.0f} min")
-        col3.metric("Avg HR", f"{activity.avg_heart_rate or '-'} bpm")
-        col4.metric(
+        distance_col, time_col, hr_col = st.columns(3)
+        distance_col.metric("Distance", f"{activity.total_distance_km:.1f} km")
+        time_col.metric("Duration", _hm(activity.total_time_min))
+        hr_col.metric(
+            "Avg HR",
+            f"{activity.avg_heart_rate:.0f} bpm" if pd.notna(activity.avg_heart_rate) else "-",
+        )
+        ascent_col, vo2_col = st.columns(2)
+        ascent_col.metric(
             "Elevation",
             f"+{activity.total_ascent_m:.0f} / -{activity.total_descent_m:.0f} m"
             if pd.notna(activity.total_ascent_m)
@@ -105,28 +130,21 @@ def show_activity_detail(activity) -> None:
         # La stima dell'orologio a fine attivita' (vedi `fit._vo2max`): manca
         # per le attivita' che l'orologio non considera, come le corse su
         # sentiero. Il `help` e' lo stesso avviso della colonna in tabella.
-        col5.metric(
-            "VO2max",
-            f"{activity.vo2max:.1f} ml/kg/min" if pd.notna(activity.vo2max) else "-",
-            help="The watch's VO2max estimate at the end of the activity. Runs update "
-            "it; other activities carry the last value.",
+        vo2_col.metric(
+            "VO2Max",
+            f"{activity.vo2max:.1f}" if pd.notna(activity.vo2max) else "-",
+            help="The watch's VO2max estimate at the end of the activity, in ml/kg/min. "
+            "Runs update it; other activities carry the last value.",
         )
 
-    with icon_col:
-        icon_uri = sport_icons().get(activity.sport)
-        if icon_uri:
-            st.markdown(
-                f'<img src="{icon_uri}" style="width:100%;max-width:72px;margin-top:8px;">',
-                unsafe_allow_html=True,
-            )
-
-    st.markdown("**Comment**")
-    saved_comments = load_activity_comments(activity.activity_id)
-    if saved_comments is None:
-        st.info("Report not generated yet for this activity. Run `make activity_reports`.")
-    else:
-        for comment in saved_comments:
-            st.markdown(f"- {comment}")
+    with comment_col:
+        st.markdown("**Comment**")
+        saved_comments = load_activity_comments(activity.activity_id)
+        if saved_comments is None:
+            st.info("Report not generated yet for this activity. Run `make activity_reports`.")
+        else:
+            for comment in saved_comments:
+                st.markdown(f"- {comment}")
 
     if records.empty:
         st.warning("No sampled data (records) in this file.")
