@@ -46,7 +46,9 @@ ACTIVITY_COLUMN_CONFIG = {
     "total_time_min": st.column_config.NumberColumn(
         "Duration (min)", format="%.0f", width=100, alignment="right"
     ),
-    "avg_heart_rate": st.column_config.NumberColumn("Avg HR", width=90, alignment="right"),
+    "avg_heart_rate": st.column_config.NumberColumn(
+        "Avg HR (bpm)", format="%.0f", width=110, alignment="right"
+    ),
     "avg_speed_kmh": st.column_config.NumberColumn(
         "Avg speed (km/h)", format="%.1f", width=160, alignment="right"
     ),
@@ -66,6 +68,19 @@ def sport_icons() -> dict:
             encoded = base64.b64encode(path.read_bytes()).decode("ascii")
             icons[sport] = f"data:{mime};base64,{encoded}"
     return icons
+
+
+def sport_label(value: str | None) -> str:
+    """Il nome di uno sport (o di un sotto-tipo) come si legge a schermo.
+
+    Nei dati gli sport sono chiavi: `cross_country_skiing`. A schermo diventano
+    "Cross country skiing", con la stessa regola che `profile.py` applica ai
+    suoi valori (`CAPITALIZE_KEYS`): iniziale maiuscola e basta. Passa di qui
+    ogni etichetta, cosi' lo stesso sport si legge uguale nelle tabelle, nelle
+    schede, nei grafici e nei filtri."""
+    if not value:
+        return "?"
+    return value.replace("_", " ").capitalize()
 
 
 def sport_icon_path(sport: str | None) -> Path | None:
@@ -92,6 +107,11 @@ def activity_table(activities: pd.DataFrame, **kwargs):
     e' selezionabile o solo da leggere."""
     if "icon" not in activities.columns:
         activities = with_icons(activities)
+    # Solo per la vista: `activities` resta con le chiavi, che e' su quelle che
+    # filtrano e raggruppano le pagine.
+    activities = activities.copy()
+    for column in ("sport", "sub_sport"):
+        activities[column] = activities[column].map(sport_label)
     return st.dataframe(
         activities[ACTIVITY_COLUMNS],
         column_config=ACTIVITY_COLUMN_CONFIG,
