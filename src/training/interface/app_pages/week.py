@@ -211,6 +211,11 @@ def _series_label(name: str) -> str:
 # Il grigio delle voci spente: lo stesso della verticale del crosshair.
 _OFF_COLOR = "#9ca3af"
 
+# Le verticali dei cambi di mese: un grigio piu' chiaro del crosshair, che e'
+# tratteggiato e si muove, e un filo piu' scuro della griglia orizzontale, per
+# distinguersi da tutti e due senza farsi notare.
+MONTH_LINE_COLOR = "#d1d5db"
+
 
 def _series_symbol(name: str, colors: dict[str, str], on: bool) -> str:
     """L'etichetta di una voce della riga di legenda: simbolo colorato e nome.
@@ -252,7 +257,7 @@ def _chart(
     picked: alt.Parameter,
     hover: alt.Parameter,
     colors: dict[str, str],
-    show_x_axis: bool = True,
+    show_x_title: bool = True,
     integer: bool = False,
 ) -> alt.LayerChart:
     """Costruisce (senza disegnarlo) un pannello: l'area del totale, le linee
@@ -263,9 +268,11 @@ def _chart(
     sola, quindi la verticale tratteggiata si muove su tutti insieme, alla
     stessa settimana.
 
-    `show_x_axis` lo accende solo sull'ultima riga della griglia: le righe
-    hanno tutte lo stesso asse dei tempi, e ripeterlo non dice niente di nuovo
-    mentre allunga il blocco.
+    Le etichette delle settimane (w26, w27, ...) stanno sotto ogni pannello:
+    con quattro righe, chi guarda un pannello in alto non deve scendere fino
+    in fondo alla griglia per sapere a che settimana corrisponde un picco.
+    `show_x_title` riguarda solo il titolo dell'asse ("week"), che basta una
+    volta, sull'ultima riga.
 
     `integer` e' per le grandezze che si contano invece di misurarsi (il
     numero di attivita'): l'asse non scende sotto il passo di uno, che con
@@ -299,10 +306,8 @@ def _chart(
     # e Vega nasconde da se' quelle che si sovrapporrebbero.
     x = alt.X(
         "week_start:T",
-        title="week" if show_x_axis else None,
-        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1})
-        if show_x_axis
-        else None,
+        title="week" if show_x_title else None,
+        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1}),
     )
     y = alt.Y(
         "value:Q",
@@ -321,6 +326,26 @@ def _chart(
     )
 
     layers = []
+
+    # Una verticale leggera dove cambia il mese: l'asse conta in settimane
+    # ISO, e senza un riferimento "w31" non dice a nessuno che e' fine luglio.
+    # Sta sul primo del mese, che sull'asse temporale cade fra due lunedi', ed
+    # e' il primo strato, cosi' resta dietro a tutto. Solo i cambi di mese
+    # *dentro* il periodo: uno sul bordo allargherebbe l'asse, e uno strato
+    # senza dati farebbe brontolare Vega ("Infinite extent").
+    # La colonna si chiama `week_start` come quella dei dati, anche se qui
+    # porta un inizio di mese: con lo stesso campo e la stessa codifica `x`
+    # gli strati condividono asse e titolo senza che Vega li fonda in
+    # "week_start, month_start".
+    first_week, last_week = by_week_sport.index.min(), by_week_sport.index.max()
+    month_starts = pd.date_range(first_week, last_week, freq="MS")
+    month_starts = month_starts[(month_starts > first_week) & (month_starts < last_week)]
+    if len(month_starts):
+        layers.append(
+            alt.Chart(pd.DataFrame({"week_start": month_starts}))
+            .mark_rule(color=MONTH_LINE_COLOR, strokeWidth=1)
+            .encode(x=x)
+        )
 
     # Il totale e' solo un'area riempita sullo sfondo, senza bordo: fa da ombra
     # sotto ai singoli sport, che ci passano sopra leggibili.
@@ -419,7 +444,7 @@ def _pair(
     colors: dict[str, str],
     scale: float = 1.0,
     with_total: bool = True,
-    show_x_axis: bool = False,
+    show_x_title: bool = False,
     integer: bool = False,
 ) -> list[alt.LayerChart]:
     """La stessa grandezza due volte: prima settimana per settimana, poi il
@@ -428,8 +453,8 @@ def _pair(
     Restituisce i due pannelli in una lista, uno sotto l'altro: a comporli ci
     pensa `_charts_spec()`, che li mette tutti in una vista sola.
 
-    `show_x_axis` vale per tutti e due, perche' i due stanno sulla stessa
-    riga della griglia: l'asse dei tempi lo disegna solo l'ultima riga.
+    `show_x_title` vale per tutti e due, perche' i due stanno sulla stessa
+    riga della griglia: il titolo dell'asse dei tempi lo porta solo l'ultima.
 
     Nel cumulato il totale e' quello di *tutti* gli sport, non solo di quelli
     selezionati: le caselle scelgono quali linee guardare, ma il monte
@@ -448,7 +473,7 @@ def _pair(
             picked,
             hover,
             colors,
-            show_x_axis=show_x_axis,
+            show_x_title=show_x_title,
             integer=integer,
         ),
         _chart(
@@ -458,7 +483,7 @@ def _pair(
             picked,
             hover,
             colors,
-            show_x_axis=show_x_axis,
+            show_x_title=show_x_title,
             integer=integer,
         ),
     ]
@@ -665,9 +690,9 @@ else:
 
     # Quattro righe da due pannelli, nell'ordine delle colonne della tabella
     # dei totali (Activities, Distance, Duration, Elevation gain): a sinistra
-    # la grandezza settimana per settimana, a destra il suo cumulato. L'asse
-    # dei tempi lo disegna solo l'ultima riga: le righe ce l'hanno uguale, e
-    # ripeterlo allungava il blocco per niente.
+    # la grandezza settimana per settimana, a destra il suo cumulato. Le
+    # settimane sono etichettate sotto ogni pannello; il titolo dell'asse
+    # ("week") lo porta solo l'ultima riga.
     rows = [
         _pair(
             plotted,
@@ -718,7 +743,7 @@ else:
             hover,
             sport_colors,
             with_total=plot_total,
-            show_x_axis=True,
+            show_x_title=True,
         ),
     ]
 
