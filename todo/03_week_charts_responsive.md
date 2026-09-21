@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Week: grafici adattivi alla finestra
@@ -105,3 +105,93 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+---
+
+## Needs decision: il crosshair NON e' condiviso fra viste Vega separate
+
+La verifica che il todo mette prima di tutto e' stata fatta, ed e' negativa.
+
+**Esito.** Passare lo stesso oggetto `alt.selection_point` a due
+`st.altair_chart` distinti non condivide il segnale. Ogni `st.altair_chart` e'
+una vista Vega a se' stante, con il suo registro di segnali: Altair serializza
+lo stesso parametro dentro le due specifiche, ma a runtime diventano due
+segnali omonimi e indipendenti. Non esiste un ponte fra le viste, e Streamlit
+non ne crea uno.
+
+**Come e' stato verificato** (browser headless, Chromium via Playwright, non
+installato nel progetto):
+
+1. Banco di prova costruito apposta con il pattern proposto dal todo: due
+   grafici foglia `width="container"` in `st.columns(2)`, stessi `picked` e
+   `hover`, `width="stretch"` sulla chiamata. Passando il mouse sul grafico di
+   sinistra la riga verticale compare **solo** a sinistra; a destra non succede
+   nulla. Gli eventi lo confermano: `LEFT event -> {"hovered": [{"x": 5}]}`,
+   `RIGHT event -> {"hovered": {}}`.
+2. Stessa prova su `activity_detail.py`, che il todo cita come precedente
+   (L137-177): aperta un'attivita' reale nell'app, il crosshair sul grafico
+   "Heart rate" resta confinato li'; il grafico "Speed" accanto non mostra ne'
+   la verticale ne' il punto evidenziato. **Il parametro `hover` condiviso in
+   `activity_detail.py` non sincronizza niente**: ogni grafico ha la sua copia
+   del segnale. Il precedente su cui poggiava il piano non regge.
+
+Quindi separare i sei grafici costa il crosshair che si muove su tutti insieme.
+Il todo dice di fermarsi qui e non sacrificarlo di iniziativa: fermato.
+
+**Quello che invece funziona** (utile per decidere): `width="container"` dentro
+una colonna Streamlit si adatta davvero. Nel banco di prova i due grafici
+misuravano 712px per parte su finestra 1600, e 722px su 1920, riempiendo la
+riga senza barra di scorrimento. La strada e' percorribile: l'unico prezzo e'
+il crosshair. Confermato anche il resto delle previsioni del todo: ogni grafico
+separato si porta la sua legenda (da sopprimere), e ogni grafico emette il suo
+evento di selezione (sei `key`, `_clicked_weeks` da adattare).
+
+**Opzioni.**
+
+- **A - Adattivi, senza crosshair condiviso.** Sei `st.altair_chart` in
+  `st.columns(2)`. I grafici si adattano a qualunque finestra, la barra di
+  scorrimento sparisce. Il crosshair resta, ma solo sul grafico sotto il mouse:
+  si perde il confronto a colpo d'occhio della stessa settimana su km, ore e
+  dislivello. Click e tooltip restano intatti.
+- **B - Larghezza fissa, ma tarata giusta.** Si resta sul `vconcat` e si
+  abbassa `CHARTS_TOTAL_WIDTH` da 1760 a ~1500, cioe' 1920 meno la sidebar
+  (~244px) meno i margini. Il crosshair condiviso resta, la barra di
+  scorrimento di oggi sparisce sulla macchina di Andrea, ma il blocco continua
+  a non adattarsi e sforerebbe sotto i 1500px di finestra.
+- **C - Fisso con la sidebar chiusa.** Come B, piu' `initial_sidebar_state="collapsed"`
+  in `app.py`: si recuperano i 244px e i 1760 attuali tornano corretti. Tocca
+  pero' tutte le pagine, non solo Week.
+- **D - Adattivi con crosshair ricostruito.** Sei grafici separati, e la
+  settimana sotto il mouse propagata via `on_select` per farla ridisegnare
+  sugli altri cinque. Vuol dire un rerun di Streamlit a ogni movimento del
+  mouse: da scartare, e' fuori scala rispetto al beneficio.
+
+**Raccomandazione: A.** La barra di scorrimento orizzontale si paga a ogni
+sguardo alla pagina e su qualunque finestra; il crosshair sincronizzato e' un
+confronto comodo ma il tooltip, che resta, porta gia' settimana, serie e
+valore. B e C rimandano solo il problema, e nessuna delle due rende la pagina
+adattiva, che e' quello che il todo chiede.
+
+**Decisione di Andrea: opzione A.** Si procede con i sei grafici separati e
+adattivi; il crosshair resta, ma solo sul grafico sotto il mouse.
+
+## Esito: implementato (opzione A)
+
+Sei `st.altair_chart` in `st.columns(2)` x 3 righe, ogni grafico foglia con
+`width="container"` e `width="stretch"` sulla chiamata. Spariti
+`CHARTS_TOTAL_WIDTH`, `_LEGEND_WIDTH`, `_AXIS_WIDTH`, `CHART_WIDTH` e il
+commento che li giustificava; `CHART_HEIGHT` resta a 320, l'altezza non era il
+problema. Il crosshair si muove sul solo grafico sotto il mouse, come deciso.
+
+Due cose sono venute fuori strada facendo:
+
+- **La legenda unica sta sopra la griglia, non dentro un grafico.** Messa
+  dentro il primo (`orient="top"`) era completa a 1920 ma a 1280px l'ultima
+  voce finiva tagliata, perche' un grafico e' largo meta' pagina. Spostata in
+  un grafico suo a tutta larghezza: serve `padding=0` e `height=40`, perche'
+  Streamlit fissa l'altezza dell'area disegnata e quello che non ci sta viene
+  ritagliato.
+- **Il blocco `warnings.catch_warnings()` era diventato inutile** e l'ho tolto,
+  con l'`import warnings`. Deduplicava un parametro ripetuto dentro *una*
+  specifica: con sei specifiche distinte non succede piu' (verificato, nessun
+  avviso ne' in `AppTest` ne' nel log dell'app).
