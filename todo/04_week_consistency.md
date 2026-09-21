@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Week: coerenza dei nomi e costo dei rerun
