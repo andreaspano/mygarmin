@@ -1,6 +1,8 @@
 """Week page: weekly training totals, with a per-sport breakdown of the
 week(s) selected in the table."""
 
+import warnings
+
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -139,10 +141,36 @@ def _weekly_sum(
     return by_week_sport
 
 
-# Solo l'altezza dell'area di disegno: la larghezza non e' piu' un numero.
-# Ogni grafico e' una vista Vega a se' dentro una colonna Streamlit, quindi
-# `width="container"` la misura da solo e i sei si adattano alla finestra.
-CHART_HEIGHT = 320
+# La larghezza in pixel non e' una pigrizia, e' l'unica strada: la griglia
+# 3x2 e il crosshair condiviso si pagano cosi'.
+#
+# Il crosshair su tutti i pannelli vuole i sei in una vista Vega sola (fra
+# viste distinte i segnali non passano). Ma una vista sola disposta a griglia
+# e' un `vconcat` di `hconcat`, e quella forma non sa adattarsi al
+# contenitore: provato, `autosize: fit-x` la fa collassare a larghezza zero,
+# e con `fit` o `pad` la larghezza resta quella scritta qui. Il frontend di
+# Streamlit passa la larghezza misurata ai figli di un `vconcat`, ma non
+# scende dentro gli `hconcat`. Nemmeno calcolarla si puo': `st.context` non
+# espone la larghezza della finestra.
+#
+# Tarata per stare in una finestra da 1440 con la sidebar aperta: li' il
+# contenitore del grafico e' largo 980px. Attenzione, si misura sul
+# contenitore del grafico, non sull'area principale della pagina, che a 1440
+# e' 1.140: la differenza sono i margini, e sbagliare misura vuol dire
+# scoprire lo sbordamento dopo.
+#
+# La barra di scorrimento non compare fino a 1440 con la sidebar aperta, e mai
+# con la sidebar chiusa. Sotto, torna a sforare: basta chiudere la sidebar,
+# oppure abbassare questo numero.
+CHARTS_TOTAL_WIDTH = 940
+_AXIS_WIDTH = 55  # l'asse y di ogni pannello, fuori dall'area di disegno
+_VEGA_PADDING = 80  # i margini interni della vista, misurati nel browser
+
+# `width` in Vega e' la sola area di disegno: assi e margini si aggiungono, e
+# qui si tolgono in anticipo perche' CHARTS_TOTAL_WIDTH sia davvero la
+# larghezza che il blocco occupa sullo schermo.
+CHART_WIDTH = (CHARTS_TOTAL_WIDTH - _VEGA_PADDING) // 2 - _AXIS_WIDTH
+CHART_HEIGHT = 240
 
 # L'area del totale ha un colore suo, arancione, invece di pescare dalla
 # tavolozza categorica (dove finiva su un marrone smorto). Le linee dei sport
@@ -197,36 +225,6 @@ def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
     )
 
 
-def _legend(series_names: list[str], colors: dict[str, str]) -> alt.Chart:
-    """Una sola legenda per tutti, sopra la griglia dei grafici.
-
-    Separati, i sei grafici si porterebbero sei legende identiche. Qui e'
-    spenta su tutti e ridisegnata una volta sola da un grafico senza marche
-    visibili, che serve solo a reggerla.
-
-    Sta qui e non dentro uno dei sei perche' cosi' ha tutta la pagina per
-    distendersi: dentro un grafico, che ne occupa la meta', l'ultima voce
-    finiva tagliata gia' a 1280px. `padding=0` e un'altezza di 40px sono il
-    minimo perche' Streamlit fissa l'altezza dell'area disegnata, e quello che
-    non ci sta dentro viene ritagliato via."""
-    return (
-        alt.Chart(pd.DataFrame({"series": series_names}))
-        .mark_point(opacity=0)
-        .encode(
-            color=alt.Color(
-                "series:N",
-                title=None,
-                scale=_color_scale(series_names, colors),
-                legend=alt.Legend(orient="top", direction="horizontal"),
-            )
-        )
-        .properties(
-            width="container", height=40, padding={"top": 0, "bottom": 0, "left": 0, "right": 0}
-        )
-        .configure_view(stroke=None)
-    )
-
-
 def _chart(
     by_week_sport: pd.DataFrame,
     y_label: str,
@@ -234,15 +232,19 @@ def _chart(
     picked: alt.Parameter,
     hover: alt.Parameter,
     colors: dict[str, str],
+    show_x_axis: bool = True,
 ) -> alt.LayerChart:
-    """Costruisce (senza disegnarlo) un grafico: l'area del totale, le linee
+    """Costruisce (senza disegnarlo) un pannello: l'area del totale, le linee
     per sport, il crosshair e i punti che raccolgono il click.
 
     `picked` e `hover` arrivano da fuori e sono lo stesso oggetto per tutti i
-    grafici, ma solo per tenerne fermo il nome: e' con quello che la selezione
-    si rilegge dall'evento. Il segnale **non** e' condiviso, perche' ogni
-    grafico e' una vista Vega a se' con il suo registro di segnali: la
-    verticale tratteggiata si muove sul grafico sotto il mouse e basta.
+    pannelli, e qui il segnale **e'** condiviso: i sei stanno in una vista Vega
+    sola, quindi la verticale tratteggiata si muove su tutti insieme, alla
+    stessa settimana.
+
+    `show_x_axis` lo accende solo sull'ultima riga della griglia: le tre righe
+    hanno lo stesso asse dei tempi, e ripeterlo tre volte non dice niente di
+    nuovo mentre allunga il blocco.
 
     La selezione viaggia su `week_key` (stringa) e non sulla data: cosi'
     torna indietro da Vega tale e quale, senza passare da epoch/millisecondi.
@@ -272,20 +274,27 @@ def _chart(
     # e Vega nasconde da se' quelle che si sovrapporrebbero.
     x = alt.X(
         "week_start:T",
-        title="week",
-        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1}),
+        title="week" if show_x_axis else None,
+        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1})
+        if show_x_axis
+        else None,
     )
     y = alt.Y("value:Q", title=y_label)
-    # Legenda spenta: ce n'e' una sola per tutti, disegnata da `_legend()`
-    # sopra la griglia. Sei copie della stessa cosa erano solo rumore, e a
-    # destra di ogni grafico si sarebbero anche mangiate una fetta di
-    # larghezza proprio quando ce n'e' poca.
+    # La legenda la dichiarano tutti i pannelli, ma la scala dei colori e'
+    # condivisa (`resolve_scale(color="shared")` in `_charts_spec()`), quindi
+    # Vega ne disegna una sola per tutto il blocco. Non serve piu' la striscia
+    # separata che la reggeva quando i grafici erano sei viste distinte.
+    #
+    # Sopra e non a destra: a destra la sua larghezza entrava nel bilancio
+    # orizzontale, e quella larghezza dipende da quanto e' lungo il nome dello
+    # sport piu' lungo ("Cross country skiing" e' ~90px piu' di "Cycling").
+    # Sopra, il bilancio in larghezza non dipende piu' dai dati.
     series_names = [str(c) for c in by_week_sport.columns]
     color = alt.Color(
         "series:N",
         title=None,
         scale=_color_scale(series_names, colors),
-        legend=None,
+        legend=alt.Legend(orient="top", direction="horizontal"),
     )
 
     layers = []
@@ -334,12 +343,38 @@ def _chart(
         .encode(x=x, y=y, color=color, opacity=visible_on_hover)
     )
 
-    # `width="container"`: la misura la prende dalla colonna Streamlit che lo
-    # ospita. Funziona perche' questo e' un layer, non una composizione: un
-    # hconcat con figli responsive non si dividerebbe lo spazio del contenitore.
     return alt.layer(*layers).properties(
-        width="container", height=CHART_HEIGHT, title=alt.TitleParams(title, anchor="start")
+        width=CHART_WIDTH, height=CHART_HEIGHT, title=alt.TitleParams(title, anchor="start")
     )
+
+
+def _charts_spec(rows: list[list[alt.LayerChart]]) -> dict:
+    """Le tre righe da due pannelli in **una sola** vista Vega.
+
+    Una vista sola e' quello che fa muovere il crosshair su tutti e sei i
+    pannelli insieme: fra viste Vega distinte i segnali non passano, provato
+    nel todo 03, che per questo aveva dovuto rinunciarci.
+
+    Il prezzo e' la larghezza fissa, spiegato su `CHARTS_TOTAL_WIDTH`: a
+    griglia Vega non si adatta al contenitore, e l'autosize non ci salva.
+    Qui non lo tocchiamo: Streamlit ci mette `pad` da solo (per lui un
+    `vconcat` di `hconcat` e' una composizione annidata), che e' esattamente
+    "nessun adattamento", cioe' quello che vogliamo avendo gia' deciso noi i
+    pixel.
+
+    `resolve_scale(color="shared")` tiene lo stesso colore per lo stesso sport
+    in tutti i pannelli e riduce le sei legende a una."""
+    # Passare lo stesso `picked`/`hover` a tutti i pannelli e' il punto di
+    # tutto: e' cosi' che il segnale e' uno solo. Dentro una specifica sola
+    # pero' Altair vede il parametro ripetuto, lo deduplica (che e' quello che
+    # vogliamo) e avvisa a ogni rerun.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Automatically deduplicated selection parameter")
+        return (
+            alt.vconcat(*[alt.hconcat(*row) for row in rows])
+            .resolve_scale(color="shared")
+            .to_dict()
+        )
 
 
 def _weekly_total(
@@ -361,14 +396,16 @@ def _pair(
     colors: dict[str, str],
     scale: float = 1.0,
     with_total: bool = True,
-) -> tuple[alt.LayerChart, alt.LayerChart]:
-    """La stessa grandezza due volte, da affiancare: a sinistra settimana per
-    settimana, a destra il cumulato dall'inizio del periodo (quanto si e'
-    messo insieme finora).
+    show_x_axis: bool = False,
+) -> list[alt.LayerChart]:
+    """La stessa grandezza due volte: prima settimana per settimana, poi il
+    cumulato dall'inizio del periodo (quanto si e' messo insieme finora).
 
-    Restituisce i due grafici invece di concatenarli: ad affiancarli ci pensa
-    `st.columns`, cosi' ognuno resta una vista a se' e puo' adattarsi alla sua
-    colonna.
+    Restituisce i due pannelli in una lista, uno sotto l'altro: a comporli ci
+    pensa `_charts_spec()`, che li mette tutti in una vista sola.
+
+    `show_x_axis` vale per tutti e due, perche' i due stanno sulla stessa
+    riga della griglia: l'asse dei tempi lo disegna solo l'ultima riga.
 
     Nel cumulato il totale e' quello di *tutti* gli sport, non solo di quelli
     selezionati: le caselle scelgono quali linee guardare, ma il monte
@@ -379,7 +416,7 @@ def _pair(
     if with_total and cumulative.shape[1] > 1:
         cumulative[TOTAL_SERIES] = _weekly_total(everything, value, weeks, scale).cumsum()
 
-    return (
+    return [
         _chart(
             _weekly_sum(plotted, value, weeks, scale, with_total=with_total),
             y_label,
@@ -387,28 +424,33 @@ def _pair(
             picked,
             hover,
             colors,
+            show_x_axis=show_x_axis,
         ),
-        _chart(cumulative, y_label, f"{title} (cumulative)", picked, hover, colors),
-    )
+        _chart(
+            cumulative,
+            y_label,
+            f"{title} (cumulative)",
+            picked,
+            hover,
+            colors,
+            show_x_axis=show_x_axis,
+        ),
+    ]
 
 
-def _clicked_weeks(events: list) -> list:
-    """La settimana selezionata in ognuno dei grafici, nel loro ordine.
+def _clicked_weeks(event) -> list:
+    """Le settimane cliccate, lette dalla selezione condivisa dai pannelli.
 
-    Un elemento per grafico (None dove non c'e' selezione), non un elenco
-    delle settimane cliccate: separati, i grafici hanno ognuno la sua
-    selezione, che resta li' finche' non la si azzera. Sapere *quale* grafico
-    e' cambiato e' l'unico modo di distinguere il click appena fatto da quelli
-    rimasti accesi nei cinque grafici di prima."""
+    Una selezione sola perche' i pannelli sono una vista sola: e' sparita la
+    trafila del todo 03, che con sei eventi indipendenti doveva capire quale
+    dei sei fosse cambiato in questo giro."""
+    selection = (event.selection or {}).get("picked", []) if event else []
+
     weeks = []
-    for event in events:
-        selection = (event.selection or {}).get("picked", []) if event else []
-        picked = []
-        for item in selection:
-            value = item.get("week_key") if isinstance(item, dict) else item
-            picked.extend(value if isinstance(value, list) else [value])
-        weeks.append(next((week for week in picked if week), None))
-    return weeks
+    for item in selection:
+        value = item.get("week_key") if isinstance(item, dict) else item
+        weeks.extend(value if isinstance(value, list) else [value])
+    return [week for week in weeks if week]
 
 
 activities = load_activities(DATA_DIR)
@@ -468,7 +510,6 @@ table_key = f"weekly_{period_key}"
 # senza il suffisso, il primo giro dopo il cambio confrontava la selezione
 # nuova con settimane del periodo precedente.
 prev_chart_key = f"_prev_chart_week_{period_key}"
-prev_charts_key = f"_prev_chart_weeks_{period_key}"
 prev_table_key = f"_prev_table_week_{period_key}"
 source_key = f"_week_source_{period_key}"
 
@@ -571,101 +612,64 @@ else:
         clear="pointerout",
     )
 
+    # Tre righe da due pannelli: a sinistra la grandezza settimana per
+    # settimana, a destra il suo cumulato. L'asse dei tempi lo disegna solo
+    # l'ultima riga: le tre righe ce l'hanno uguale, e ripeterlo allungava il
+    # blocco per niente.
     rows = [
-        (
-            "distance",
-            _pair(
-                plotted,
-                in_range,
-                "total_distance_km",
-                all_weeks,
-                "km",
-                "Distance",
-                picked,
-                hover,
-                sport_colors,
-                with_total=plot_total,
-            ),
+        _pair(
+            plotted,
+            in_range,
+            "total_distance_km",
+            all_weeks,
+            "km",
+            "Distance",
+            picked,
+            hover,
+            sport_colors,
+            with_total=plot_total,
         ),
-        (
-            "time",
-            _pair(
-                plotted,
-                in_range,
-                "total_time_min",
-                all_weeks,
-                "h",
-                "Duration",
-                picked,
-                hover,
-                sport_colors,
-                scale=1 / 60,
-                with_total=plot_total,
-            ),
+        _pair(
+            plotted,
+            in_range,
+            "total_time_min",
+            all_weeks,
+            "h",
+            "Duration",
+            picked,
+            hover,
+            sport_colors,
+            scale=1 / 60,
+            with_total=plot_total,
         ),
-        (
-            "ascent",
-            _pair(
-                plotted,
-                in_range,
-                "total_ascent_m",
-                all_weeks,
-                "m",
-                "Elevation gain",
-                picked,
-                hover,
-                sport_colors,
-                with_total=plot_total,
-            ),
+        _pair(
+            plotted,
+            in_range,
+            "total_ascent_m",
+            all_weeks,
+            "m",
+            "Elevation gain",
+            picked,
+            hover,
+            sport_colors,
+            with_total=plot_total,
+            show_x_axis=True,
         ),
     ]
 
-    # Le serie sono le stesse in tutti e sei i grafici. `plot_total` e' gia'
-    # spento quando gli sport sono meno di due, cioe' la stessa regola che
-    # seguono `_weekly_sum` e `_pair`: qui basta rispettarlo.
-    series_names = list(plotted_sports)
-    if plot_total:
-        series_names.append(TOTAL_SERIES)
-    st.altair_chart(_legend(series_names, sport_colors), width="stretch")
-
-    # Tre righe di due grafici: le colonne Streamlit li affiancano, e ognuno
-    # riempie la sua. Le `key` portano il periodo come gia' faceva quella del
-    # blocco unico: cambiando periodo i grafici si rimontano, e con loro le
-    # selezioni, che altrimenti punterebbero a settimane diverse.
-    events = []
-    for name, (weekly_chart, cumulative_chart) in rows:
-        left, right = st.columns(2)
-        events.append(
-            left.altair_chart(
-                weekly_chart, width="stretch", on_select="rerun", key=f"chart_{name}_{period_key}"
-            )
+    # Una `key` sola per una vista sola. Porta il periodo come la tabella:
+    # cambiando intervallo il grafico si rimonta, e con lui la selezione, che
+    # altrimenti punterebbe a una settimana di un altro periodo.
+    clicked_weeks = _clicked_weeks(
+        st.vega_lite_chart(
+            _charts_spec(rows),
+            width="stretch",
+            on_select="rerun",
+            key=f"charts_{period_key}",
         )
-        events.append(
-            right.altair_chart(
-                cumulative_chart,
-                width="stretch",
-                on_select="rerun",
-                key=f"chart_{name}_cum_{period_key}",
-            )
-        )
-
-    # Sei selezioni indipendenti al posto di una: quella buona e' la sola
-    # cambiata da questo giro, perche' le altre cinque sono rimaste accese
-    # dov'erano. Un grafico tornato a vuoto e' un doppio click, e conta come
-    # cambiamento: azzera la scelta invece di lasciarla dove stava.
-    chart_weeks = _clicked_weeks(events)
-    previous = st.session_state.get(prev_charts_key, [])
-    if len(previous) != len(chart_weeks):
-        previous = [None] * len(chart_weeks)
-    changed = [week for week, before in zip(chart_weeks, previous) if week != before]
-    st.session_state[prev_charts_key] = chart_weeks
-
-    just_clicked = [week for week in changed if week]
-    if just_clicked:
-        chart_week = pd.Timestamp(just_clicked[0])
-    elif not changed:
-        # Nessun grafico toccato: resta valida la settimana scelta prima.
-        chart_week = st.session_state.get(prev_chart_key)
+    )
+    if clicked_weeks:
+        chart_week = pd.Timestamp(clicked_weeks[0])
 
 # Tabella e grafici sono due modi di scegliere la stessa cosa: vince quello
 # toccato per ultimo, altrimenti un click sul grafico resterebbe prigioniero

@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # Week: la verticale su tutti i grafici, non solo su quello sotto il mouse
@@ -145,3 +145,69 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Esito: implementato
+
+La verticale si muove su tutti e sei i pannelli. La disposizione e' rimasta la
+griglia 3x2, per scelta di Andrea a lavoro gia' fatto: i sei incolonnati
+funzionavano ed erano adattivi, ma la griglia si legge meglio.
+
+**La griglia costa la larghezza fissa, e non e' negoziabile.** Provate tutte le
+strade native, misurando:
+
+| forma | crosshair condiviso | adattiva |
+|---|---|---|
+| sei pannelli incolonnati (`vconcat` di `layer`) + `fit-x` forzato | si' | si' |
+| griglia (`vconcat` di `hconcat`) + `fit-x` forzato | si' | no, collassa a larghezza 0 |
+| griglia + `fit` o `pad` | si' | no, larghezza fissa |
+| facet `columns=2` | si' | no, larghezza fissa |
+| sei `st.altair_chart` in `st.columns` | **no** | si' |
+
+Il frontend di Streamlit passa la larghezza misurata ai figli di un `vconcat`,
+ma non scende dentro gli `hconcat`; e `st.context` non espone la larghezza
+della finestra, quindi non la si puo' nemmeno calcolare. Percio' con la
+griglia l'autosize non si forza: Streamlit mette `pad` da solo, che e'
+"nessun adattamento", cioe' quello che serve avendo gia' deciso noi i pixel.
+
+**La legenda e' passata da destra a sopra.** A destra la sua larghezza entrava
+nel bilancio orizzontale, e quella larghezza **dipende dai dati**: "Cross
+country skiing" e' ~90px piu' lungo di "Cycling", quindi bastava uno sport
+nuovo per far sbordare il blocco. Sopra, il bilancio in larghezza non dipende
+piu' da cosa c'e' nei dati, e i ~100px liberati sono tornati ai pannelli.
+
+Misurato nel browser (SVG 938x1031, `CHARTS_TOTAL_WIDTH = 940`: la costante
+ora vale davvero la larghezza occupata):
+
+| finestra | sidebar | contenitore | margine | barra |
+|---|---|---|---|---|
+| 1920 | aperta | 1460 | 522 | no |
+| 1920 | chiusa | 1760 | 822 | no |
+| 1440 | aperta | 980 | 42 | no |
+| 1280 | aperta | 820 | **-118** | **si'** |
+| 1280 | chiusa | 1120 | 182 | no |
+
+**Limite noto**: a 1280 con la sidebar aperta il blocco sborda ancora. Chiudere
+la sidebar basta; in alternativa si abbassa `CHARTS_TOTAL_WIDTH`, al prezzo di
+pannelli piu' stretti.
+
+Attenzione a come si misura: il contenitore del grafico non e' l'area
+principale della pagina. A 1440 l'area principale e' 1.140 ma il contenitore e'
+980, e controllando l'overflow sul documento invece che sul contenitore lo
+sbordamento non si vede (la barra compare sull'elemento del grafico).
+
+Altre scelte:
+
+- **L'asse dei tempi lo disegna solo l'ultima riga.** Le tre righe ce l'hanno
+  uguale: ripeterlo allungava il blocco senza dire niente di nuovo.
+- **Altezza del blocco: 1.031px contro i 1.048px di prima.** Ci sta, anche con
+  la legenda sopra, perche' due righe di asse x in meno pagano il suo ingombro.
+- `_clicked_weeks()` torna a leggere **una** selezione, e sono spariti
+  `_prev_chart_weeks` e la trafila del "quale dei sei e' cambiato" del todo 03.
+- Via `_legend()`: la legenda torna dentro lo spec, gratis, con
+  `resolve_scale(color="shared")`.
+
+**Un avviso di Vega che c'era gia'**: la console mostra 48
+`WARN Infinite extent for field ...`. Non sono nuovi: contati anche su `main`
+prima della modifica, sono **48 identici**. Nessun errore, e i grafici si
+disegnano giusti. Varrebbe un todo suo: l'origine e' qualche layer che riceve
+dati vuoti.
