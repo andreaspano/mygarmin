@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # VO2max: leggerlo dai file FIT e mostrarlo nella pagina Day
@@ -135,3 +135,41 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Esito: implementato
+
+Il VO2max dell'orologio si legge dai file FIT (`fit._vo2max()`, messaggio 140,
+campo 7), sta in cache (`activities.vo2max`) e si vede nella pagina Day: colonna
+`VO2max (ml/kg/min)` in tabella e quinta metrica nella scheda di dettaglio.
+
+Verificato:
+
+- **Decodifica**: 40.2 per la 24386941712 (16 set), 40.0 per la 24360293923
+  (14 set), `NULL` per la 24429927755 (20 set, `navigate`). Controllata prima
+  sui file, poi di nuovo nella cache dopo il rebuild.
+- **Copertura**: 78 attivita' su 125 con un valore, 21 corse su 22, fra 36.6 e
+  44.6: gli stessi numeri della scansione fatta a mano.
+- **Rebuild**: partito da solo al primo `list_activities()` (versione "2" ->
+  "3"), **134 secondi**, una volta sola: la seconda chiamata ha impiegato 5ms e
+  la versione salvata e' rimasta "3". La tabella `records` e' stata rifatta
+  anche lei (557.172 righe).
+- **Pagina Day**: l'intestazione `VO2max (ml/kg/min)` compare scorrendo la
+  tabella a destra; la scheda della corsa del 16 settembre mostra
+  `40.2 ml/kg/min`, quella del 20 mostra `-`. A 1440 e a 1280px le cinque
+  metriche stanno su una riga, senza andare a capo ne' tagliarsi.
+- **Pagina Week**: l'elenco "Activity list" ha la stessa colonna.
+- `make activity_reports` gira e non scrive report nuovi; nessuna eccezione con
+  `AppTest` sulle tre pagine ne' nel browser; log del server pulito.
+
+Da sapere:
+
+- **La colonna e' l'ultima, e a 1440px non si vede senza scorrere la tabella**:
+  le colonne sommano ~1.500px e il contenitore ne ha 980. Era gia' cosi' per
+  `Elevation gain (m)`. Il todo la voleva dopo quella, ed e' li'; se deve stare
+  in vista va spostata piu' a sinistra o vanno strette le altre.
+- Il `help` sull'intestazione non e' stato provato passandoci sopra col mouse
+  (la tabella e' disegnata su canvas): e' un parametro standard di
+  `column_config`, lo stesso testo sta anche sulla metrica della scheda.
+- **Finche' questo ramo non e' unito a `main`, far girare l'app dal codice di
+  `main` rifa' la cache all'indietro** (versione "3" -> "2", altri due minuti),
+  e tornando qui la rifa' di nuovo in avanti. Dopo il merge non succede piu'.

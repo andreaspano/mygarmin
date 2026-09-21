@@ -76,7 +76,11 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 # fix): sync() compares this against the value stored in schema_meta and
 # transparently triggers a full rebuild() when they differ, instead of
 # silently serving rows computed under old logic.
-LOGIC_VERSION = "2"
+#
+# "3": colonna `vo2max`, letta dal messaggio 140 dei file FIT. I file gia' in
+# cache non la avevano, e sync() rilegge solo i file nuovi: il salto di versione
+# e' quello che li fa rileggere tutti, una volta.
+LOGIC_VERSION = "3"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -98,6 +102,7 @@ CREATE TABLE IF NOT EXISTS activities (
     total_calories    INTEGER,
     total_ascent_m    REAL,
     total_descent_m   REAL,
+    vo2max            REAL,
     activity_name     TEXT,
     parsed_at         TEXT NOT NULL
 );
@@ -164,11 +169,11 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
         INSERT INTO activities (
             activity_id, path, sport, sub_sport, start_time, total_distance_km,
             total_time_min, avg_heart_rate, max_heart_rate, avg_speed_kmh,
-            total_calories, total_ascent_m, total_descent_m, activity_name, parsed_at
+            total_calories, total_ascent_m, total_descent_m, vo2max, activity_name, parsed_at
         ) VALUES (
             :activity_id, :path, :sport, :sub_sport, :start_time, :total_distance_km,
             :total_time_min, :avg_heart_rate, :max_heart_rate, :avg_speed_kmh,
-            :total_calories, :total_ascent_m, :total_descent_m, :activity_name, :parsed_at
+            :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :activity_name, :parsed_at
         )
         ON CONFLICT(activity_id) DO UPDATE SET
             path=excluded.path, sport=excluded.sport, sub_sport=excluded.sub_sport,
@@ -176,7 +181,8 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
             total_time_min=excluded.total_time_min, avg_heart_rate=excluded.avg_heart_rate,
             max_heart_rate=excluded.max_heart_rate, avg_speed_kmh=excluded.avg_speed_kmh,
             total_calories=excluded.total_calories, total_ascent_m=excluded.total_ascent_m,
-            total_descent_m=excluded.total_descent_m, activity_name=excluded.activity_name,
+            total_descent_m=excluded.total_descent_m, vo2max=excluded.vo2max,
+            activity_name=excluded.activity_name,
             parsed_at=excluded.parsed_at
         """,
         payload,

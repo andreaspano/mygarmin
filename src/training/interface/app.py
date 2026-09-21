@@ -10,7 +10,15 @@ import streamlit as st
 # scheda del browser era sbagliato due volte su tre. Resta lo stesso su tutte
 # le pagine (verificato nel browser: `st.navigation` non ci aggiunge il nome
 # della pagina corrente).
-st.set_page_config(page_title="Training", layout="wide")
+#
+# La barra laterale porta solo tre voci di navigazione: parte a 200px, il
+# minimo che Streamlit accetta, invece dei 300 di default. Quei 100px vanno
+# alle pagine, che ne hanno piu' bisogno (la tabella delle attivita' e' piu'
+# larga del suo contenitore). Un intero vuol dire "larghezza iniziale, e per
+# il resto comportamento automatico": resta richiudibile e trascinabile.
+SIDEBAR_WIDTH = 200
+
+st.set_page_config(page_title="Training", layout="wide", initial_sidebar_state=SIDEBAR_WIDTH)
 
 pg = st.navigation(
     [
