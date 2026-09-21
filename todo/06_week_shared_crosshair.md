@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Week: la verticale su tutti i grafici, non solo su quello sotto il mouse
