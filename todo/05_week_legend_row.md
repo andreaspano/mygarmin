@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Week: una riga sola per legenda e scelta degli sport
