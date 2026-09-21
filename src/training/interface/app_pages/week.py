@@ -141,20 +141,21 @@ def _weekly_sum(
     return by_week_sport
 
 
-# La larghezza in pixel non e' una pigrizia, e' l'unica strada: la griglia
-# 3x2 e il crosshair condiviso si pagano cosi'.
+# La larghezza in pixel non e' una pigrizia, e' l'unica strada: due pannelli
+# affiancati con il crosshair in comune si pagano cosi'.
 #
-# Il crosshair su tutti i pannelli vuole i sei in una vista Vega sola (fra
-# viste distinte i segnali non passano). Ma una vista sola disposta a griglia
-# e' un `vconcat` di `hconcat`, e quella forma non sa adattarsi al
-# contenitore: provato, `autosize: fit-x` la fa collassare a larghezza zero,
-# e con `fit` o `pad` la larghezza resta quella scritta qui. Il frontend di
-# Streamlit passa la larghezza misurata ai figli di un `vconcat`, ma non
+# Perche' la verticale si muova insieme sul grafico settimanale e sul suo
+# cumulato, i due devono stare in una vista Vega sola (fra viste distinte i
+# segnali non passano), cioe' in un `hconcat`. E un `hconcat` non sa adattarsi
+# al contenitore: provato, `autosize: fit-x` lo fa collassare a larghezza
+# zero, e con `fit` o `pad` la larghezza resta quella scritta qui. Il frontend
+# di Streamlit passa la larghezza misurata ai figli di un `vconcat`, ma non
 # scende dentro gli `hconcat`. Nemmeno calcolarla si puo': `st.context` non
 # espone la larghezza della finestra.
 #
-# Tarata per stare in una finestra da 1440 con la sidebar aperta: li' il
-# contenitore del grafico e' largo 980px. Attenzione, si misura sul
+# Tarata per stare in una finestra da 1440 con la sidebar aperta: li' la
+# sezione richiudibile che ospita la riga lascia al grafico 946px (la pagina
+# ne ha 980, il bordo della sezione se ne prende 34). Attenzione, si misura sul
 # contenitore del grafico, non sull'area principale della pagina, che a 1440
 # e' 1.140: la differenza sono i margini, e sbagliare misura vuol dire
 # scoprire lo sbordamento dopo.
@@ -162,9 +163,9 @@ def _weekly_sum(
 # La barra di scorrimento non compare fino a 1440 con la sidebar aperta, e mai
 # con la sidebar chiusa. Sotto, torna a sforare: basta chiudere la sidebar,
 # oppure abbassare questo numero.
-CHARTS_TOTAL_WIDTH = 940
+CHARTS_TOTAL_WIDTH = 914
 _AXIS_WIDTH = 55  # l'asse y di ogni pannello, fuori dall'area di disegno
-_VEGA_PADDING = 80  # i margini interni della vista, misurati nel browser
+_VEGA_PADDING = 94  # margini interni e titoli degli assi y, misurati nel browser
 
 # `width` in Vega e' la sola area di disegno: assi e margini si aggiungono, e
 # qui si tolgono in anticipo perche' CHARTS_TOTAL_WIDTH sia davvero la
@@ -211,6 +212,18 @@ def _series_label(name: str) -> str:
 # Il grigio delle voci spente: lo stesso della verticale del crosshair.
 _OFF_COLOR = "#9ca3af"
 
+# Le verticali dei cambi di mese: un grigio neutro (la griglia orizzontale
+# del tema tira all'azzurro, e accanto a lei un grigio-azzurro si confondeva)
+# e un tratto sotto il pixel, che l'antialiasing rende piu' tenue: devono
+# esserci per chi le cerca, non farsi notare da chi guarda le serie.
+MONTH_LINE_COLOR = "#d4d4d4"
+MONTH_LINE_WIDTH = 0.6
+# I nomi dei mesi sopra i pannelli: lo stesso grigio delle etichette degli assi.
+MONTH_LABEL_COLOR = "#808495"
+# Quanta parte del periodo deve occupare un mese per avere il suo nome: sotto
+# il 4% il tratto e' piu' stretto della scritta (~15px su un pannello da 375).
+MONTH_LABEL_MIN_SHARE = 0.04
+
 
 def _series_symbol(name: str, colors: dict[str, str], on: bool) -> str:
     """L'etichetta di una voce della riga di legenda: simbolo colorato e nome.
@@ -229,7 +242,7 @@ def _series_symbol(name: str, colors: dict[str, str], on: bool) -> str:
 
 
 def _color_scale(series_names: list[str], colors: dict[str, str]) -> alt.Scale:
-    """La stessa scala per tutti e sei i grafici e per la legenda.
+    """La stessa scala per tutti i pannelli e per la riga di legenda.
 
     Prende i nomi grezzi e restituisce la scala gia' con le etichette: dominio
     e colori si costruiscono insieme, cosi' non possono sfasarsi.
@@ -252,19 +265,28 @@ def _chart(
     picked: alt.Parameter,
     hover: alt.Parameter,
     colors: dict[str, str],
-    show_x_axis: bool = True,
+    show_x_title: bool = True,
+    integer: bool = False,
 ) -> alt.LayerChart:
     """Costruisce (senza disegnarlo) un pannello: l'area del totale, le linee
     per sport, il crosshair e i punti che raccolgono il click.
 
     `picked` e `hover` arrivano da fuori e sono lo stesso oggetto per tutti i
-    pannelli, e qui il segnale **e'** condiviso: i sei stanno in una vista Vega
-    sola, quindi la verticale tratteggiata si muove su tutti insieme, alla
-    stessa settimana.
+    pannelli. Il segnale e' condiviso fra i due pannelli della stessa riga,
+    che stanno in una vista Vega sola (`_row_spec()`): la verticale
+    tratteggiata si muove insieme sul settimanale e sul cumulato. Fra una riga
+    e l'altra no, perche' ogni riga e' una vista a se'; li' lo stesso oggetto
+    serve solo a tenere fermo il nome con cui si rilegge la selezione.
 
-    `show_x_axis` lo accende solo sull'ultima riga della griglia: le tre righe
-    hanno lo stesso asse dei tempi, e ripeterlo tre volte non dice niente di
-    nuovo mentre allunga il blocco.
+    Le etichette delle settimane (w26, w27, ...) stanno sotto ogni pannello:
+    con quattro righe, chi guarda un pannello in alto non deve scendere fino
+    in fondo alla griglia per sapere a che settimana corrisponde un picco.
+    `show_x_title` riguarda solo il titolo dell'asse ("week"), che basta una
+    volta, sull'ultima riga.
+
+    `integer` e' per le grandezze che si contano invece di misurarsi (il
+    numero di attivita'): l'asse non scende sotto il passo di uno, che con
+    poche attivita' darebbe tacche a 0,5, e il tooltip non mostra decimali.
 
     La selezione viaggia su `week_key` (stringa) e non sulla data: cosi'
     torna indietro da Vega tale e quale, senza passare da epoch/millisecondi.
@@ -294,12 +316,19 @@ def _chart(
     # e Vega nasconde da se' quelle che si sovrapporrebbero.
     x = alt.X(
         "week_start:T",
-        title="week" if show_x_axis else None,
-        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1})
-        if show_x_axis
-        else None,
+        title="week" if show_x_title else None,
+        axis=alt.Axis(format="w%V", tickCount={"interval": "week", "step": 1}),
     )
-    y = alt.Y("value:Q", title=y_label)
+    # `minExtent`: lo stesso spazio per l'asse y in tutti i pannelli, qualunque
+    # sia la larghezza delle sue etichette ("5" o "12,000"). Le righe sono
+    # viste separate e Vega non le allinea piu' fra loro: senza, ogni riga
+    # cominciava qualche pixel piu' in la' della precedente, e la piu' larga
+    # decideva da sola se il blocco stava nel contenitore.
+    y = alt.Y(
+        "value:Q",
+        title=y_label,
+        axis=alt.Axis(minExtent=_AXIS_WIDTH, tickMinStep=1 if integer else alt.Undefined),
+    )
     # Legenda spenta: la legenda e' la riga di pills sopra i grafici, che porta
     # gli stessi colori e in piu' si clicca. Due elenchi delle stesse voci, uno
     # sopra l'altro, erano il problema da togliere.
@@ -312,6 +341,56 @@ def _chart(
     )
 
     layers = []
+
+    # Una verticale leggera dove cambia il mese: l'asse conta in settimane
+    # ISO, e senza un riferimento "w31" non dice a nessuno che e' fine luglio.
+    # Sta sul primo del mese, che sull'asse temporale cade fra due lunedi', ed
+    # e' il primo strato, cosi' resta dietro a tutto. Solo i cambi di mese
+    # *dentro* il periodo: uno sul bordo allargherebbe l'asse, e uno strato
+    # senza dati farebbe brontolare Vega ("Infinite extent").
+    # La colonna si chiama `week_start` come quella dei dati, anche se qui
+    # porta un inizio di mese: con lo stesso campo e la stessa codifica `x`
+    # gli strati condividono asse e titolo senza che Vega li fonda in
+    # "week_start, month_start".
+    first_week, last_week = by_week_sport.index.min(), by_week_sport.index.max()
+    month_starts = pd.date_range(first_week, last_week, freq="MS")
+    month_starts = month_starts[(month_starts > first_week) & (month_starts < last_week)]
+    if len(month_starts):
+        layers.append(
+            alt.Chart(pd.DataFrame({"week_start": month_starts}))
+            .mark_rule(color=MONTH_LINE_COLOR, strokeWidth=MONTH_LINE_WIDTH)
+            .encode(x=x)
+        )
+
+    # Il nome del mese sopra il pannello, al centro del suo tratto: fra due
+    # verticali, oppure fra una verticale e il bordo per il primo e l'ultimo
+    # mese, che di solito entrano nel periodo solo in parte. E' un testo
+    # appoggiato al bordo superiore (`y` a zero pixel, spinto su da `dy`) e
+    # non un secondo asse: un asse in alto vorrebbe assi indipendenti fra gli
+    # strati, e allora ogni strato ridisegnerebbe anche quello in basso.
+    #
+    # Un tratto troppo corto per reggere la scritta resta senza nome: con
+    # "This year" la w01 comincia il 29 dicembre, e quei tre giorni mettevano
+    # un "Dec" addosso a "Jan".
+    edges = [first_week, *month_starts, last_week]
+    span = last_week - first_week
+    segments = [
+        (a, b)
+        for a, b in zip(edges, edges[1:])
+        if not span or (b - a) / span >= MONTH_LABEL_MIN_SHARE
+    ]
+    if segments:
+        months = pd.DataFrame(
+            {
+                "week_start": [a + (b - a) / 2 for a, b in segments],
+                "month": [f"{a + (b - a) / 2:%b}" for a, b in segments],
+            }
+        )
+        layers.append(
+            alt.Chart(months)
+            .mark_text(baseline="bottom", dy=-4, fontSize=11, color=MONTH_LABEL_COLOR)
+            .encode(x=x, y=alt.value(0), text="month:N")
+        )
 
     # Il totale e' solo un'area riempita sullo sfondo, senza bordo: fa da ombra
     # sotto ai singoli sport, che ci passano sopra leggibili.
@@ -339,7 +418,7 @@ def _chart(
                 alt.Tooltip("week_no:N", title="Week"),
                 alt.Tooltip("week_start:T", title="Starting", format="%d %b %Y"),
                 alt.Tooltip("series:N", title="Series"),
-                alt.Tooltip("value:Q", title=y_label, format=".1f"),
+                alt.Tooltip("value:Q", title=y_label, format=".0f" if integer else ".1f"),
             ],
         )
         .add_params(picked, hover)
@@ -362,33 +441,29 @@ def _chart(
     )
 
 
-def _charts_spec(rows: list[list[alt.LayerChart]]) -> dict:
-    """Le tre righe da due pannelli in **una sola** vista Vega.
+def _row_spec(panels: list[alt.LayerChart]) -> dict:
+    """I due pannelli di una riga (settimanale e cumulato) in una vista Vega.
 
-    Una vista sola e' quello che fa muovere il crosshair su tutti e sei i
-    pannelli insieme: fra viste Vega distinte i segnali non passano, provato
-    nel todo 03, che per questo aveva dovuto rinunciarci.
+    Una vista per riga, e non una per tutta la griglia, perche' ogni riga sta
+    dentro la sua sezione richiudibile (`st.expander`), e un elemento di
+    Streamlit e' una vista. Il crosshair e' quindi condiviso dentro la riga, fra
+    il grafico settimanale e il suo cumulato, e non fra una riga e l'altra: fra
+    viste Vega distinte i segnali non passano (provato nel todo 03).
 
-    Il prezzo e' la larghezza fissa, spiegato su `CHARTS_TOTAL_WIDTH`: a
-    griglia Vega non si adatta al contenitore, e l'autosize non ci salva.
-    Qui non lo tocchiamo: Streamlit ci mette `pad` da solo (per lui un
-    `vconcat` di `hconcat` e' una composizione annidata), che e' esattamente
-    "nessun adattamento", cioe' quello che vogliamo avendo gia' deciso noi i
-    pixel.
+    La larghezza resta fissa, spiegato su `CHARTS_TOTAL_WIDTH`: un `hconcat`
+    non si adatta al contenitore. L'autosize non lo tocchiamo: Streamlit mette
+    `pad` da solo, che e' "nessun adattamento", cioe' quello che serve avendo
+    gia' deciso noi i pixel.
 
-    `resolve_scale(color="shared")` tiene lo stesso colore per lo stesso sport
-    in tutti i pannelli e riduce le sei legende a una."""
-    # Passare lo stesso `picked`/`hover` a tutti i pannelli e' il punto di
-    # tutto: e' cosi' che il segnale e' uno solo. Dentro una specifica sola
-    # pero' Altair vede il parametro ripetuto, lo deduplica (che e' quello che
-    # vogliamo) e avvisa a ogni rerun.
+    `resolve_scale(color="shared")` tiene la stessa scala dei colori nei due
+    pannelli; fra una riga e l'altra ci pensa `_color_scale()`, che e' la
+    stessa per tutti."""
+    # Passare lo stesso `picked`/`hover` ai due pannelli e' voluto: e' cosi'
+    # che il segnale e' uno solo dentro la riga. Altair vede il parametro
+    # ripetuto, lo deduplica (che e' quello che vogliamo) e avvisa a ogni rerun.
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message="Automatically deduplicated selection parameter")
-        return (
-            alt.vconcat(*[alt.hconcat(*row) for row in rows])
-            .resolve_scale(color="shared")
-            .to_dict()
-        )
+        return alt.hconcat(*panels).resolve_scale(color="shared").to_dict()
 
 
 def _weekly_total(
@@ -410,16 +485,17 @@ def _pair(
     colors: dict[str, str],
     scale: float = 1.0,
     with_total: bool = True,
-    show_x_axis: bool = False,
+    show_x_title: bool = False,
+    integer: bool = False,
 ) -> list[alt.LayerChart]:
     """La stessa grandezza due volte: prima settimana per settimana, poi il
     cumulato dall'inizio del periodo (quanto si e' messo insieme finora).
 
-    Restituisce i due pannelli in una lista, uno sotto l'altro: a comporli ci
-    pensa `_charts_spec()`, che li mette tutti in una vista sola.
+    Restituisce i due pannelli in una lista: ad affiancarli in una vista sola
+    ci pensa `_row_spec()`.
 
-    `show_x_axis` vale per tutti e due, perche' i due stanno sulla stessa
-    riga della griglia: l'asse dei tempi lo disegna solo l'ultima riga.
+    `show_x_title` vale per tutti e due, perche' i due stanno sulla stessa
+    riga della griglia: il titolo dell'asse dei tempi lo porta solo l'ultima.
 
     Nel cumulato il totale e' quello di *tutti* gli sport, non solo di quelli
     selezionati: le caselle scelgono quali linee guardare, ma il monte
@@ -438,7 +514,8 @@ def _pair(
             picked,
             hover,
             colors,
-            show_x_axis=show_x_axis,
+            show_x_title=show_x_title,
+            integer=integer,
         ),
         _chart(
             cumulative,
@@ -447,24 +524,37 @@ def _pair(
             picked,
             hover,
             colors,
-            show_x_axis=show_x_axis,
+            show_x_title=show_x_title,
+            integer=integer,
         ),
     ]
 
 
-def _clicked_weeks(event) -> list:
-    """Le settimane cliccate, lette dalla selezione condivisa dai pannelli.
+# Le righe della griglia, nell'ordine delle colonne della tabella dei totali.
+# Ogni riga e' una grandezza disegnata due volte (settimanale e cumulato):
+# colonna da sommare, unita' sull'asse, titolo, e gli argomenti in piu' che
+# `_pair()` vuole per lei.
+CHART_ROWS = {
+    "Activities": ("_count", "count", {"integer": True}),
+    "Distance": ("total_distance_km", "km", {}),
+    "Duration": ("total_time_min", "h", {"scale": 1 / 60}),
+    "Elevation gain": ("total_ascent_m", "m", {}),
+}
 
-    Una selezione sola perche' i pannelli sono una vista sola: e' sparita la
-    trafila del todo 03, che con sei eventi indipendenti doveva capire quale
-    dei sei fosse cambiato in questo giro."""
+
+def _clicked_week(event) -> str | None:
+    """La settimana selezionata in una riga di grafici, o None.
+
+    Ogni riga e' una vista a se', con la sua selezione, che resta accesa
+    finche' non la si azzera: per sapere quale click e' quello appena fatto
+    bisogna guardare quale riga e' *cambiata*, e lo fa chi chiama."""
     selection = (event.selection or {}).get("picked", []) if event else []
-
-    weeks = []
     for item in selection:
         value = item.get("week_key") if isinstance(item, dict) else item
-        weeks.extend(value if isinstance(value, list) else [value])
-    return [week for week in weeks if week]
+        for week in value if isinstance(value, list) else [value]:
+            if week:
+                return week
+    return None
 
 
 activities = load_activities(DATA_DIR)
@@ -483,6 +573,9 @@ sport_colors = _sport_colors(sorted(activities["sport"].dropna().unique()))
 
 activities["_hr_weighted"] = activities["avg_heart_rate"] * activities["total_time_min"]
 activities["_hr_time"] = activities["total_time_min"].where(activities["avg_heart_rate"].notna())
+# Un uno per attivita': i grafici sommano una colonna per settimana e sport, e
+# sommando questa si ottiene il conteggio senza una strada a parte.
+activities["_count"] = 1
 
 weekly = _totals(activities, "week_start").sort_index(ascending=False)
 
@@ -492,7 +585,7 @@ weekly = _totals(activities, "week_start").sort_index(ascending=False)
 # storico (che sono quasi novanta righe e altrettanti punti per grafico).
 start_date, end_date = date_range(
     activities,
-    st.container(horizontal=True),
+    None,
     "'From' is later than 'To': swap the two dates to see the weeks.",
     presets=True,
     key="week_dates",
@@ -524,6 +617,7 @@ table_key = f"weekly_{period_key}"
 # senza il suffisso, il primo giro dopo il cambio confrontava la selezione
 # nuova con settimane del periodo precedente.
 prev_chart_key = f"_prev_chart_week_{period_key}"
+prev_rows_key = f"_prev_row_weeks_{period_key}"
 prev_table_key = f"_prev_table_week_{period_key}"
 source_key = f"_week_source_{period_key}"
 
@@ -628,13 +722,10 @@ else:
     plotted = in_range[in_range["sport"].isin(plotted_sports)]
     all_weeks = pd.date_range(weekly.index.min(), weekly.index.max(), freq="W-MON")
 
-    # Un solo oggetto per il click e uno per il crosshair, passati a tutti e
-    # sei i grafici: non per condividere il segnale (fra viste Vega distinte
-    # non passa, verificato nel browser) ma per tenerne fermo il nome, che e'
-    # la chiave con cui si rilegge la selezione dall'evento. Il crosshair si
-    # muove percio' sul solo grafico sotto il mouse: e' il prezzo pagato per
-    # avere sei viste separate, e quindi sei grafici che si adattano alla
-    # finestra invece di un blocco largo un numero fisso di pixel.
+    # Un solo oggetto per il click e uno per il crosshair, passati a tutti i
+    # pannelli. Dentro una riga (una vista Vega, `_row_spec()`) il segnale e'
+    # davvero uno; fra le righe no, e il nome esplicito e' la chiave con cui
+    # la selezione di ogni riga si rilegge dal suo evento.
     picked = alt.selection_point(
         name="picked", fields=["week_key"], on="click", clear="dblclick", toggle=False
     )
@@ -650,64 +741,81 @@ else:
         clear="pointerout",
     )
 
-    # Tre righe da due pannelli: a sinistra la grandezza settimana per
-    # settimana, a destra il suo cumulato. L'asse dei tempi lo disegna solo
-    # l'ultima riga: le tre righe ce l'hanno uguale, e ripeterlo allungava il
-    # blocco per niente.
-    rows = [
-        _pair(
-            plotted,
-            in_range,
-            "total_distance_km",
-            all_weeks,
-            "km",
-            "Distance",
-            picked,
-            hover,
-            sport_colors,
-            with_total=plot_total,
-        ),
-        _pair(
-            plotted,
-            in_range,
-            "total_time_min",
-            all_weeks,
-            "h",
-            "Duration",
-            picked,
-            hover,
-            sport_colors,
-            scale=1 / 60,
-            with_total=plot_total,
-        ),
-        _pair(
-            plotted,
-            in_range,
-            "total_ascent_m",
-            all_weeks,
-            "m",
-            "Elevation gain",
-            picked,
-            hover,
-            sport_colors,
-            with_total=plot_total,
-            show_x_axis=True,
-        ),
+    # Una sezione richiudibile per riga: il titolo della sezione e' il
+    # pulsante, sulla stessa linea dei suoi grafici, e chiudendola la riga si
+    # ripiega come un paragrafo. Dentro, i due pannelli: a sinistra la
+    # grandezza settimana per settimana, a destra il suo cumulato.
+    #
+    # `on_change="rerun"` rende la sezione un widget con uno stato (`.open`):
+    # una riga chiusa non viene costruita affatto. La memoria a parte serve per
+    # lo stesso motivo degli sport: cambiando pagina il widget non viene
+    # disegnato e Streamlit ne butta via lo stato, e al ritorno le righe
+    # chiuse si sarebbero riaperte da sole.
+    #
+    # Lo stato iniziale si scrive nella chiave del widget, e solo quando il
+    # widget non c'e' ancora (prima apertura, o ritorno da un'altra pagina).
+    # Passarlo con `expanded=` sembrava equivalente e non lo era: quel valore
+    # veniva dalla memoria, che cambia il giro dopo ogni click, e una sezione
+    # che si vede cambiare un parametro sotto i piedi si perdeva il click
+    # successivo. Ne servivano due per aprire o chiudere.
+    rows_closed = set(st.session_state.get("_week_rows_closed", ()))
+    sections = {}
+    for name, (value, _, _) in CHART_ROWS.items():
+        row_key = f"week_row_{value}"
+        if row_key not in st.session_state:
+            st.session_state[row_key] = name not in rows_closed
+        sections[name] = st.expander(name, key=row_key, on_change="rerun")
+    st.session_state["_week_rows_closed"] = [
+        name for name, section in sections.items() if not section.open
     ]
 
-    # Una `key` sola per una vista sola. Porta il periodo come la tabella:
-    # cambiando intervallo il grafico si rimonta, e con lui la selezione, che
-    # altrimenti punterebbe a una settimana di un altro periodo.
-    clicked_weeks = _clicked_weeks(
-        st.vega_lite_chart(
-            _charts_spec(rows),
-            width="stretch",
-            on_select="rerun",
-            key=f"charts_{period_key}",
+    # Il titolo dell'asse ("week") lo porta solo l'ultima riga aperta; le
+    # etichette delle settimane stanno sotto ogni pannello comunque.
+    open_rows = [name for name, section in sections.items() if section.open]
+    row_weeks = {}
+    for name in open_rows:
+        value, unit, extra = CHART_ROWS[name]
+        panels = _pair(
+            plotted,
+            in_range,
+            value,
+            all_weeks,
+            unit,
+            name,
+            picked,
+            hover,
+            sport_colors,
+            with_total=plot_total,
+            show_x_title=name == open_rows[-1],
+            **extra,
         )
-    )
-    if clicked_weeks:
-        chart_week = pd.Timestamp(clicked_weeks[0])
+        # La `key` porta il periodo come la tabella: cambiando intervallo il
+        # grafico si rimonta, e con lui la selezione, che altrimenti
+        # punterebbe a una settimana di un altro periodo.
+        row_weeks[name] = _clicked_week(
+            sections[name].vega_lite_chart(
+                _row_spec(panels),
+                width="stretch",
+                on_select="rerun",
+                key=f"charts_{value}_{period_key}",
+            )
+        )
+
+    # Una selezione per riga aperta: quella buona e' la sola cambiata in questo
+    # giro, perche' le altre sono rimaste accese dov'erano. Una riga tornata a
+    # vuoto e' un doppio click, e conta come cambiamento: azzera la scelta. Si
+    # ricordano solo le righe disegnate: una riga chiusa perde la sua
+    # selezione, e riaprendola riparte da vuota senza sembrare un click.
+    previous = st.session_state.get(prev_rows_key, {})
+    changed = [week for name, week in row_weeks.items() if week != previous.get(name)]
+    st.session_state[prev_rows_key] = row_weeks
+
+    just_clicked = [week for week in changed if week]
+    if just_clicked:
+        chart_week = pd.Timestamp(just_clicked[0])
+    elif not changed:
+        # Nessuna riga toccata: resta valida la settimana scelta prima.
+        chart_week = st.session_state.get(prev_chart_key)
 
 # Tabella e grafici sono due modi di scegliere la stessa cosa: vince quello
 # toccato per ultimo, altrimenti un click sul grafico resterebbe prigioniero
