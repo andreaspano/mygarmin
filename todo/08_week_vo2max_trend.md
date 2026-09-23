@@ -12,6 +12,16 @@ fermo mentre cambiano i chilometri e le ore.
 **Dipende dal todo 07**: non partire se quello non e' fatto e unito a `main`
 (senza la colonna `vo2max` non c'e' niente da disegnare).
 
+**Dipende anche dal todo 09, che viene prima.** Quello sposta la macchina della
+pagina Week in un modulo condiviso (`period_page.py`) e aggiunge la pagina
+Month: la riga nuova va aggiunta **li'**, non in `week.py`, e cosi' comparira'
+su tutte e due le pagine senza lavoro in piu'. Due conseguenze su cio' che sta
+scritto qui sotto: i numeri di riga di `week.py` non valgono piu', e i nomi
+`_week_rows_closed` e `week_row_` diventano `spec.key("rows_closed")` e
+`spec.key("row", ...)`. Il punto mensile e' l'ultimo VO2max delle corse del
+mese, con la stessa regola del punto settimanale (niente punto se nel periodo
+non si e' corso).
+
 Da ricordare su cosa significa il numero (i dettagli e le verifiche stanno nel
 todo 07): e' la stima corrente dell'orologio alla fine dell'attivita'. Le corse
 che si qualificano la aggiornano, tutte le altre attivita' se la portano
