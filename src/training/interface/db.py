@@ -66,11 +66,17 @@ GARMIN_TYPE_TO_SPORT = {
 
 
 def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | None:
-    """Lo sport da mostrare: quello del FIT, se lo sa; altrimenti quello che
-    Garmin Connect associa all'attivita'."""
+    """Lo sport da mostrare. Vince il tipo di Garmin Connect, quando lo
+    conosciamo: e' quello che l'utente puo' correggere dopo (una corsa
+    registrata col profilo "Escursione" resta "hiking" nel FIT per sempre,
+    anche se su Connect diventa "street_running"). Il FIT resta la risposta
+    quando Connect non dice niente o usa una chiave che non mappiamo; se il
+    FIT e' "generic" si mostra la chiave di Connect cosi' com'e'."""
+    if type_key in GARMIN_TYPE_TO_SPORT:
+        return GARMIN_TYPE_TO_SPORT[type_key]
     if sport not in _GENERIC_SPORTS or not type_key:
         return sport
-    return GARMIN_TYPE_TO_SPORT.get(type_key, type_key)
+    return type_key
 
 # Bump when parsing/derivation logic changes (e.g. the UTC->local timezone
 # fix): sync() compares this against the value stored in schema_meta and
@@ -80,7 +86,11 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 # "3": colonna `vo2max`, letta dal messaggio 140 dei file FIT. I file gia' in
 # cache non la avevano, e sync() rilegge solo i file nuovi: il salto di versione
 # e' quello che li fa rileggere tutti, una volta.
-LOGIC_VERSION = "3"
+#
+# "4": `avg_speed_kmh` leggeva solo il campo `avg_speed`, che l'orologio nuovo
+# non scrive piu' (vedi `fit._avg_speed_kmh`): 45 attivita' erano in cache con
+# 0 km/h al posto della velocita'.
+LOGIC_VERSION = "4"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -272,12 +282,23 @@ def sync(data_dir: Path = DATA_DIR) -> int:
             [(name, int(activity_id)) for activity_id, name in names.items()],
         )
         # Anche il tipo puo' cambiare dopo il download (attivita' riclassificata
-        # su Garmin Connect), quindi si aggiorna a ogni sync come il nome.
+        # su Garmin Connect), quindi si aggiorna a ogni sync come il nome: un
+        # tipo che mappiamo vale su qualunque riga, uno sconosciuto solo dove
+        # il FIT non sapeva lo sport.
+        conn.executemany(
+            "UPDATE activities SET sport=? WHERE activity_id=?",
+            [
+                (GARMIN_TYPE_TO_SPORT[type_key], int(activity_id))
+                for activity_id, type_key in types.items()
+                if type_key in GARMIN_TYPE_TO_SPORT
+            ],
+        )
         conn.executemany(
             "UPDATE activities SET sport=? WHERE activity_id=? AND sport IN ('generic', '')",
             [
-                (sport_from_garmin_type("generic", type_key), int(activity_id))
+                (type_key, int(activity_id))
                 for activity_id, type_key in types.items()
+                if type_key and type_key not in GARMIN_TYPE_TO_SPORT
             ],
         )
         conn.commit()

@@ -66,8 +66,15 @@ ACTIVITY_COLUMN_CONFIG = {
         "Runs update it; other activities carry the last value. Empty when the "
         "watch stored none.",
     ),
+    # Sul tempo in movimento, non sulla durata della colonna a fianco (che e'
+    # quella totale, soste comprese): km/h per minuti non da' i chilometri.
     "avg_speed_kmh": st.column_config.NumberColumn(
-        "km/h", format="%.1f", width=80, alignment="right", help="Average speed."
+        "km/h",
+        format="%.1f",
+        width=80,
+        alignment="right",
+        help="Average speed, over moving time (the duration column is elapsed time, "
+        "stops included).",
     ),
     "total_ascent_m": st.column_config.NumberColumn(
         "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."

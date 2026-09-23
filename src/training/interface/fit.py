@@ -93,6 +93,29 @@ def _vo2max(fit: FitFile) -> float | None:
     return None
 
 
+def _avg_speed_kmh(values: dict) -> float | None:
+    """La velocita' media in km/h, o None se non si puo' ricavare.
+
+    `avg_speed` e' il campo storico a 16 bit, soppiantato da
+    `enhanced_avg_speed` a 32 bit: l'orologio nuovo (garmin_product 4759) il
+    primo non lo scrive piu' e lascia solo il secondo, quindi si prova prima
+    quello, come gia' si fa per la velocita' e la quota dei record.
+
+    Escursioni e camminate non hanno nessuno dei due: li' la si ricava dalla
+    distanza. Il divisore e' il tempo in movimento, non quello totale, perche'
+    e' quello che usa Garmin: sull'uscita in bici del 23/09/2026 43407.66 m /
+    7807.5 s danno 5.560 m/s, cioe' esattamente l'`avg_speed` scritto nel file,
+    mentre col tempo totale verrebbe 5.011."""
+    speed = values.get("enhanced_avg_speed") or values.get("avg_speed")
+    if speed is None:
+        distance = values.get("total_distance")
+        moving = values.get("total_timer_time") or values.get("total_elapsed_time")
+        if not distance or not moving:
+            return None
+        speed = distance / moving
+    return speed * 3.6
+
+
 def load_activity_summary(path: Path) -> dict:
     """Legge il messaggio 'session' del file FIT: una riga di riepilogo."""
     fit = FitFile(str(path))
@@ -109,7 +132,7 @@ def load_activity_summary(path: Path) -> dict:
         "total_time_min": (values.get("total_elapsed_time") or 0) / 60,
         "avg_heart_rate": values.get("avg_heart_rate"),
         "max_heart_rate": values.get("max_heart_rate"),
-        "avg_speed_kmh": (values.get("avg_speed") or 0) * 3.6,
+        "avg_speed_kmh": _avg_speed_kmh(values),
         "total_calories": values.get("total_calories"),
         "total_ascent_m": values.get("total_ascent"),
         "total_descent_m": values.get("total_descent"),
