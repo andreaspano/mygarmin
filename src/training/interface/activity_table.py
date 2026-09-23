@@ -19,6 +19,12 @@ SPORT_ICON_FILES = {
 }
 _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
+# Solo le tre grandezze che dicono "che uscita e' stata": quanto lunga, quanto
+# e' durata, quanto saliva. Velocita', battito e VO2max stanno nella scheda di
+# dettaglio sotto la tabella (`activity_detail`), che si apre sulla riga
+# selezionata: erano sei numeri per riga da leggere di sfuggita, e la riga ne
+# regge tre. Il sotto-tipo (`sub_sport`: "Road", "Generic", ...) non ha una
+# colonna: diceva poco. Resta nei dati, come le metriche spostate.
 ACTIVITY_COLUMNS = [
     "icon",
     "activity_id",
@@ -27,16 +33,8 @@ ACTIVITY_COLUMNS = [
     "sport",
     "total_distance_km",
     "total_time_min",
-    "avg_heart_rate",
-    "vo2max",
-    "avg_speed_kmh",
     "total_ascent_m",
 ]
-
-# Le larghezze sono tarate perche' la tabella stia tutta in una finestra da
-# 1680 e arrivi fino alla velocita' in una da 1440 (contenitore da 1.080px, con
-# la sidebar a 200). Il sotto-tipo (`sub_sport`: "Road", "Generic",
-# ...) non ha una colonna: diceva poco, e il suo posto serviva. Resta nei dati.
 ACTIVITY_COLUMN_CONFIG = {
     "icon": st.column_config.ImageColumn("", width=50),
     "activity_id": st.column_config.NumberColumn("ID", format="%d", width=100, alignment="right"),
@@ -51,30 +49,6 @@ ACTIVITY_COLUMN_CONFIG = {
     ),
     "total_time_min": st.column_config.NumberColumn(
         "Min", format="%.0f", width=70, alignment="right", help="Duration, in minutes."
-    ),
-    "avg_heart_rate": st.column_config.NumberColumn(
-        "Bpm", format="%.0f", width=70, alignment="right", help="Average heart rate."
-    ),
-    # Il `help` dice cos'e' davvero il numero: senza, un 40.0 sulla riga di una
-    # camminata sembra una stima fatta su quella camminata, e non lo e'.
-    "vo2max": st.column_config.NumberColumn(
-        "VO2Max",
-        format="%.1f",
-        width=80,
-        alignment="right",
-        help="The watch's VO2max estimate at the end of the activity, in ml/kg/min. "
-        "Runs update it; other activities carry the last value. Empty when the "
-        "watch stored none.",
-    ),
-    # Sul tempo in movimento, non sulla durata della colonna a fianco (che e'
-    # quella totale, soste comprese): km/h per minuti non da' i chilometri.
-    "avg_speed_kmh": st.column_config.NumberColumn(
-        "km/h",
-        format="%.1f",
-        width=80,
-        alignment="right",
-        help="Average speed, over moving time (the duration column is elapsed time, "
-        "stops included).",
     ),
     "total_ascent_m": st.column_config.NumberColumn(
         "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."

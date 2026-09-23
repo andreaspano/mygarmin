@@ -27,7 +27,11 @@ from training.interface.filters import date_range
 #              gia' di che grandezza si tratta.
 # L'eccezione sono le durate: "08:28" porta con se' il proprio formato, e
 # ripetere l'unita' accanto non aggiungerebbe niente.
-WEEK_TABLE_COLUMNS = ["week_start", "n", "distance", "time", "d+", "hr"]
+# Le stesse tre grandezze della tabella delle attivita', con le stesse
+# intestazioni corte: una tabella si scorre con gli occhi, e "km" si legge piu'
+# in fretta di "Distance (km)". La FC media non c'e' piu', come nell'altra
+# tabella: sta nelle schede qui sotto, dove c'e' spazio per un'etichetta intera.
+WEEK_TABLE_COLUMNS = ["week_start", "n", "distance", "time", "d+"]
 
 WEEK_COLUMN_CONFIG = {
     "week_start": st.column_config.DatetimeColumn(
@@ -44,28 +48,23 @@ WEEK_COLUMN_CONFIG = {
         help="Number of activities in the week.",
     ),
     "distance": st.column_config.NumberColumn(
-        "Distance (km)", format="%.1f", width=120, alignment="right"
+        "km", format="%.1f", width=80, alignment="right", help="Total distance of the week."
     ),
+    # In ore e minuti e non in minuti come nella tabella delle attivita': un
+    # totale settimanale sono ore ("07:18"), e in minuti sarebbe un 438 da
+    # convertire a mente.
     "time": st.column_config.TextColumn(
-        "Duration (h:mm)",
-        width=130,
+        "h:mm",
+        width=80,
         alignment="right",
         help="Total duration of the week, hours:minutes.",
     ),
     "d+": st.column_config.NumberColumn(
-        "Elevation gain (m)",
+        "D+",
         format="%.0f",
-        width=150,
+        width=70,
         alignment="right",
-        help="Total elevation gain of the week.",
-    ),
-    "hr": st.column_config.NumberColumn(
-        "Avg HR (bpm)",
-        format="%.0f",
-        width=120,
-        alignment="right",
-        help="Average heart rate, weighted by activity duration. "
-        "Empty when no activity of the week recorded it.",
+        help="Total elevation gain of the week, in metres.",
     ),
 }
 
@@ -93,18 +92,29 @@ def _hm(hours: float) -> str:
 
 
 def _totals(df: pd.DataFrame, key: str) -> pd.DataFrame:
-    """Totali (n, distanza, tempo, dislivello, FC media) raggruppati per `key`.
+    """Totali (n, distanza, tempo, dislivello, FC, velocita', VO2max)
+    raggruppati per `key`.
 
     La FC media e' pesata sulla durata (una sgambata di 20' non puo' pesare
     come un'uscita di 5h) e considera solo le attivita' che hanno davvero un
-    dato di FC: le altre non entrano ne' al numeratore ne' al denominatore."""
-    grouped = df.groupby(key).agg(
+    dato di FC: le altre non entrano ne' al numeratore ne' al denominatore.
+
+    Distanza, tempo e dislivello si sommano; le altre tre no, e ognuna ha la
+    sua regola. La velocita' e' distanza totale su tempo in movimento totale
+    (vedi le colonne `_speed_*`). Il VO2max e' l'ultimo del gruppo, non una
+    media: e' il valore corrente dell'orologio, quindi il piu' recente e'
+    l'unico che valga qualcosa (`last` di pandas salta gia' i vuoti)."""
+    ordered = df.sort_values("start_time")
+    grouped = ordered.groupby(key).agg(
         n=("activity_id", "count"),
         distance=("total_distance_km", "sum"),
         time_min=("total_time_min", "sum"),
         ascent=("total_ascent_m", "sum"),
         hr_weighted=("_hr_weighted", "sum"),
         hr_time=("_hr_time", "sum"),
+        speed_distance=("_speed_distance", "sum"),
+        speed_time=("_speed_time", "sum"),
+        vo2max=("vo2max", "last"),
     )
     return pd.DataFrame(
         {
@@ -114,6 +124,12 @@ def _totals(df: pd.DataFrame, key: str) -> pd.DataFrame:
             "d+": grouped["ascent"],
             # Gruppi senza nessuna attivita' con FC: cella vuota, non uno zero.
             "hr": (grouped["hr_weighted"] / grouped["hr_time"]).where(grouped["hr_time"] > 0),
+            # Stessa regola per chi non ha nessuna attivita' con velocita'
+            # (una settimana di sola palestra).
+            "speed": (grouped["speed_distance"] / grouped["speed_time"]).where(
+                grouped["speed_time"] > 0
+            ),
+            "vo2max": grouped["vo2max"],
         }
     )
 
@@ -573,6 +589,19 @@ sport_colors = _sport_colors(sorted(activities["sport"].dropna().unique()))
 
 activities["_hr_weighted"] = activities["avg_heart_rate"] * activities["total_time_min"]
 activities["_hr_time"] = activities["total_time_min"].where(activities["avg_heart_rate"].notna())
+# La velocita' di un gruppo e' la distanza totale divisa per il tempo in
+# movimento totale, come quella di una singola attivita' (vedi
+# `fit._avg_speed_kmh`). Il tempo in movimento non e' in tabella, ma si
+# ricava: distanza / velocita' dell'attivita'. Sommare quello, invece di
+# `total_time_min` (che e' il tempo totale, soste comprese), e' cio' che
+# tiene il numero della settimana coerente con quelli delle sue attivita'.
+# Chi non ha velocita' resta fuori da entrambe le somme: la palestra, che ha
+# distanza e velocita' a zero, non deve tirare giu' la media.
+_moving = activities["total_distance_km"] / activities["avg_speed_kmh"].where(
+    activities["avg_speed_kmh"] > 0
+)
+activities["_speed_distance"] = activities["total_distance_km"].where(_moving.notna())
+activities["_speed_time"] = _moving
 # Un uno per attivita': i grafici sommano una colonna per settimana e sport, e
 # sommando questa si ottiene il conteggio senza una strada a parte.
 activities["_count"] = 1
@@ -628,6 +657,13 @@ source_key = f"_week_source_{period_key}"
 # non serve piu' rilanciare lo script: un click su un grafico costa un giro
 # invece di due. Prenotiamo il posto, riempiamo piu' sotto.
 table_area = st.container()
+# Stesso trucco, e per un motivo in piu': schede ed elenco dicono com'e' andata
+# la settimana scelta, e quale sia lo si sa solo dopo aver letto i click sui
+# grafici. Prenotare qui il posto li mette sotto la tabella e sopra i grafici,
+# cioe' vicino alla riga da cui nascono, senza doverli disegnare prima di
+# sapere cosa mostrare.
+cards_area = st.container()
+list_area = st.container()
 
 st.subheader("Weekly volume by sport")
 in_range = activities[activities["week_start"].isin(weekly.index)]
@@ -872,8 +908,8 @@ with table_area:
         # serve fino a dieci righe: oltre, scorre al suo interno.
         width="content",
         height="auto",
-        # Solo la FC puo' mancare (settimane senza nessun dato di FC): lo
-        # stesso trattino delle schede per sport, non uno zero.
+        # Lo stesso trattino delle schede per sport al posto di una cella
+        # vuota, non uno zero.
         placeholder="-",
         on_select="rerun",
         selection_mode="single-row",
@@ -883,74 +919,102 @@ with table_area:
 week_activities = activities[activities["week_start"] == picked_week]
 picked_label = _week_label(picked_week)
 
-st.subheader(f"By sport — {picked_label}")
-# Una riga sempre presente, non solo quando si sta guardando l'ultima
-# settimana: se comparisse e sparisse, la pagina sotto si sposterebbe di una
-# riga a ogni click.
-st.caption(
-    "Latest week — select a week in the table, or click a point in a chart."
-    if showing_latest
-    else "Selected week — the totals below cover it sport by sport."
-)
+with cards_area:
+    st.subheader(f"By sport — {picked_label}")
+    # Una riga sempre presente, non solo quando si sta guardando l'ultima
+    # settimana: se comparisse e sparisse, la pagina sotto si sposterebbe di
+    # una riga a ogni click.
+    st.caption(
+        "Latest week — select a week in the table, or click a point in a chart."
+        if showing_latest
+        else "Selected week — the totals below cover it sport by sport."
+    )
 
-# Una scheda per sport, con lo stesso impianto della singola attivita' nella
-# pagina Activities (icona, titolo, metriche): qui pero' i numeri sono i
-# totali di tutte le attivita' di quello sport nella settimana. Affiancate
-# a due per riga: impilate a tutta larghezza erano quasi una schermata, e a
-# tre per riga una scheda era troppo stretta per i valori grandi delle
-# metriche, che Streamlit tagliava con i puntini ("24.5 km", "50.4 km" gia' a
-# 1440px). A due, e con la colonna del conteggio piu' stretta, ci stanno
-# anche i piu' larghi dello storico ("181.2 km", "50:48", "+3383 m"),
-# misurati nel browser a 1920, 1440 e 1280.
-by_sport = _totals(week_activities, "sport").sort_values("time", ascending=False)
+    # Una scheda per sport, con lo stesso impianto della singola attivita'
+    # nella pagina Activities (icona, titolo, metriche): qui pero' i numeri
+    # sono i totali di tutte le attivita' di quello sport nella settimana.
+    # Affiancate a due per riga: impilate a tutta larghezza erano quasi una
+    # schermata, e a tre per riga una scheda era troppo stretta per i valori
+    # grandi delle metriche, che Streamlit tagliava con i puntini ("24.5 km",
+    # "50.4 km" gia' a 1440px). A due ci stanno anche i piu' larghi dello
+    # storico ("181.2 km", "50:48", "+3383 m"), misurati nel browser a 1920,
+    # 1440 e 1280.
+    by_sport = _totals(week_activities, "sport").sort_values("time", ascending=False)
 
-CARDS_PER_ROW = 2
-sports = list(by_sport.index)
-for row_start in range(0, len(sports), CARDS_PER_ROW):
-    row_sports = sports[row_start : row_start + CARDS_PER_ROW]
-    # Sempre due colonne anche con una scheda sola: cosi' una settimana di un
-    # solo sport non si ritrova una scheda larga quanto la pagina.
-    for column, sport in zip(st.columns(CARDS_PER_ROW), row_sports):
-        totals = by_sport.loc[sport]
-        with column.container(border=True):
-            head = st.container(horizontal=True, vertical_alignment="center")
-            icon_path = sport_icon_path(sport)
-            if icon_path:
-                head.image(icon_path, width=40)
-            head.markdown(f"**{sport_label(sport)}**")
+    CARDS_PER_ROW = 2
+    sports = list(by_sport.index)
+    for row_start in range(0, len(sports), CARDS_PER_ROW):
+        row_sports = sports[row_start : row_start + CARDS_PER_ROW]
+        # Sempre due colonne anche con una scheda sola: cosi' una settimana di
+        # un solo sport non si ritrova una scheda larga quanto la pagina.
+        for column, sport in zip(st.columns(CARDS_PER_ROW), row_sports):
+            totals = by_sport.loc[sport]
+            with column.container(border=True):
+                head = st.container(horizontal=True, vertical_alignment="center")
+                icon_path = sport_icon_path(sport)
+                if icon_path:
+                    head.image(icon_path, width=40)
+                # Il conteggio sta nel titolo e non fra le metriche, come la
+                # data nella scheda della singola attivita': cosi' le metriche
+                # sono sei come la', tre e tre, invece di sette in una griglia
+                # zoppa.
+                count = int(totals["n"])
+                head.markdown(
+                    f"**{sport_label(sport)}** — {count} "
+                    f"{'activity' if count == 1 else 'activities'}"
+                )
 
-            # Il conteggio e' sempre una cifra o due: la colonna stretta, e lo
-            # spazio a distanza e durata, che sono i valori piu' larghi.
-            n_col, distance_col, time_col = st.columns([1, 2, 2])
-            n_col.metric("Activities", f"{totals['n']:.0f}")
-            distance_col.metric("Distance", f"{totals['distance']:.1f} km")
-            time_col.metric("Duration", _hm(totals["time"]))
-            ascent_col, hr_col = st.columns(2)
-            ascent_col.metric(
-                "Elevation gain", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
-            )
-            hr_col.metric("Avg HR", f"{totals['hr']:.0f} bpm" if pd.notna(totals["hr"]) else "-")
+                # Le stesse sei metriche della scheda di dettaglio, nello
+                # stesso ordine: qui sono pero' i totali della settimana per
+                # questo sport.
+                distance_col, time_col, ascent_col = st.columns(3)
+                distance_col.metric("Distance", f"{totals['distance']:.1f} km")
+                time_col.metric("Duration", _hm(totals["time"]))
+                ascent_col.metric(
+                    "Elevation", f"+{totals['d+']:.0f} m" if pd.notna(totals["d+"]) else "-"
+                )
+
+                speed_col, hr_col, vo2_col = st.columns(3)
+                speed_col.metric(
+                    "Avg speed",
+                    f"{totals['speed']:.1f} km/h" if pd.notna(totals["speed"]) else "-",
+                    help="Total distance over total moving time (the duration above is "
+                    "elapsed time, stops included).",
+                )
+                hr_col.metric(
+                    "Avg HR", f"{totals['hr']:.0f} bpm" if pd.notna(totals["hr"]) else "-"
+                )
+                vo2_col.metric(
+                    "VO2Max",
+                    f"{totals['vo2max']:.1f}" if pd.notna(totals["vo2max"]) else "-",
+                    help="The watch's VO2max after the last activity of the week for this "
+                    "sport, in ml/kg/min — not an average. Runs update it; other activities "
+                    "carry the last value. Empty when the watch stored none.",
+                )
 
 # Le stesse attivita' che compongono i totali qui sopra, elencate una per una
 # come nella pagina Activities: stessa tabella, stessa scheda di dettaglio
-# quando si clicca una riga. Sta in fondo perche' la scheda di dettaglio e' il
-# blocco piu' alto della pagina: in mezzo avrebbe allontanato tutto il resto.
+# quando si clicca una riga. Insieme alla scheda e' il blocco piu' alto della
+# pagina, e stando sopra i grafici li allontana: e' il prezzo di avere di
+# seguito, in cima, tutto cio' che riguarda la settimana scelta.
 # "Activities" e' il conteggio (colonna di tabella e metrica di scheda): per
 # l'elenco vero e proprio serve un nome che non sia lo stesso.
-st.subheader(f"Activity list — {picked_label}")
-st.caption("Click a row to see the details.")
-week_activities = week_activities.sort_values("start_time", ascending=False)
-# Nessun `key`: cosi' l'identita' della tabella dipende dai dati e cambiando
-# settimana la selezione riparte da zero invece di puntare a un'altra riga.
-activity_event = activity_table(
-    week_activities,
-    on_select="rerun",
-    selection_mode="single-row",
-    # Alta quanto le righe che ha, fino a dieci: l'altezza fissa lasciava
-    # mezza griglia vuota nelle settimane con una o due uscite.
-    height="auto",
-)
+with list_area:
+    st.subheader(f"Activity list — {picked_label}")
+    st.caption("Click a row to see the details.")
+    week_activities = week_activities.sort_values("start_time", ascending=False)
+    # Nessun `key`: cosi' l'identita' della tabella dipende dai dati e
+    # cambiando settimana la selezione riparte da zero invece di puntare a
+    # un'altra riga.
+    activity_event = activity_table(
+        week_activities,
+        on_select="rerun",
+        selection_mode="single-row",
+        # Alta quanto le righe che ha, fino a dieci: l'altezza fissa lasciava
+        # mezza griglia vuota nelle settimane con una o due uscite.
+        height="auto",
+    )
 
-activity_rows = list(activity_event.selection.rows)
-if activity_rows:
-    show_activity_detail(week_activities.iloc[activity_rows[0]])
+    activity_rows = list(activity_event.selection.rows)
+    if activity_rows:
+        show_activity_detail(week_activities.iloc[activity_rows[0]])

@@ -113,28 +113,40 @@ def show_activity_detail(activity) -> None:
             f"**{sport_label(activity.sport)}** — {activity.start_time:%d %b %Y, %H:%M}"
         )
 
-        distance_col, time_col, hr_col = st.columns(3)
+        # Prima riga le tre grandezze che sono anche colonne di tabella, nello
+        # stesso ordine, cosi' l'occhio le ritrova; sotto le tre che dalla
+        # tabella sono state tolte e che vivono solo qui.
+        distance_col, time_col, ascent_col = st.columns(3)
         distance_col.metric("Distance", f"{activity.total_distance_km:.1f} km")
         time_col.metric("Duration", _hm(activity.total_time_min))
-        hr_col.metric(
-            "Avg HR",
-            f"{activity.avg_heart_rate:.0f} bpm" if pd.notna(activity.avg_heart_rate) else "-",
-        )
-        ascent_col, vo2_col = st.columns(2)
         ascent_col.metric(
             "Elevation",
             f"+{activity.total_ascent_m:.0f} / -{activity.total_descent_m:.0f} m"
             if pd.notna(activity.total_ascent_m)
             else "-",
         )
+
+        speed_col, hr_col, vo2_col = st.columns(3)
+        # Sul tempo in movimento, non sulla durata qui sopra (che e' quella
+        # totale, soste comprese): km/h per durata non da' i chilometri.
+        speed_col.metric(
+            "Avg speed",
+            f"{activity.avg_speed_kmh:.1f} km/h" if pd.notna(activity.avg_speed_kmh) else "-",
+            help="Average speed, over moving time (the duration above is elapsed time, "
+            "stops included).",
+        )
+        hr_col.metric(
+            "Avg HR",
+            f"{activity.avg_heart_rate:.0f} bpm" if pd.notna(activity.avg_heart_rate) else "-",
+        )
         # La stima dell'orologio a fine attivita' (vedi `fit._vo2max`): manca
-        # per le attivita' che l'orologio non considera, come le corse su
-        # sentiero. Il `help` e' lo stesso avviso della colonna in tabella.
+        # per le attivita' che l'orologio non considera, come le escursioni.
         vo2_col.metric(
             "VO2Max",
             f"{activity.vo2max:.1f}" if pd.notna(activity.vo2max) else "-",
             help="The watch's VO2max estimate at the end of the activity, in ml/kg/min. "
-            "Runs update it; other activities carry the last value.",
+            "Runs update it; other activities carry the last value. Empty when the "
+            "watch stored none.",
         )
 
     with comment_col:
