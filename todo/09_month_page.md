@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Month: una pagina mensile speculare alla Week
