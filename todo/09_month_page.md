@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # Month: una pagina mensile speculare alla Week

@@ -6,20 +6,25 @@ import pandas as pd
 import streamlit as st
 
 
-# Scorciatoie di periodo: quante settimane indietro dall'ultima attivita'.
-# `None` significa "non conta le settimane": ci pensa `_preset_range`.
-_PRESETS: dict[str, int | None] = {
-    "4 weeks": 4,
-    "8 weeks": 8,
-    "12 weeks": 12,
-    "This year": None,
-    "All": None,
+# Scorciatoie di periodo, un gruppo per unita' di tempo: quanto indietro
+# andare dall'ultima attivita'. "4 weeks" su una pagina mensile sarebbe una
+# riga sola, e "24 months" su una settimanale un centinaio di punti, quindi
+# ogni pagina sceglie il suo gruppo. `None` significa "non conta indietro": ci
+# pensa `_preset_range`. Il secondo elemento e' la scorciatoia di partenza.
+_PRESET_SETS: dict[str, tuple[dict[str, int | None], str]] = {
+    "weeks": (
+        {"4 weeks": 4, "8 weeks": 8, "12 weeks": 12, "This year": None, "All": None},
+        "12 weeks",
+    ),
+    "months": (
+        {"6 months": 6, "12 months": 12, "24 months": 24, "This year": None, "All": None},
+        "12 months",
+    ),
 }
-_DEFAULT_PRESET = "12 weeks"
 
 
 def _preset_range(
-    preset: str, min_date: dt.date, max_date: dt.date
+    preset: str, period: str, min_date: dt.date, max_date: dt.date
 ) -> tuple[dt.date, dt.date]:
     """L'intervallo di una scorciatoia, sempre dentro i dati disponibili.
 
@@ -30,8 +35,12 @@ def _preset_range(
         return min_date, max_date
     if preset == "This year":
         return max(min_date, dt.date(max_date.year, 1, 1)), max_date
-    weeks = _PRESETS[preset]
-    return max(min_date, max_date - dt.timedelta(weeks=weeks)), max_date
+    presets, _ = _PRESET_SETS[period]
+    step = presets[preset]
+    # I mesi non sono lunghi uguali: indietro di N mesi lo conta pandas con un
+    # DateOffset, non una timedelta.
+    back = dt.timedelta(weeks=step) if period == "weeks" else pd.DateOffset(months=step)
+    return max(min_date, (pd.Timestamp(max_date) - back).date()), max_date
 
 
 def date_range(
@@ -39,6 +48,7 @@ def date_range(
     container=None,
     invalid_message: str | None = None,
     presets: bool = False,
+    period: str = "weeks",
     key: str = "date_range",
 ) -> tuple[dt.date, dt.date]:
     """Le due caselle a calendario "From" / "To", con l'intervallo scelto.
@@ -49,18 +59,19 @@ def date_range(
     `container` e' dove metterle (es. una riga orizzontale condivisa con
     altri filtri); senza, vanno sulla pagina.
 
-    Con `presets` si mette sopra una fila di scorciatoie (ultime 4/8/12
-    settimane, anno corrente, tutto), con le due caselle affiancate nella riga
-    sotto: le scorciatoie sono la scelta di tutti i giorni, le date a mano
-    sono la rifinitura, e una sotto l'altra si leggono in quell'ordine. Per
-    questo con `presets` il `container` deve essere verticale (o mancare): in
-    una riga orizzontale finirebbe tutto affiancato.
+    Con `presets` si mette sopra una fila di scorciatoie (gli ultimi N periodi,
+    anno corrente, tutto), con le due caselle affiancate nella riga sotto: le
+    scorciatoie sono la scelta di tutti i giorni, le date a mano sono la
+    rifinitura, e una sotto l'altra si leggono in quell'ordine. Per questo con
+    `presets` il `container` deve essere verticale (o mancare): in una riga
+    orizzontale finirebbe tutto affiancato. `period` sceglie il gruppo di
+    scorciatoie, cioe' se i periodi sono settimane o mesi.
 
-    Si parte da `_DEFAULT_PRESET` invece che dallo storico intero: le due
-    caselle restano modificabili a mano, e toccarle non cancella la
-    scorciatoia, la sorpassa e basta. Senza
-    `presets` la funzione si comporta esattamente come prima, caselle senza
-    stato incluse, perche' la pagina Activities non deve cambiare."""
+    Si parte dalla scorciatoia di partenza del gruppo invece che dallo storico
+    intero: le due caselle restano modificabili a mano, e toccarle non cancella
+    la scorciatoia, la sorpassa e basta. Senza `presets` la funzione si comporta
+    esattamente come prima, caselle senza stato incluse, perche' la pagina
+    Activities non deve cambiare."""
     where = container if container is not None else st
 
     min_date = activities["start_time"].min().date()
@@ -78,15 +89,16 @@ def date_range(
     from_key, to_key, preset_key = f"{key}_from", f"{key}_to", f"{key}_preset"
 
     # Prima apertura: si parte dalla scorciatoia di default, non da tutto.
+    choices, default_preset = _PRESET_SETS[period]
     if from_key not in st.session_state:
         st.session_state[from_key], st.session_state[to_key] = _preset_range(
-            _DEFAULT_PRESET, min_date, max_date
+            default_preset, period, min_date, max_date
         )
 
     preset = where.segmented_control(
         "Period",
-        list(_PRESETS),
-        default=_DEFAULT_PRESET,
+        list(choices),
+        default=default_preset,
         key=preset_key,
         label_visibility="collapsed",
     )
@@ -96,7 +108,7 @@ def date_range(
     # Lo stato dei widget si puo' toccare finche' non sono stati creati.
     if preset is not None and preset != st.session_state.get(f"{preset_key}_prev"):
         st.session_state[from_key], st.session_state[to_key] = _preset_range(
-            preset, min_date, max_date
+            preset, period, min_date, max_date
         )
     st.session_state[f"{preset_key}_prev"] = preset
 
