@@ -12,6 +12,7 @@ __pycache__/
 
 # Outputs
 out/
+summary/
 
 # Use-only distribution snapshots (tools/dispach.sh)
 #user/
