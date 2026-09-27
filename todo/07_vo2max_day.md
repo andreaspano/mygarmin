@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # VO2max: leggerlo dai file FIT e mostrarlo nella pagina Day
@@ -173,3 +173,4 @@ Da sapere:
 - **Finche' questo ramo non e' unito a `main`, far girare l'app dal codice di
   `main` rifa' la cache all'indietro** (versione "3" -> "2", altri due minuti),
   e tornando qui la rifa' di nuovo in avanti. Dopo il merge non succede piu'.
+  (Unito a `main` con ad0c201: non succede piu'.)
