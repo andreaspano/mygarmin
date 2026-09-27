@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Week: l'andamento del VO2max
