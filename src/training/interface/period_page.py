@@ -419,6 +419,26 @@ def _boundary_layers(
     return layers
 
 
+def _period_x(spec: PeriodSpec, show_x_title: bool) -> alt.X:
+    """L'asse dei periodi, lo stesso per le righe dei volumi e per il VO2max:
+    un posto solo, cosi' le etichette non possono andare ciascuna per conto
+    suo.
+
+    L'asse resta temporale (e' quello che tiene le distanze giuste fra i
+    periodi, comprese le pause), ma i tick cadono su ogni periodo invece che
+    sui confini del livello sopra: cosi' ogni etichetta corrisponde davvero a
+    un punto della serie. Vega nasconde da se' quelle che si
+    sovrapporrebbero."""
+    return alt.X(
+        "period_start:T",
+        title=spec.unit if show_x_title else None,
+        axis=alt.Axis(
+            format=spec.axis_format,
+            tickCount={"interval": spec.axis_interval, "step": 1},
+        ),
+    )
+
+
 def _chart(
     spec: PeriodSpec,
     by_period_sport: pd.DataFrame,
@@ -472,19 +492,7 @@ def _chart(
     # riscontro di quello che l'asse deve mostrare.
     long["point_label"] = spec.point_label(long["period_start"])
 
-    # L'asse resta temporale (e' quello che tiene le distanze giuste fra i
-    # periodi, comprese le pause), ma i tick cadono su ogni periodo invece che
-    # sui confini del livello sopra: cosi' ogni etichetta corrisponde davvero a
-    # un punto della serie. Vega nasconde da se' quelle che si
-    # sovrapporrebbero.
-    x = alt.X(
-        "period_start:T",
-        title=spec.unit if show_x_title else None,
-        axis=alt.Axis(
-            format=spec.axis_format,
-            tickCount={"interval": spec.axis_interval, "step": 1},
-        ),
-    )
+    x = _period_x(spec, show_x_title)
     # `minExtent`: lo stesso spazio per l'asse y in tutti i pannelli, qualunque
     # sia la larghezza delle sue etichette ("5" o "12,000"). Le righe sono
     # viste separate e Vega non le allinea piu' fra loro: senza, ogni riga
@@ -650,6 +658,106 @@ def _pair(
             integer=integer,
         ),
     ]
+
+
+# Il VO2max ha una riga sua, dopo i volumi, e non sta in CHART_ROWS: non e' una
+# grandezza che si somma per sport, e il suo cumulato non vorrebbe dire niente.
+VO2MAX_ROW = "VO2max"
+VO2MAX_UNIT = "ml/kg/min"
+# Un pannello solo largo quanto la coppia delle altre righe. Qui `width` e'
+# l'area di disegno come in CHART_WIDTH: si tolgono l'asse y e i margini di una
+# vista sola, che sono circa la meta' di quelli della coppia (un titolo
+# dell'asse y invece di due, e niente spazio fra i pannelli).
+VO2MAX_WIDTH = CHARTS_TOTAL_WIDTH - _AXIS_WIDTH - _VEGA_PADDING // 2
+
+
+def _vo2max_by_period(df: pd.DataFrame, periods: pd.DatetimeIndex) -> pd.Series:
+    """Il VO2max di ogni periodo: l'ultimo valore delle corse, cioe' la stima
+    dell'orologio a fine periodo.
+
+    Solo le corse: sono quelle che lo aggiornano, tutte le altre attivita' si
+    portano dietro l'ultimo valore (vedi todo 07). I periodi senza corse
+    restano vuoti e non a zero, al contrario di `_by_period()`: qui uno zero
+    non e' "nessun allenamento", e' un numero falso."""
+    runs = df[df["sport"] == "running"].sort_values("start_time")
+    # `last` di pandas salta gia' i vuoti: una corsa senza VO2max non cancella
+    # quello della corsa prima nello stesso periodo.
+    return runs.groupby("period_start")["vo2max"].last().reindex(periods)
+
+
+def _vo2max_chart(
+    spec: PeriodSpec,
+    by_period: pd.Series,
+    picked: alt.Parameter,
+    hover: alt.Parameter,
+    color: str,
+    show_x_title: bool,
+) -> alt.LayerChart:
+    """Il pannello del VO2max: un punto per periodo, e una linea che unisce
+    quelli che ci sono.
+
+    Una funzione sua e non `_chart()`: quella ragiona per serie sommate per
+    sport, con l'area del totale e i periodi vuoti a zero. Qui la serie e' una,
+    i vuoti restano vuoti, e l'asse y non parte da zero (i valori stanno fra 36
+    e 45: da zero la linea sarebbe piatta).
+
+    Crosshair, click e tooltip sono gli stessi delle altre righe, con gli
+    stessi `picked` e `hover`: il click si rilegge con `_clicked_period()`.
+
+    I dati contengono anche i periodi vuoti, con il valore nullo: Vega-Lite
+    scarta i nulli da punti e linea (che cosi' salta il buco e unisce i punti
+    vicini), ma la verticale del crosshair li vede lo stesso, e l'asse x copre
+    tutto l'intervallo come nelle righe sopra."""
+    data = by_period.rename("value").rename_axis("period_start").reset_index()
+    data["period_key"] = data["period_start"].dt.strftime("%Y-%m-%d")
+    data["point_label"] = spec.point_label(data["period_start"])
+    points = data[data["value"].notna()]
+
+    x = _period_x(spec, show_x_title)
+    y = alt.Y(
+        "value:Q",
+        title=VO2MAX_UNIT,
+        scale=alt.Scale(zero=False),
+        axis=alt.Axis(minExtent=_AXIS_WIDTH),
+    )
+
+    tooltip = [alt.Tooltip("point_label:N", title=spec.title)]
+    if spec.tooltip_start_format:
+        tooltip.append(
+            alt.Tooltip("period_start:T", title="Starting", format=spec.tooltip_start_format)
+        )
+    tooltip.append(alt.Tooltip("value:Q", title=VO2MAX_ROW, format=".1f"))
+
+    layers = _boundary_layers(by_period.index, x, spec)
+    layers.append(alt.Chart(points).mark_line(color=color).encode(x=x, y=y))
+    # Punti visibili, non solo la linea: con poche corse i punti sono due o tre,
+    # e uno solo non avrebbe nessuna linea da disegnare.
+    layers.append(alt.Chart(points).mark_point(size=30, filled=True, color=color).encode(x=x, y=y))
+    # Come in `_chart()`: punti trasparenti e larghi che raccolgono click e
+    # tooltip, verticale e punto evidenziato che seguono il puntatore.
+    layers.append(
+        alt.Chart(points)
+        .mark_point(size=55, filled=True, opacity=0)
+        .encode(x=x, y=y, tooltip=tooltip)
+        .add_params(picked, hover)
+    )
+    visible_on_hover = alt.condition(hover, alt.value(1), alt.value(0))
+    layers.append(
+        alt.Chart(data)
+        .mark_rule(color="#9ca3af", strokeDash=[4, 4])
+        .encode(x=x, opacity=visible_on_hover)
+    )
+    layers.append(
+        alt.Chart(points)
+        .mark_point(size=55, filled=True, color=color)
+        .encode(x=x, y=y, opacity=visible_on_hover)
+    )
+
+    return alt.layer(*layers).properties(
+        width=VO2MAX_WIDTH,
+        height=CHART_HEIGHT,
+        title=alt.TitleParams(f"{VO2MAX_ROW} (running)", anchor="start"),
+    )
 
 
 # Le righe della griglia, nell'ordine delle colonne della tabella dei totali.
@@ -916,7 +1024,11 @@ def render(spec: PeriodSpec) -> None:
         # successivo. Ne servivano due per aprire o chiudere.
         rows_closed = set(st.session_state.get(spec.key("rows_closed"), ()))
         sections = {}
-        for name, (value, _, _) in CHART_ROWS.items():
+        # Il VO2max in fondo, dopo i volumi: la sua chiave e' il nome della riga,
+        # come per le altre e' la colonna che sommano.
+        row_values = {name: value for name, (value, _, _) in CHART_ROWS.items()}
+        row_values[VO2MAX_ROW] = "vo2max"
+        for name, value in row_values.items():
             row_key = spec.key("row", value)
             if row_key not in st.session_state:
                 st.session_state[row_key] = name not in rows_closed
@@ -930,6 +1042,36 @@ def render(spec: PeriodSpec) -> None:
         open_rows = [name for name, section in sections.items() if section.open]
         row_periods = {}
         for name in open_rows:
+            if name == VO2MAX_ROW:
+                # Non segue le pills degli sport: e' una grandezza sola, delle
+                # corse, e si calcola su tutto l'intervallo (`in_range`), non su
+                # `plotted`.
+                vo2max = _vo2max_by_period(in_range, all_periods)
+                if vo2max.isna().all():
+                    sections[name].info(
+                        f"No run with a VO2max in the selected {spec.unit}s."
+                    )
+                    continue
+                chart = _vo2max_chart(
+                    spec,
+                    vo2max,
+                    picked,
+                    hover,
+                    sport_colors.get("running", _SPORT_COLORS[0]),
+                    show_x_title=name == open_rows[-1],
+                )
+                # Larghezza fissa come le altre righe (`VO2MAX_WIDTH`), non
+                # "stretch": allargato al contenitore sarebbe piu' largo delle
+                # coppie sopra, che non si possono allargare.
+                row_periods[name] = _clicked_period(
+                    sections[name].vega_lite_chart(
+                        chart.to_dict(),
+                        width="content",
+                        on_select="rerun",
+                        key=spec.key("charts", "vo2max", range_key),
+                    )
+                )
+                continue
             value, unit, extra = CHART_ROWS[name]
             panels = _pair(
                 spec,

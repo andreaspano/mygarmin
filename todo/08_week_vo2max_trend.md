@@ -1,5 +1,5 @@
 ---
-status: todo
+status: failed
 ---
 
 # Week: l'andamento del VO2max
@@ -73,9 +73,14 @@ Rischi:
 
 Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
-1. Con "12 weeks" i punti di settembre stanno fra 39.4 e 40.2; una settimana
-   senza corse non ha punto; l'asse y non parte da zero.
-2. Con "All" la serie va da gennaio 2025 a settembre 2026, fra 36.6 e 44.6.
+1. Con "12 weeks" i punti di settembre sono 39.4 (w36), 40.1 (w37), 40.2
+   (w38) e 40.8 (w39, con le corse del 25 e del 26 settembre); una settimana
+   senza corse non ha punto; l'asse y non parte da zero. Dati al 2026-09-26:
+   corse scaricate piu' tardi possono cambiare l'ultima settimana.
+2. Con "All" la serie va da aprile 2025 (w18) a settembre 2026, fra 36.7 e
+   41.2: 11 settimane con un punto nella Week, 6 mesi nella Month. Sono i
+   numeri delle sole corse; quelli di tutte le attivita' (da gennaio 2025, fino
+   a 44.6 per un giro in bici) sarebbero il segno che il filtro non funziona.
 3. La sezione si apre e si chiude **con un click solo**, resta chiusa cambiando
    pagina e tornando, e il click su un punto sceglie la settimana.
 4. Spegnere sport nelle pills non cambia il grafico del VO2max.
@@ -87,3 +92,35 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Needs decision (atodo, 2026-09-26)
+
+**Verifiche 1 e 2: decise il 2026-09-26.** La 2 con l'opzione (a); la 1
+aggiornata con la w39 a 40.8. Tutte e due sono gia' corrette sopra; il testo qui
+sotto resta per memoria. Resta aperto solo il controllo nel browser (verifiche
+3 e 6, in fondo).
+
+**Expected-result change**, verifica 2: "da gennaio 2025 a settembre 2026, fra
+36.6 e 44.6" -> con la regola del Work ("solo le corse") la serie va **da
+aprile 2025 (w18) a settembre 2026, fra 36.7 e 41.2**, 11 settimane con un
+punto (6 mesi nella Month).
+
+I numeri attesi sono quelli di *tutte* le attivita', non delle corse: 44.6 e'
+un giro in bici del 2025-06-16 (la bici ha una stima sua), e gennaio 2025 e' lo
+sci di fondo. La prima corsa in cache e' del 2025-04-28. L'implementazione
+segue il Work; la verifica, cosi' com'e' scritta, non puo' tornare.
+
+Anche la verifica 1 ("settembre fra 39.4 e 40.2") oggi non torna del tutto:
+la w39 (dal 21 settembre) vale 40.8, perche' le corse del 25 e del 26 settembre
+(VO2max 41) sono arrivate dopo che il todo era stato scritto. Le altre
+settimane di settembre sono 39.4, 40.1 e 40.2, come previsto.
+
+Opzioni:
+- (a) correggere la verifica 2 con i numeri delle corse (raccomandato: la
+  regola "solo corse" e' motivata nel todo, e il 44.6 della bici lo conferma);
+- (b) tornare a tutte le attivita', contro quanto scritto nel Work.
+
+Non fatto per mancanza del browser (estensione Chrome non connessa): verifica
+3 (un click solo per aprire/chiudere nel browser vero, click su un punto che
+sceglie la settimana) e verifica 6 (a 1440px con la sidebar aperta il pannello
+sta nel contenitore; `VO2MAX_WIDTH` = 812 e' una stima, non misurata).
