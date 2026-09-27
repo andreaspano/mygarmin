@@ -1,5 +1,5 @@
 ---
-status: failed
+status: to commit
 ---
 
 # Week: l'andamento del VO2max
@@ -93,12 +93,66 @@ Verifica (non esiste una suite di test; l'app gira su http://localhost:8501):
 **Mai** lanciare `make update_activity` o `make backfill_activity_names`:
 chiamano l'API Garmin e scrivono nell'albero dati.
 
-## Needs decision (atodo, 2026-09-26)
+## Chiuso (2026-09-27)
+
+Tutte e sette le verifiche passano. Il browser che mancava il 26 settembre
+(estensione Chrome non connessa) e' stato sostituito da Selenium sul Firefox di
+sistema, pilotato via geckodriver: l'app girava su http://localhost:8501 a
+1440x1000, con la sidebar aperta.
+
+**La verifica 6 ha trovato un difetto vero, ed e' stata la sola a cambiare il
+codice.** `VO2MAX_WIDTH` era `CHARTS_TOTAL_WIDTH - _AXIS_WIDTH - _VEGA_PADDING
+// 2` = 812, scritto pensando che Vega aggiungesse assi e margini a `width`
+come fa per le altre righe. Misurato: l'`<svg>` del pannello veniva fuori largo
+**esattamente 812px**, contro i 912px delle righe dei volumi. Cento pixel piu'
+stretto, con un buco a destra dentro un contenitore largo come gli altri.
+
+Il motivo e' l'`autosize` di Vega-Lite, che si applica a una vista sola ma non
+ai `concat`: questo pannello e' un `layer`, quindi `width` e' la larghezza
+**totale** (assi e margini dentro), mentre le quattro righe sopra sono un
+`hconcat`, dove `width` resta la sola area di disegno. Ora `VO2MAX_WIDTH =
+CHARTS_TOTAL_WIDTH`: rende 914px contro i 912px delle righe (i 2px sono
+l'arrotondamento di `CHART_WIDTH`). Verificato cambiando il valore e
+rimisurando: 812 -> 812, 914 -> 914. `CHARTS_TOTAL_WIDTH`, `CHART_ROWS` e le
+quattro righe esistenti non sono state toccate, come chiedevano i vincoli.
+
+Esiti, uno per uno:
+
+1. **Passa.** w36 39.4, w37 40.1, w38 40.2, w39 40.8; le settimane senza corse
+   (w29-w35) non hanno punto; l'asse y va da 39.5 a 40.5, non da zero. Il
+   tooltip del primo punto legge "Week w36 / Starting 31 Aug 2026 / VO2max
+   39.4".
+2. **Passa.** Con "All": 11 settimane con un punto, da w18 (2025-04-28) a w39
+   (2026), fra 36.7 e 41.2; 6 mesi nella Month. Sono i numeri delle sole corse,
+   come deciso il 26 settembre con l'opzione (a).
+3. **Passa.** Un click solo apre e un click solo richiude (`open` true -> false
+   -> true). Chiusa sulla Week, si va sulla Month e si torna: e' ancora chiusa.
+   Il click su un punto sceglie la settimana: cliccato il punto della w36, la
+   sezione sotto e' passata da "By sport - 21 Sep 2026 - 27 Sep 2026" a "By
+   sport - 31 Aug 2026 - 06 Sep 2026".
+4. **Passa.** Spegnendo prima Cycling e poi Running, i quattro punti del VO2max
+   restano agli stessi pixel, mentre le righe dei volumi passano da 8 a 6 linee:
+   la pill funziona, e il pannello non la ascolta.
+5. **Passa.** Dal 2026-07-01 al 2026-08-20 (attivita' sì, corse no) compare
+   "No run with a VO2max in the selected weeks." al posto del grafico, senza
+   eccezioni.
+6. **Passa, dopo la correzione di sopra.** A 1440px con la sidebar aperta: il
+   pannello sta nel contenitore (914 su 914), la pagina non scorre in
+   orizzontale (1440 su 1440), e ora e' largo come le righe dei volumi (914
+   contro 912).
+7. **Passa.** `AppTest` sulle tre pagine (Day, Week, Month): nessuna eccezione.
+   Piu' il giro nel browser di cui sopra.
+
+Nota su `AppTest`: non raggiunge i widget dentro le sezioni richiudibili, quindi
+le verifiche 3 e 4 sono state fatte nel browser e non li'. La 5 e la 7 passano
+anche da `AppTest`.
+
+## Needs decision (atodo, 2026-09-26) — risolto
 
 **Verifiche 1 e 2: decise il 2026-09-26.** La 2 con l'opzione (a); la 1
 aggiornata con la w39 a 40.8. Tutte e due sono gia' corrette sopra; il testo qui
-sotto resta per memoria. Resta aperto solo il controllo nel browser (verifiche
-3 e 6, in fondo).
+sotto resta per memoria. Il controllo nel browser (verifiche 3 e 6) e' stato
+fatto il 2026-09-27: vedi la sezione qui sopra.
 
 **Expected-result change**, verifica 2: "da gennaio 2025 a settembre 2026, fra
 36.6 e 44.6" -> con la regola del Work ("solo le corse") la serie va **da
@@ -124,3 +178,6 @@ Non fatto per mancanza del browser (estensione Chrome non connessa): verifica
 3 (un click solo per aprire/chiudere nel browser vero, click su un punto che
 sceglie la settimana) e verifica 6 (a 1440px con la sidebar aperta il pannello
 sta nel contenitore; `VO2MAX_WIDTH` = 812 e' una stima, non misurata).
+
+**Fatte il 2026-09-27.** Il sospetto sui 812px era fondato: misurati, erano
+cento pixel di meno delle altre righe. Vedi "Chiuso" qui sopra.

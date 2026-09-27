@@ -664,11 +664,21 @@ def _pair(
 # grandezza che si somma per sport, e il suo cumulato non vorrebbe dire niente.
 VO2MAX_ROW = "VO2max"
 VO2MAX_UNIT = "ml/kg/min"
-# Un pannello solo largo quanto la coppia delle altre righe. Qui `width` e'
-# l'area di disegno come in CHART_WIDTH: si tolgono l'asse y e i margini di una
-# vista sola, che sono circa la meta' di quelli della coppia (un titolo
-# dell'asse y invece di due, e niente spazio fra i pannelli).
-VO2MAX_WIDTH = CHARTS_TOTAL_WIDTH - _AXIS_WIDTH - _VEGA_PADDING // 2
+# Un pannello solo largo quanto la coppia delle altre righe.
+#
+# Qui `width` **non** e' l'area di disegno come in CHART_WIDTH: e' la larghezza
+# totale. La differenza e' l'`autosize` di Vega-Lite, che vale solo per una
+# vista sola: questo pannello e' un `layer`, e con il ridimensionamento
+# automatico `width` diventa il totale (assi e margini stanno dentro), mentre le
+# altre righe sono un `hconcat`, dove quel ridimensionamento non si applica e
+# `width` resta la sola area di disegno.
+#
+# Quindi niente sottrazioni: misurato nel browser a 1440px, questo pannello
+# rende 914px e la coppia 912px (i 2px sono l'arrotondamento di CHART_WIDTH).
+# Toglierne asse e margini, come si faceva prima, lo lasciava a 812px: cento
+# pixel piu' stretto delle righe sopra, con un buco a destra dentro un
+# contenitore largo quanto le altre.
+VO2MAX_WIDTH = CHARTS_TOTAL_WIDTH
 
 
 def _vo2max_by_period(df: pd.DataFrame, periods: pd.DatetimeIndex) -> pd.Series:
