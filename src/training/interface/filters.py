@@ -50,6 +50,7 @@ def date_range(
     presets: bool = False,
     period: str = "weeks",
     key: str = "date_range",
+    default_preset: str | None = None,
 ) -> tuple[dt.date, dt.date]:
     """Le due caselle a calendario "From" / "To", con l'intervallo scelto.
 
@@ -71,7 +72,13 @@ def date_range(
     intero: le due caselle restano modificabili a mano, e toccarle non cancella
     la scorciatoia, la sorpassa e basta. Senza `presets` la funzione si comporta
     esattamente come prima, caselle senza stato incluse, perche' la pagina
-    Activities non deve cambiare."""
+    Activities non deve cambiare.
+
+    `default_preset` cambia da quale scorciatoia si parte, restando nello
+    stesso gruppo: la Recovery vuole aprirsi su "4 weeks" dove la Week si apre
+    su "12 weeks", perche' i suoi valori sono giornalieri e tre mesi di punti
+    non si leggono. Senza, vale la scorciatoia di partenza del gruppo, quindi
+    le pagine che non lo passano non cambiano."""
     where = container if container is not None else st
 
     min_date = activities["start_time"].min().date()
@@ -89,7 +96,11 @@ def date_range(
     from_key, to_key, preset_key = f"{key}_from", f"{key}_to", f"{key}_preset"
 
     # Prima apertura: si parte dalla scorciatoia di default, non da tutto.
-    choices, default_preset = _PRESET_SETS[period]
+    choices, group_default = _PRESET_SETS[period]
+    # Una scorciatoia che non esiste nel gruppo sarebbe un bug di chi chiama,
+    # non una scelta dell'utente: meglio la partenza del gruppo che un widget
+    # senza niente selezionato.
+    default_preset = default_preset if default_preset in choices else group_default
     if from_key not in st.session_state:
         st.session_state[from_key], st.session_state[to_key] = _preset_range(
             default_preset, period, min_date, max_date

@@ -12,6 +12,7 @@ from garminconnect import Garmin
 from .auth import init_api
 from .client import safe_call
 from .config import DATA_DIR, REQUEST_DELAY
+from .health import refresh_recent_health
 
 _ACTIVITY_ID_RE = re.compile(r"(\d+)_ACTIVITY\.fit$")
 _NAMES_FILENAME = "activity_names.json"
@@ -182,7 +183,15 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
 
     Le attivita' vengono richieste dalla piu' recente alla piu' vecchia:
     ci si ferma alla prima gia' presente in data_dir, assumendo che tutte
-    quelle precedenti siano gia' state scaricate."""
+    quelle precedenti siano gia' state scaricate.
+
+    Alla fine rinfresca anche le metriche di salute degli ultimi giorni
+    (`refresh_recent_health`): la pagina Recovery le legge da li', e tenere
+    aggiornate le attivita' e non la salute lascerebbe meta' dell'app indietro.
+    Lo fa anche quando non c'e' nessuna attivita' nuova, che e' anzi il caso
+    normale: un giorno di riposo non aggiunge uscite ma ha comunque il suo
+    sonno, la sua readiness e il suo body battery. Lo storico, che costa
+    tutt'altro, resta a `backfill_health`."""
     data_dir = Path(data_dir)
     data_dir.mkdir(parents=True, exist_ok=True)
     existing_ids = _existing_activity_ids(data_dir)
@@ -220,6 +229,7 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
 
     if not new_ids:
         print("Nessuna nuova attivita' da scaricare.")
+        refresh_recent_health(api, data_dir)
         return []
 
     print(f"Trovate {len(new_ids)} nuove attivita'. Scarico ed estraggo in {data_dir.resolve()}...")
@@ -241,6 +251,7 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
         time.sleep(REQUEST_DELAY)
 
     print(f"Fatto: {len(downloaded)} nuove attivita' aggiunte a {data_dir.resolve()}")
+    refresh_recent_health(api, data_dir)
     return downloaded
 
 

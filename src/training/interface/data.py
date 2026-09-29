@@ -21,6 +21,7 @@ import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities
+from training.interface.health import load_health
 
 # Un minuto: abbastanza da coprire una raffica di interazioni (che e' il caso
 # che ci interessa), abbastanza poco da non dover offrire un pulsante di
@@ -37,3 +38,16 @@ def load_activities(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     `st.cache_data` restituisce una copia a ogni chiamata, quindi chi la riceve
     puo' aggiungere colonne (lo fa la pagina Week) senza sporcare la cache."""
     return list_activities(data_dir)
+
+
+@st.cache_data(ttl=ACTIVITIES_TTL_SECONDS)
+def load_health_metrics(data_dir: Path = DATA_DIR) -> pd.DataFrame:
+    """Le metriche di salute come `load_health()`, senza rileggere i JSON a
+    ogni rerun.
+
+    Stesso TTL delle attivita' e stessa ragione per cui il decoratore sta qui e
+    non sul loader: `training.interface.health` non deve dipendere da
+    Streamlit. Leggerle costa poco (circa 1,7 ms al giorno, cioe' un secondo
+    scarso sullo storico intero), ma e' un costo inutile da pagare a ogni
+    click."""
+    return load_health(data_dir)
