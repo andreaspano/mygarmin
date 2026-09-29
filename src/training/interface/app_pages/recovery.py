@@ -136,7 +136,13 @@ previous = measured.iloc[-2] if len(measured) > 1 else pd.Series(dtype="float64"
 
 st.caption(f"Latest day with data: {last_day:%d %b %Y}")
 
-metrics_row = st.container(horizontal=True)
+# I numeri grandi dentro un riquadro, come le schede per sport di Day, Week e
+# Month: li' le metriche stanno in un `container(border=True)`, e senza bordo
+# qui galleggiavano fra il titolo e i grafici senza farsi leggere come un
+# blocco solo. La larghezza e' quella totale dei pannelli qui sotto e non
+# "stretch": il riquadro e' l'intestazione di quei grafici, e un bordo che
+# arriva piu' a destra di loro si vedrebbe che non lo e'.
+metrics_row = st.container(horizontal=True, border=True, width=PANEL_TOTAL_WIDTH)
 
 readiness = _value(last, "readiness")
 metrics_row.metric(
