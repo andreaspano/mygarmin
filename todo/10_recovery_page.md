@@ -1,5 +1,5 @@
 ---
-status: todo
+status: to commit
 ---
 
 # Recovery: una pagina con i dati di recupero
@@ -104,8 +104,17 @@ Non esiste una suite di test; l'app gira su http://localhost:8501.
 1. Con i dati di oggi (dal 26 agosto al 26 settembre 2026) il 21 settembre ha
    readiness 28, body battery minimo 5, HRV 45 (media 47), FC a riposo 53,
    sonno 7h14 con punteggio 53.
-2. Le metriche in cima mostrano il 26 settembre: readiness 71, FC a riposo 49,
-   sonno circa 6.5 h con punteggio 79.
+2. Le metriche in cima seguono l'ultimo giorno **del periodo scelto**, non
+   quello di oggi: mettendo "To" al 21 settembre 2026 la riga si legge
+   "Latest day with data: 21 Sep 2026" e mostra readiness 28 (-45), HRV 45 ms
+   (-2 sulla media 7 gg), FC a riposo 53 bpm (+1), sonno 7h14 (-1.3 h),
+   punteggio 53 (-29). I delta sono rispetto al 20 settembre, tranne quello
+   dell'HRV che e' sulla sua media a 7 giorni.
+
+   Ancorata a un giorno fisso e non "all'ultimo giorno" apposta: i file di
+   salute si allungano a ogni `update_activity`, e una verifica sull'ultimo
+   giorno scadrebbe da sola ogni volta. I numeri sono quelli della misura del
+   risveglio, come dice il Work.
 3. Il 19 e il 20 settembre risultano giorni di allenamento (bici 50 km, corsa
    al Mont Bre).
 4. Un periodo scelto prima del 26 agosto 2026 mostra un messaggio ("No health
@@ -116,3 +125,60 @@ Non esiste una suite di test; l'app gira su http://localhost:8501.
 
 **Mai** lanciare `make update_activity`, `make backfill_activity_names` ne' il
 nuovo `make backfill_health`: chiamano l'API Garmin e scrivono nell'albero dati.
+
+## Esito: implementato (atodo, 2026-09-27)
+
+Tutto il Work, e tutte e sei le verifiche passano. La 2 e' stata riscritta:
+vedi la decisione qui sotto, presa con l'opzione (a) il 2026-09-27.
+
+**Expected-result change**, verifica 2 (risolto): "le metriche in cima mostrano
+il 26 settembre: readiness 71, FC a riposo 49, sonno circa 6.5 h con punteggio
+79" -> mostravano **il 27 settembre: readiness 79, FC a riposo 47, sonno 9h35
+con punteggio 82**. Erano due cose diverse:
+
+- **Il giorno.** Quando il todo e' stato scritto i file di salute su disco
+  arrivavano al **22 settembre**, non al 26 (l'ho controllato sulle date di
+  modifica). Dal 23 al 27 li ha scaricati `training-fitness-status`, lanciato
+  il 27 settembre. La pagina mostra l'ultimo giorno con almeno una misura, come
+  chiede il Work, e quell'ultimo giorno ora e' il 27. La verifica invecchia da
+  sola a ogni `update_activity`: se serve un riscontro stabile conviene
+  riscriverla sul 21 settembre, che e' gia' la verifica 1 e non si muove.
+- **Il numero della readiness.** Anche guardando il 26 settembre, il valore non
+  sarebbe 71 ma **74**. Quel giorno Garmin ha registrato tre misure: 74 al
+  risveglio (`AFTER_WAKEUP_RESET`, 05:59), 75 da un aggiornamento in corsa
+  (`UPDATE_REALTIME_VARIABLES`, 07:23) e 71 dopo l'allenamento
+  (`AFTER_POST_EXERCISE_RESET`, 17:14). Il 71 della verifica e' la misura dopo
+  l'allenamento, cioe' proprio quella che il Work dice di **non** prendere
+  ("Si prende quella del risveglio"). Sul 21 settembre il todo applica la
+  regola giusta (28 al risveglio, non 26 dopo l'allenamento), quindi sembra una
+  svista solo qui. E' lo stesso inciampo del todo 08.
+
+**Deciso il 2026-09-27 con l'opzione (a)**: verifica 2 riscritta sopra con i
+numeri del risveglio e ancorata al 21 settembre, mettendo "To" a quel giorno
+invece di guardare l'ultimo giorno scaricato. Cosi' controlla anche una cosa in
+piu' della versione vecchia, cioe' che le metriche seguano il periodo scelto e
+non la data di oggi. Misurata dopo la riscrittura: 28 (-45), 45 ms (-2 sulla
+media), 53 bpm (+1), 7h14 (-1.3 h), 53 (-29). Le altre due opzioni erano (b)
+tenere l'ultimo giorno e riscrivere i numeri a ogni giro, e (c) mostrare
+l'ultima misura invece di quella del risveglio, contro il Work.
+
+Le altre cinque verifiche, per riferimento:
+
+1. **Passa.** Il 21 settembre: readiness 28, body battery minimo 5, HRV 45
+   (media 47), FC a riposo 53, sonno 7h14 (26.040 s) con punteggio 53.
+3. **Passa.** Il 19 settembre risulta giorno di allenamento con 229 minuti
+   (bici, 50,4 km) e il 20 con 114 (corsa, 7,9 km): sono le due barre piu' alte
+   della riga in fondo, proprio sotto il crollo della readiness del 21.
+4. **Passa.** Dal 1 giugno al 1 luglio 2026 compare "No health data in this
+   period.", nessun grafico e nessuna eccezione.
+5. **Passa.** Dal 1 all'8 settembre 2026 mancano HRV, sonno, body battery e FC
+   a riposo (i JSON hanno `null`): le linee si spezzano e riprendono dopo, senza
+   punti a fondo scala. Ci e' voluto un tentativo: forzare `invalid=None` in
+   Vega-Lite vuol dire "mostrali lo stesso", e quei sette giorni finivano
+   appoggiati sul minimo dell'asse (un battito a riposo di 45 e un HRV di 40 mai
+   misurati). Il comportamento di default delle linee
+   (`break-paths-filter-invalid-values`) e' invece esattamente il buco chiesto
+   qui.
+6. **Passa.** `AppTest` su tutte e cinque le pagine: nessuna eccezione. Nel
+   browser a 1440px la pagina non scorre in orizzontale e i sei pannelli stanno
+   nel contenitore (930px su 1074 disponibili).

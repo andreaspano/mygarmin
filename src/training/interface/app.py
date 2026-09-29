@@ -26,6 +26,7 @@ pg = st.navigation(
         st.Page("app_pages/activities.py", title="Day", icon=":material/directions_run:"),
         st.Page("app_pages/week.py", title="Week", icon=":material/calendar_view_week:"),
         st.Page("app_pages/month.py", title="Month", icon=":material/calendar_view_month:"),
+        st.Page("app_pages/recovery.py", title="Recovery", icon=":material/favorite:"),
     ]
 )
 pg.run()

@@ -8,8 +8,21 @@ from typing import Optional
 
 from garminconnect import Garmin
 
+from .auth import init_api
 from .client import safe_call
-from .config import REQUEST_DELAY
+from .config import DATA_DIR, REQUEST_DELAY
+
+# Da dove parte il backfill dello storico: la prima attivita' in archivio e' del
+# 3 gennaio 2025, quindi il primo dell'anno copre tutto senza chiedere a Garmin
+# mesi in cui non c'era niente da registrare. Piu' indietro di cosi' si
+# scaricherebbero solo giorni vuoti, a 9 chiamate l'uno.
+HEALTH_BACKFILL_START = date(2025, 1, 1)
+
+# Quanti giorni indietro rinfrescare a ogni `update_activity`: oggi e i due
+# precedenti. Garmin rivede i dati di un giorno anche dopo la mezzanotte (il
+# sonno della notte arriva la mattina dopo, e il punteggio si assesta), quindi
+# guardare il solo giorno corrente lascerebbe indietro quelli appena chiusi.
+HEALTH_REFRESH_DAYS = 3
 
 DAILY_ENDPOINTS = {
     "stats": lambda api, d: api.get_stats(d),
@@ -65,3 +78,33 @@ def export_daily_health(
             print(f"  ...elaborati {day_count}/{total_days} giorni (ultimo: {date_str})")
 
         d += timedelta(days=1)
+
+
+def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
+    """Rinfresca le metriche degli ultimi giorni, riscaricando sempre oggi.
+
+    La chiama `update_activity`, che senza di lei terrebbe aggiornate le
+    attivita' e non la salute. I giorni gia' su disco vengono saltati tranne
+    oggi, che cambia nel corso della giornata (la readiness dopo un
+    allenamento, il body battery che si consuma): stessa scelta che fa
+    `build_fitness_status`."""
+    today = date.today()
+    export_daily_health(
+        api,
+        Path(data_dir),
+        today - timedelta(days=HEALTH_REFRESH_DAYS - 1),
+        today,
+        force_dates={today},
+    )
+
+
+def backfill_health(data_dir: Path = DATA_DIR) -> None:
+    """Scarica lo storico delle metriche di salute, dal 2025 a oggi.
+
+    E' un comando a parte (`make backfill_health`) e non un pezzo di
+    `update_activity` per via di quanto costa: circa 640 giorni per 9 endpoint
+    sono quasi 5.800 chiamate, e con la pausa fra una e l'altra ci vuole
+    mezz'ora abbondante. Si puo' interrompere con Ctrl+C e rilanciare: i giorni
+    gia' scaricati vengono saltati."""
+    api = init_api()
+    export_daily_health(api, Path(data_dir), HEALTH_BACKFILL_START, date.today())
