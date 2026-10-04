@@ -13,6 +13,7 @@ qui sotto, che sono la parte piu' difficile da riscrivere."""
 import warnings
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -67,6 +68,16 @@ class PeriodSpec:
 
     # Il gruppo di scorciatoie del filtro a calendario (vedi filters.py).
     presets: str
+
+    # Dove stanno i report scritti del periodo, un file per periodo con il
+    # nome del suo primo giorno (`2026-09-21.md`). None: la pagina non ha
+    # report, e la tabella dei totali resta da sola in cima.
+    report_dir: Path | None = None
+
+    # Il titolo in cima alla pagina ("Week", "Month"). La Week lo toglie: la
+    # scheda della navigazione dice gia' dove si e', e lo spazio in cima va a
+    # filtro, tabella e report.
+    show_title: bool = True
 
     def key(self, *parts: str) -> str:
         """Ogni chiave di sessione della pagina passa di qui.
@@ -797,9 +808,66 @@ def _clicked_period(event) -> str | None:
     return None
 
 
+# Il riquadro del report e' alto quanto la colonna accanto: filtro a
+# calendario, titolo "Weekly totals" e tabella, cosi' le due colonne
+# cominciano e finiscono alla stessa altezza; oltre, il report scorre dentro
+# il suo riquadro invece di allungare la cima della pagina. La tabella con
+# `height="auto"` mostra fino a dieci righe da 35px, piu' l'intestazione e il
+# bordo (le misure di Streamlit 1.63). Filtro (scorciatoie e caselle delle
+# date) e titolo, con gli spazi fra uno e l'altro, sono stime: circa 150px e
+# 70px.
+_ROW_PX = 35
+_TABLE_MAX_ROWS = 10
+_FILTER_PX = 150
+_SUBHEADER_PX = 70
+
+# La key del riquadro del report: da' il nome alla classe CSS dello sfondo.
+REPORT_KEY = "period_report"
+
+
+def _report_height(table_rows: int) -> int:
+    rows = min(table_rows, _TABLE_MAX_ROWS)
+    return _FILTER_PX + _SUBHEADER_PX + _ROW_PX * (rows + 1) + 3
+
+
+def _show_report(spec: PeriodSpec, period_start: pd.Timestamp, height: int) -> None:
+    """Il report scritto del periodo, se c'e'. Se non c'e', niente: la colonna
+    resta vuota, senza avvisi."""
+    path = spec.report_dir / f"{period_start:%Y-%m-%d}.md"
+    if not path.exists():
+        return
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    # Il titolo e la riga "Week: ..." del file ripetono quello che la pagina
+    # dice gia': il periodo e' la riga spuntata nella tabella accanto, e lo
+    # ripetono le schede subito sotto. Le sezioni scendono di due livelli: un
+    # "##" a meta' pagina sarebbe grande come il titolo.
+    body = [
+        "####" + line[2:] if line.startswith("## ") else line
+        for line in lines
+        if not line.startswith("# ") and not line.startswith("Week: ")
+    ]
+
+    # Uno sfondo grigio chiaro, senza bordo, per staccare il testo dalla tabella
+    # accanto. E' l'unica eccezione voluta (da Andrea) alla regola "niente CSS"
+    # dell'app: Streamlit non ha un colore di sfondo per i contenitori, e i
+    # riquadri nativi (`st.info` e simili) sono azzurri, verdi o gialli, colori
+    # che dicono uno stato. La regola tocca solo questo contenitore, tramite la
+    # classe che Streamlit da' a chi ha una `key` (`st-key-<key>`). Il grigio e'
+    # semitrasparente: chiaro sul tema chiaro, tenue su quello scuro.
+    st.html(
+        f"<style>.st-key-{REPORT_KEY} {{"
+        " background-color: rgba(128, 128, 128, 0.08);"
+        " border-radius: 0.5rem; padding: 1rem 1.25rem; }</style>"
+    )
+    with st.container(height=height, border=False, key=REPORT_KEY):
+        st.markdown("\n".join(body).strip())
+
+
 def render(spec: PeriodSpec) -> None:
     """Disegna la pagina, dal titolo all'elenco delle attivita'."""
-    st.title(spec.title)
+    if spec.show_title:
+        st.title(spec.title)
 
     activities = load_activities(DATA_DIR)
 
@@ -838,13 +906,26 @@ def render(spec: PeriodSpec) -> None:
 
     period_totals = _totals(activities, "period_start").sort_index(ascending=False)
 
+    # Con i report la cima si divide in due: a sinistra filtro e tabella, a
+    # destra il report del periodo scelto, alto quanto i due insieme. Stanno
+    # affiancati perche' si leggono insieme: la riga che si spunta e' quella di
+    # cui il report parla. Non due colonne uguali: la sinistra e' larga quanto
+    # la tabella (circa 460px), e il report prende tutto il resto della riga.
+    # Senza report la pagina resta com'era, tutto a tutta larghezza.
+    if spec.report_dir is not None:
+        top_row = st.container(horizontal=True, gap="large")
+        left_col = top_row.container(width="content")
+        report_col = top_row.container(width="stretch")
+    else:
+        left_col = report_col = None
+
     # Lo stesso filtro a calendario della pagina Activities: stessa funzione,
     # non una copia. Qui pero' con le scorciatoie di periodo, perche' una
     # pagina cosi' si guarda quasi sempre sugli ultimi periodi e non su tutto
     # lo storico (che sono quasi novanta punti per grafico a settimane).
     start_date, end_date = date_range(
         activities,
-        None,
+        left_col,
         f"'From' is later than 'To': swap the two dates to see the {spec.unit}s.",
         presets=True,
         period=spec.presets,
@@ -892,7 +973,7 @@ def render(spec: PeriodSpec) -> None:
     # click, e possiamo spuntare la riga giusta subito. E' il motivo per cui qui
     # non serve piu' rilanciare lo script: un click su un grafico costa un giro
     # invece di due. Prenotiamo il posto, riempiamo piu' sotto.
-    table_area = st.container()
+    table_area = left_col.container() if left_col is not None else st.container()
     # Stesso trucco, e per un motivo in piu': schede ed elenco dicono com'e'
     # andato il periodo scelto, e quale sia lo si sa solo dopo aver letto i
     # click sui grafici. Prenotare qui il posto li mette sotto la tabella e sopra i grafici,
@@ -1171,11 +1252,13 @@ def render(spec: PeriodSpec) -> None:
         "selection": {"rows": [int(period_totals.index.get_loc(picked_period))], "columns": []}
     }
 
+    # Il report va nella colonna di destra prenotata in cima (vedi sopra).
+    if report_col is not None:
+        with report_col:
+            _show_report(spec, picked_period, _report_height(len(summary)))
+
     with table_area:
         st.subheader(f"{spec.adjective} totals")
-        st.caption(
-            f"Click a row to see the {spec.unit} below. Click a header to sort."
-        )
 
         st.dataframe(
             summary[TABLE_COLUMNS],

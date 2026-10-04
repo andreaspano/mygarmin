@@ -4,6 +4,8 @@ week(s) selected in the table.
 La macchina sta in period_page.py, condivisa con la pagina Month: qui c'e' solo
 cosa vuol dire "settimana"."""
 
+from pathlib import Path
+
 import pandas as pd
 
 from training.interface.period_page import PeriodSpec, render
@@ -52,6 +54,8 @@ WEEK = PeriodSpec(
     column_width=130,
     column_help="Monday that opens the week (Mon-Sun).",
     presets="weeks",
+    report_dir=Path("summary/02.weekly"),
+    show_title=False,
 )
 
 render(WEEK)
