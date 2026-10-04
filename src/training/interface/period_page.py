@@ -21,7 +21,12 @@ import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_detail import show_activity_detail
-from training.interface.activity_table import activity_table, sport_icon_path, sport_label
+from training.interface.activity_table import (
+    ICONS_DIR,
+    activity_table,
+    sport_icon_path,
+    sport_label,
+)
 from training.interface.data import load_activities
 from training.interface.filters import date_range
 
@@ -824,6 +829,28 @@ _SUBHEADER_PX = 70
 # La key del riquadro del report: da' il nome alla classe CSS dello sfondo.
 REPORT_KEY = "period_report"
 
+# Un'icona per sezione del report, dalla cartella delle icone degli sport. La
+# sezione si riconosce dal nome nel titolo ("1. Training" -> training.png),
+# non dal numero: un report con le sezioni in un altro ordine le trova lo
+# stesso, e una sezione senza icona resta col solo titolo.
+REPORT_SECTION_ICONS = {
+    "training": "training.png",
+    "recovery": "recovery.png",
+    "trend": "trend.png",
+}
+# Piu' piccole delle icone delle schede (40px): qui accompagnano un titolo
+# dentro un testo, non aprono una scheda.
+REPORT_ICON_PX = 28
+
+
+def _report_icon_path(title: str) -> Path | None:
+    words = title.lower()
+    for name, filename in REPORT_SECTION_ICONS.items():
+        path = ICONS_DIR / filename
+        if name in words and path.exists():
+            return path
+    return None
+
 
 def _report_height(table_rows: int) -> int:
     rows = min(table_rows, _TABLE_MAX_ROWS)
@@ -837,16 +864,24 @@ def _show_report(spec: PeriodSpec, period_start: pd.Timestamp, height: int) -> N
     if not path.exists():
         return
 
-    lines = path.read_text(encoding="utf-8").splitlines()
     # Il titolo e la riga "Week: ..." del file ripetono quello che la pagina
     # dice gia': il periodo e' la riga spuntata nella tabella accanto, e lo
-    # ripetono le schede subito sotto. Le sezioni scendono di due livelli: un
-    # "##" a meta' pagina sarebbe grande come il titolo.
-    body = [
-        "####" + line[2:] if line.startswith("## ") else line
-        for line in lines
+    # ripetono le schede subito sotto.
+    lines = [
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
         if not line.startswith("# ") and not line.startswith("Week: ")
     ]
+
+    # Le sezioni ("## 1. Training", ...) una per una: ognuna ha la sua riga di
+    # titolo con l'icona accanto, come le schede per sport. Il testo prima della
+    # prima sezione, se c'e', sta in una sezione senza titolo.
+    sections: list[tuple[str | None, list[str]]] = [(None, [])]
+    for line in lines:
+        if line.startswith("## "):
+            sections.append((line[3:].strip(), []))
+        else:
+            sections[-1][1].append(line)
 
     # Uno sfondo grigio chiaro, senza bordo, per staccare il testo dalla tabella
     # accanto. E' l'unica eccezione voluta (da Andrea) alla regola "niente CSS"
@@ -861,7 +896,19 @@ def _show_report(spec: PeriodSpec, period_start: pd.Timestamp, height: int) -> N
         " border-radius: 0.5rem; padding: 1rem 1.25rem; }</style>"
     )
     with st.container(height=height, border=False, key=REPORT_KEY):
-        st.markdown("\n".join(body).strip())
+        for title, text in sections:
+            if title:
+                head = st.container(horizontal=True, vertical_alignment="center")
+                icon_path = _report_icon_path(title)
+                if icon_path:
+                    head.image(icon_path, width=REPORT_ICON_PX)
+                # In grassetto e non "####": un titolo markdown porta con se' un
+                # margine sopra che, accanto all'icona, la lascerebbe piu' in basso
+                # del testo.
+                head.markdown(f"**{title}**")
+            body = "\n".join(text).strip()
+            if body:
+                st.markdown(body)
 
 
 def render(spec: PeriodSpec) -> None:
