@@ -1,16 +1,16 @@
 """Lettura delle metriche giornaliere di salute dai JSON di Garmin.
 
 Un file per giorno e per endpoint, in `DATA_DIR/health/<endpoint>/<data>.json`
-(li scrive `garmin/health.py`). Qui se ne leggono cinque dei nove: quelli che
-la pagina Recovery disegna. Gli altri quattro (stress, spo2, respiration,
-training_status) restano su disco e non vengono nemmeno aperti: `sleep/` da
-solo pesa piu' di tutti gli altri messi insieme, perche' porta il sonno minuto
-per minuto, e aprire quello che non serve costa e basta.
+(li scrive `garmin/health.py`). Qui si aprono tutti e nove, ma se ne tengono
+solo i valori giornalieri: le serie minuto per minuto (stress, respiro, sonno)
+si leggono e si buttano, e restano nei JSON per chi le vuole intere
+(`garmin/fitness_status.py` legge i file grezzi per conto suo).
 
-Niente SQLite, al contrario delle attivita': un JSON al giorno per qualche
-centinaio di giorni si legge in fretta, e il parsing FIT che giustifica la
-cache delle attivita' qui non c'e'. La cache di Streamlit sta in `data.py`,
-come per `load_activities()`.
+Le righe finiscono in SQLite, nella tabella `health_daily` dentro
+`activities.db` (vedi `health_db.py`), ma e' solo una cache derivata: la fonte
+restano i JSON, e la tabella si ricostruisce sempre da loro, rileggendo un
+giorno quando uno dei suoi file cambia. Qui sta il parsing, la' la cache; la
+cache di Streamlit sta in `data.py`, come per `load_activities()`.
 
 I JSON di Garmin cambiano forma, e un giorno senza orologio al polso ha `null`
 al posto dei dizionari: succede davvero (dal 2026-09-01 al 2026-09-08 `sleep`
@@ -29,10 +29,11 @@ from typing import Any
 import pandas as pd
 
 from training.garmin.config import DATA_DIR
+from training.garmin.health import DAILY_ENDPOINTS
 
-# Gli endpoint che servono a questa pagina, sui nove che `export_daily_health`
-# scarica. L'ordine non conta: e' solo l'insieme dei file da aprire.
-_USED_ENDPOINTS = ("training_readiness", "hrv", "resting_heart_rate", "sleep", "stats")
+# Gli endpoint da aprire: tutti quelli che `export_daily_health` scarica.
+# L'ordine non conta: e' solo l'insieme dei file da leggere per un giorno.
+_USED_ENDPOINTS = tuple(DAILY_ENDPOINTS)
 
 # Il punteggio di readiness da tenere, fra i piu' di uno che Garmin registra in
 # un giorno: quello al risveglio. E' il numero che dice come si parte la
@@ -41,7 +42,9 @@ _USED_ENDPOINTS = ("training_readiness", "hrv", "resting_heart_rate", "sleep", "
 # (`UPDATE_REALTIME_VARIABLES`), e dicono un'altra cosa.
 _WAKEUP_CONTEXT = "AFTER_WAKEUP_RESET"
 
-# Le colonne del DataFrame, nell'ordine in cui la pagina le usa.
+# Le colonne del DataFrame, nello stesso ordine della tabella `health_daily`.
+# Le prime nove sono quelle della pagina Recovery; le altre servono a chi mette
+# la salute accanto alle attivita' (VO2max, carico, training status).
 COLUMNS = [
     "readiness",
     "body_battery_low",
@@ -52,7 +55,38 @@ COLUMNS = [
     "resting_hr",
     "sleep_hours",
     "sleep_score",
+    "stress_avg",
+    "stress_max",
+    "resp_sleep_avg",
+    "resp_waking_avg",
+    "resp_low",
+    "resp_high",
+    "spo2_avg",
+    "spo2_low",
+    "spo2_sleep_avg",
+    "vo2max",
+    "vo2max_date",
+    "training_status",
+    "training_status_phrase",
+    "load_acute",
+    "load_chronic",
+    "acwr",
+    "acwr_status",
+    "load_aerobic_low",
+    "load_aerobic_high",
+    "load_anaerobic",
+    "load_balance_phrase",
 ]
+
+# Le colonne di testo; tutte le altre sono numeri (`REAL` in SQLite, `float`
+# nel DataFrame).
+TEXT_COLUMNS = (
+    "hrv_status",
+    "vo2max_date",
+    "training_status_phrase",
+    "acwr_status",
+    "load_balance_phrase",
+)
 
 
 def _dig(obj: Any, *keys: str) -> Any:
@@ -78,6 +112,25 @@ def _number(value: Any) -> float | None:
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     return float(value)
+
+
+def _text(value: Any) -> str | None:
+    """Il valore come stringa, o None se non lo e'.
+
+    Lo stesso contratto di `_number()` per i campi di testo (stati e frasi di
+    Garmin): se al posto della stringa arriva un dizionario o una lista, la
+    forma del JSON e' cambiata, e SQLite non saprebbe nemmeno salvarlo."""
+    return value if isinstance(value, str) else None
+
+
+def _stress(value: Any) -> float | None:
+    """Un livello di stress, o None se Garmin dice che non c'e'.
+
+    Lo stress va da 0 a 100; nei giorni senza orologio al polso Garmin scrive
+    `avgStressLevel: -1` (dal 2026-09-01 al 2026-09-07), che non e' una misura
+    ma il suo modo di dire "non lo so". Un negativo diventa None."""
+    number = _number(value)
+    return number if number is not None and number >= 0 else None
 
 
 def _read_json(path: Path) -> Any:
@@ -134,13 +187,88 @@ def _resting_hr(payload: Any) -> float | None:
     return _number(_dig(metrics[0], "value"))
 
 
-def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
-    """Una riga: tutte le grandezze di un giorno, lette dai cinque file."""
-    payloads = {
-        name: _read_json(health_dir / name / f"{day}.json") for name in _USED_ENDPOINTS
+def _primary_entry(device_map: Any) -> dict | None:
+    """La voce dell'orologio principale, in una mappa indicizzata per ID.
+
+    Training status e load balance arrivano come `{"<id orologio>": {...}}`:
+    con un solo orologio la voce e' una, con due sarebbero due. Si prende
+    quella con `primaryTrainingDevice: true`, non la prima: l'ordine delle
+    chiavi non dice niente su quale orologio conta."""
+    if not isinstance(device_map, dict):
+        return None
+    for entry in device_map.values():
+        if isinstance(entry, dict) and entry.get("primaryTrainingDevice") is True:
+            return entry
+    return None
+
+
+def _vo2max(payload: Any) -> tuple[float | None, str | None]:
+    """Il VO2max piu' recente e la data in cui e' stato misurato.
+
+    E' "il piu' recente", non quello del giorno del file: il file del
+    2026-09-17 porta ancora il valore del 09-16, e il 40.2 del 09-14 compare
+    solo nel file del 09-15. Per questo si tengono valore e data cosi' come
+    sono, e il VO2max del giorno D sono le righe con `vo2max_date = D`. Senza
+    valore la data non dice niente, e resta None anche lei."""
+    generic = _dig(payload, "mostRecentVO2Max", "generic")
+    value = _number(_dig(generic, "vo2MaxPreciseValue"))
+    if value is None:
+        return None, None
+    return value, _text(_dig(generic, "calendarDate"))
+
+
+def _training_status(payload: Any, day: str) -> dict[str, Any]:
+    """Training status e carico acuto/cronico dell'orologio principale.
+
+    Sono del giorno (il loro `calendarDate` coincide sempre col nome del
+    file), ma il controllo resta: se un giorno Garmin rimanda la voce di un
+    giorno prima, quella non e' la misura di oggi, e tutto resta None."""
+    entry = _primary_entry(
+        _dig(payload, "mostRecentTrainingStatus", "latestTrainingStatusData")
+    )
+    if entry is None or entry.get("calendarDate") != day:
+        entry = None
+    load = _dig(entry, "acuteTrainingLoadDTO")
+    return {
+        # Un intero grezzo (7 = PRODUCTIVE): la traduzione in parole la fa chi
+        # lo mostra, perche' i codici sono scelte di Garmin e possono cambiare.
+        "training_status": _number(_dig(entry, "trainingStatus")),
+        "training_status_phrase": _text(_dig(entry, "trainingStatusFeedbackPhrase")),
+        "load_acute": _number(_dig(load, "dailyTrainingLoadAcute")),
+        "load_chronic": _number(_dig(load, "dailyTrainingLoadChronic")),
+        "acwr": _number(_dig(load, "dailyAcuteChronicWorkloadRatio")),
+        "acwr_status": _text(_dig(load, "acwrStatus")),
     }
 
+
+def _load_balance(payload: Any, day: str) -> dict[str, Any]:
+    """Il carico mensile per zona (aerobico basso, alto, anaerobico).
+
+    Stesso controllo sulla data di `_training_status()`."""
+    entry = _primary_entry(
+        _dig(payload, "mostRecentTrainingLoadBalance", "metricsTrainingLoadBalanceDTOMap")
+    )
+    if entry is None or entry.get("calendarDate") != day:
+        entry = None
+    return {
+        "load_aerobic_low": _number(_dig(entry, "monthlyLoadAerobicLow")),
+        "load_aerobic_high": _number(_dig(entry, "monthlyLoadAerobicHigh")),
+        "load_anaerobic": _number(_dig(entry, "monthlyLoadAnaerobic")),
+        "load_balance_phrase": _text(_dig(entry, "trainingBalanceFeedbackPhrase")),
+    }
+
+
+def _day_paths(health_dir: Path, day: str) -> dict[str, Path]:
+    """I nove file di un giorno, per endpoint (non e' detto che esistano)."""
+    return {name: health_dir / name / f"{day}.json" for name in _USED_ENDPOINTS}
+
+
+def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
+    """Una riga: tutte le grandezze di un giorno, lette dai nove file."""
+    payloads = {name: _read_json(path) for name, path in _day_paths(health_dir, day).items()}
+
     sleep_seconds = _number(_dig(payloads["sleep"], "dailySleepDTO", "sleepTimeSeconds"))
+    vo2max, vo2max_date = _vo2max(payloads["training_status"])
 
     return {
         "readiness": _readiness_score(payloads["training_readiness"]),
@@ -148,7 +276,7 @@ def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
         "body_battery_high": _number(_dig(payloads["stats"], "bodyBatteryHighestValue")),
         "hrv_last_night": _number(_dig(payloads["hrv"], "hrvSummary", "lastNightAvg")),
         "hrv_weekly_avg": _number(_dig(payloads["hrv"], "hrvSummary", "weeklyAvg")),
-        "hrv_status": _dig(payloads["hrv"], "hrvSummary", "status"),
+        "hrv_status": _text(_dig(payloads["hrv"], "hrvSummary", "status")),
         "resting_hr": _resting_hr(payloads["resting_heart_rate"]),
         # In ore, non in secondi: e' l'unita' con cui si legge il sonno, e la
         # pagina non deve dividere per 3.600 ogni volta che lo tocca.
@@ -156,13 +284,28 @@ def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
         "sleep_score": _number(
             _dig(payloads["sleep"], "dailySleepDTO", "sleepScores", "overall", "value")
         ),
+        "stress_avg": _stress(_dig(payloads["stress"], "avgStressLevel")),
+        "stress_max": _stress(_dig(payloads["stress"], "maxStressLevel")),
+        "resp_sleep_avg": _number(_dig(payloads["respiration"], "avgSleepRespirationValue")),
+        "resp_waking_avg": _number(_dig(payloads["respiration"], "avgWakingRespirationValue")),
+        "resp_low": _number(_dig(payloads["respiration"], "lowestRespirationValue")),
+        "resp_high": _number(_dig(payloads["respiration"], "highestRespirationValue")),
+        # L'orologio di oggi non misura la saturazione: queste tre restano
+        # None, e si riempiono da sole se un giorno la si attiva.
+        "spo2_avg": _number(_dig(payloads["spo2"], "averageSpO2")),
+        "spo2_low": _number(_dig(payloads["spo2"], "lowestSpO2")),
+        "spo2_sleep_avg": _number(_dig(payloads["spo2"], "avgSleepSpO2")),
+        "vo2max": vo2max,
+        "vo2max_date": vo2max_date,
+        **_training_status(payloads["training_status"], day),
+        **_load_balance(payloads["training_status"], day),
     }
 
 
 def available_days(data_dir: Path = DATA_DIR) -> list[date]:
     """I giorni per cui c'e' almeno un file, in ordine.
 
-    Si guarda l'unione dei cinque endpoint e non uno solo: un giorno in cui
+    Si guarda l'unione dei nove endpoint e non uno solo: un giorno in cui
     manca il sonno ma c'e' la readiness e' comunque un giorno da mostrare."""
     health_dir = Path(data_dir) / "health"
     days: set[date] = set()
@@ -183,17 +326,12 @@ def load_health(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     giorni senza file ci sono comunque, con tutto a `NaN`, cosi' l'asse del
     tempo non si accorcia sui buchi e una linea che salta un giorno si vede.
 
-    DataFrame vuoto (con le colonne giuste) se non c'e' niente su disco."""
-    data_dir = Path(data_dir)
-    days = available_days(data_dir)
-    if not days:
-        return pd.DataFrame(columns=COLUMNS, index=pd.DatetimeIndex([], name="day"))
+    DataFrame vuoto (con le colonne giuste) se non c'e' niente su disco.
 
-    health_dir = data_dir / "health"
-    rows = [_day_row(health_dir, day.isoformat()) for day in days]
+    Passa dalla tabella `health_daily` (vedi `health_db.load_health_db`), che
+    rilegge dai JSON solo i giorni nuovi o cambiati."""
+    # Import qui e non in cima: `health_db` importa questo modulo per il
+    # parsing, e un import in cima ai due file farebbe un giro circolare.
+    from training.interface.health_db import load_health_db
 
-    frame = pd.DataFrame(rows, columns=COLUMNS, index=pd.DatetimeIndex(days, name="day"))
-    # Il calendario completo fra il primo e l'ultimo giorno: `reindex` mette
-    # NaN dove il giorno non c'era.
-    full_range = pd.date_range(days[0], days[-1], freq="D", name="day")
-    return frame.reindex(full_range)
+    return load_health_db(data_dir)

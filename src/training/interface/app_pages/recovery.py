@@ -2,8 +2,9 @@
 
 Le altre pagine guardano quello che si e' fatto (Day, Week, Month); questa
 guarda quello che il corpo ne ha fatto. I dati arrivano dai JSON di salute
-(`interface/health.py`), non da SQLite: non passano dai file FIT e non hanno
-niente da spartire con le attivita', tranne l'asse del tempo.
+(`interface/health.py`, messi in cache nella tabella `health_daily` da
+`interface/health_db.py`): non passano dai file FIT e non hanno niente da
+spartire con le attivita', tranne l'asse del tempo.
 
 L'asse del tempo e' pero' il punto: i grafici stanno uno sopra l'altro in un
 `vconcat`, con in fondo i minuti di allenamento del giorno. Un crollo della
@@ -18,6 +19,18 @@ import streamlit as st
 from training.garmin.config import DATA_DIR
 from training.interface.data import load_activities, load_health_metrics
 from training.interface.filters import date_range
+
+PAGE_COLUMNS = (
+    "readiness",
+    "body_battery_low",
+    "body_battery_high",
+    "hrv_last_night",
+    "hrv_weekly_avg",
+    "hrv_status",
+    "resting_hr",
+    "sleep_hours",
+    "sleep_score",
+)
 
 # Larghezza fissa, per la stessa ragione spiegata in cima a `period_page.py` e
 # con lo stesso numero: i pannelli devono stare in una vista Vega sola perche'
@@ -79,7 +92,12 @@ def _value(row: pd.Series, column: str) -> float | None:
 st.title("Recovery")
 
 activities = load_activities(DATA_DIR)
-health = load_health_metrics(DATA_DIR)
+# Solo le colonne che questa pagina disegna. `health_daily` ne ha molte di
+# piu', e alcune (il VO2max, che Garmin ripete nei giorni dopo la misura) hanno
+# un valore anche quando le misure della pagina non ci sono: lasciate dentro,
+# farebbero sembrare "misurato" un giorno vuoto e sposterebbero l'ultimo giorno
+# con dati. Tagliarle qui alleggerisce anche i dati dei grafici.
+health = load_health_metrics(DATA_DIR)[list(PAGE_COLUMNS)]
 
 if activities.empty:
     st.info(f"No *_ACTIVITY.fit file found in {DATA_DIR.resolve()}.")

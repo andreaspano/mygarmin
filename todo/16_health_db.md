@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Health in SQLite: una tabella `health_daily` derivata dai JSON
@@ -40,8 +40,10 @@ sonno) restano nei JSON: in SQLite non servono a nessuna pagina.
 
 Le trappole, viste sui file veri:
 
-- **spo2 e' tutto `null`**: l'orologio non la misura. Le colonne ci sono ma
-  restano vuote; se un giorno la si attiva, si riempiono senza toccare niente.
+- **spo2 c'e' solo a tratti**: 20 giorni su 64 (dal 2026-08-13 al 08-31, piu'
+  il 09-08), poi piu' niente; `avgSleepSpO2` manca anche in due di quei giorni
+  (08-13 e 09-08). Negli altri giorni i campi sono `null` e le colonne restano
+  NULL.
 - **VO2max e' "il piu' recente", non quello del giorno.** Il file del
   2026-09-17 porta ancora il valore del 09-16, e cosi' fino al 09-20; prima
   del 09-11 non c'e' proprio. E il valore di un giorno puo' comparire solo nel
@@ -140,7 +142,9 @@ Le trappole, viste sui file veri:
      `stress_max` 87, `resp_sleep_avg` 13;
    - VO2max: `vo2max_date` 2026-09-14 con 40.2 compare (dal file del 09-15);
      prima del 09-11 `vo2max` e' NULL;
-   - spo2: tutte NULL.
+   - spo2: valori in 20 giorni per `spo2_avg` e `spo2_low`, 18 per
+     `spo2_sleep_avg`; il 2026-08-14 vale 91 / 83 / 92; il 2026-10-02 e'
+     tutto NULL.
 3. Secondo giro: nessun giorno riletto.
 4. `touch` su `stats/<oggi>.json`, poi sync: si rilegge solo quel giorno.
 5. Cambiare `HEALTH_LOGIC_VERSION`: la tabella si riempie di nuovo, le
