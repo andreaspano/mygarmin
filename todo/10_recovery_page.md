@@ -1,5 +1,5 @@
 ---
-status: to commit
+status: done
 ---
 
 # Recovery: una pagina con i dati di recupero
