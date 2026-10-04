@@ -1,0 +1,30 @@
+# Configurazione di mygarmin. Tutte le chiavi sono obbligatorie: non ci sono
+# default nel codice, una chiave mancante ferma il programma.
+
+# Cartella dei dati (FIT, health/, activities.db). Usata dal download,
+# dall'interfaccia e dallo stato di forma.
+data_dir: ~/adrive/data/garmin-export
+
+# Token di login di Garmin Connect (evita di reinserire la password).
+token_store: ~/token
+
+# Fuso orario in cui mostrare gli orari. Cambiarlo richiede di alzare
+# LOGIC_VERSION in interface/db.py: la cache salva gli orari gia' convertiti.
+local_tz: Europe/Rome
+
+# Primo giorno dello storico delle metriche di salute, per garmin-export-all e
+# per make backfill_health. Ogni giorno costa 9 chiamate a Garmin: un anno sono
+# circa 3.300 chiamate, 30-45 minuti.
+history_start: 2025-01-01
+
+# Pausa in secondi fra una richiesta a Garmin e l'altra. Se arrivano errori
+# "too many requests", aumentarla.
+request_delay: 0.3
+
+# Giorni di salute riscaricati a ogni update (compreso oggi). Garmin rivede i
+# dati di un giorno anche dopo la mezzanotte (il sonno arriva la mattina dopo),
+# quindi il solo giorno corrente lascerebbe indietro quelli appena chiusi.
+health_refresh_days: 3
+
+# Giorni (compreso oggi) della finestra dello stato di forma.
+fitness_status_window_days: 14

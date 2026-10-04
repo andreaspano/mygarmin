@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Config: `user/config.yaml`, obbligatorio e senza default
@@ -134,3 +134,15 @@ perche' e' li' che si cambiano i valori.
 4. `grep` di `START_DATE`, `HEALTH_BACKFILL_START`, `ZoneInfo("Europe/Rome")`:
    nessun risultato fuori da `config.py`.
 5. `streamlit run`: l'app parte e le pagine sono identiche.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_17'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. Il revert riporta le costanti nel codice e
+toglie `user/config.yaml`; dati e cache non cambiano.
+
+Dopo il revert, rifare il merge di `todo_17` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

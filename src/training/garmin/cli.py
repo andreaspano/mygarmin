@@ -1,5 +1,7 @@
 """Punto di ingresso: orchestra login ed esportazione di tutti i dati."""
 
+from datetime import date
+
 from . import config
 from .activities import export_activities
 from .auth import init_api
@@ -21,9 +23,12 @@ def main() -> None:
 
         export_activities(api, out_dir)
         print()
-        export_misc(api, out_dir, config.START_DATE, config.END_DATE)
+        # La fine e' sempre oggi: non e' configurazione, e calcolarla qui (non
+        # all'import) la tiene giusta anche dopo la mezzanotte.
+        end_date = date.today()
+        export_misc(api, out_dir, config.HISTORY_START, end_date)
         print()
-        export_daily_health(api, out_dir, config.START_DATE, config.END_DATE)
+        export_daily_health(api, out_dir, config.HISTORY_START, end_date)
 
         print()
         print("Fatto! Tutti i dati sono in:", out_dir.resolve())
