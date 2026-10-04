@@ -41,3 +41,6 @@ lightning_logs/
 
 # Claude Code worktrees
 .claude/worktrees/
+
+# Prove e file temporanei del progetto
+tmp/
