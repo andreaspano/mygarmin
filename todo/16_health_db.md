@@ -151,3 +151,15 @@ Le trappole, viste sui file veri:
    attivita' no (stesso numero di righe e stesso `parsed_at` in `activities`).
 6. Cancellare `activities.db`: l'app ricostruisce entrambe le tabelle.
 7. `streamlit run`, pagina Recovery: grafici identici a prima.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_16'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: la tabella `health_daily` resta in `activities.db`;
+e' innocua, il codice vecchio non la legge.
+
+Dopo il revert, rifare il merge di `todo_16` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

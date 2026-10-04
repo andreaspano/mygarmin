@@ -181,3 +181,14 @@ sta nel contenitore; `VO2MAX_WIDTH` = 812 e' una stima, non misurata).
 
 **Fatte il 2026-09-27.** Il sospetto sui 812px era fondato: misurati, erano
 cento pixel di meno delle altre righe. Vedi "Chiuso" qui sopra.
+
+## Revert
+
+Il todo 08 non ha un merge: i tre commit sono andati direttamente su
+`main` (`0f20642`, `9429960`, `bba4b40`), e il revert li annulla tutti e tre.
+
+```bash
+git revert --no-edit bba4b40 9429960 0f20642
+```
+
+Effetti fuori dal repo: nessuno.

@@ -184,3 +184,17 @@ Le altre cinque verifiche, per riferimento:
 6. **Passa.** `AppTest` su tutte e cinque le pagine: nessuna eccezione. Nel
    browser a 1440px la pagina non scorre in orizzontale e i sei pannelli stanno
    nel contenitore (930px su 1074 disponibili).
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_10'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: i JSON di salute scaricati in `DATA_DIR/health/` restano su disco.
+
+Todo successivi ci hanno costruito sopra (il 16 ha modificato `health.py` e
+`recovery.py`): il revert dara' conflitti da risolvere a mano.
+
+Dopo il revert, rifare il merge di `todo_10` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

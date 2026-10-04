@@ -195,3 +195,17 @@ Due cose sono venute fuori strada facendo:
   con l'`import warnings`. Deduplicava un parametro ripetuto dentro *una*
   specifica: con sei specifiche distinte non succede piu' (verificato, nessun
   avviso ne' in `AppTest` ne' nel log dell'app).
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_03'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno.
+
+Todo successivi ci hanno costruito sopra (il 09 ha spostato `week.py` in
+`period_page.py`): il revert dara' conflitti da risolvere a mano.
+
+Dopo il revert, rifare il merge di `todo_03` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

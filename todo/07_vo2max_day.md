@@ -174,3 +174,18 @@ Da sapere:
   `main` rifa' la cache all'indietro** (versione "3" -> "2", altri due minuti),
   e tornando qui la rifa' di nuovo in avanti. Dopo il merge non succede piu'.
   (Unito a `main` con ad0c201: non succede piu'.)
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_07'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno: il revert riporta indietro `LOGIC_VERSION`, e `activities.db` si
+ricostruisce da solo al primo avvio.
+
+Todo successivi ci hanno costruito sopra (`db.py` e' cambiato dopo, e
+`LOGIC_VERSION` e' passata a "4"): il revert dara' conflitti da risolvere a mano.
+
+Dopo il revert, rifare il merge di `todo_07` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

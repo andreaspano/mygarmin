@@ -211,3 +211,17 @@ Altre scelte:
 prima della modifica, sono **48 identici**. Nessun errore, e i grafici si
 disegnano giusti. Varrebbe un todo suo: l'origine e' qualche layer che riceve
 dati vuoti.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_06'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno.
+
+Todo successivi ci hanno costruito sopra (il 09 ha spostato `week.py` in
+`period_page.py`): il revert dara' conflitti da risolvere a mano.
+
+Dopo il revert, rifare il merge di `todo_06` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

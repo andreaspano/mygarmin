@@ -128,3 +128,17 @@ L'asse resta temporale: un asse ordinale sulle etichette garantirebbe le
 scritte ma farebbe collassare nella stessa posizione settimane con lo stesso
 numero di anni diversi (w38 del 2025 e w38 del 2026), fondendo due settimane in
 un punto solo.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_02'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno.
+
+Todo successivi ci hanno costruito sopra (il 09 ha spostato `week.py` in
+`period_page.py`): il revert dara' conflitti da risolvere a mano.
+
+Dopo il revert, rifare il merge di `todo_02` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
