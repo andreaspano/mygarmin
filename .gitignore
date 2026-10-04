@@ -38,3 +38,6 @@ lightning_logs/
 .aider*
 
 # Build
+
+# Claude Code worktrees
+.claude/worktrees/
