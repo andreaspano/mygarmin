@@ -4,18 +4,17 @@ import json
 import re
 from datetime import timezone
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 import pandas as pd
 from fitparse import FitFile
 
-from training.garmin.config import DATA_DIR
+# LOCAL_TZ viene da `user/config.yaml`; `db.py` continua a prenderlo da qui.
+from training.garmin.config import DATA_DIR, LOCAL_TZ
 
 _ACTIVITY_ID_RE = re.compile(r"(\d+)_ACTIVITY\.fit$")
 _SEMICIRCLE_TO_DEGREES = 180 / 2**31
 _NAMES_FILENAME = "activity_names.json"
 _TYPES_FILENAME = "activity_types.json"
-LOCAL_TZ = ZoneInfo("Europe/Rome")
 
 
 def _to_local(dt):

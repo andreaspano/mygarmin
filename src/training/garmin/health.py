@@ -10,19 +10,7 @@ from garminconnect import Garmin
 
 from .auth import init_api
 from .client import safe_call
-from .config import DATA_DIR, REQUEST_DELAY
-
-# Da dove parte il backfill dello storico: la prima attivita' in archivio e' del
-# 3 gennaio 2025, quindi il primo dell'anno copre tutto senza chiedere a Garmin
-# mesi in cui non c'era niente da registrare. Piu' indietro di cosi' si
-# scaricherebbero solo giorni vuoti, a 9 chiamate l'uno.
-HEALTH_BACKFILL_START = date(2025, 1, 1)
-
-# Quanti giorni indietro rinfrescare a ogni `update_activity`: oggi e i due
-# precedenti. Garmin rivede i dati di un giorno anche dopo la mezzanotte (il
-# sonno della notte arriva la mattina dopo, e il punteggio si assesta), quindi
-# guardare il solo giorno corrente lascerebbe indietro quelli appena chiusi.
-HEALTH_REFRESH_DAYS = 3
+from .config import DATA_DIR, HEALTH_REFRESH_DAYS, HISTORY_START, REQUEST_DELAY
 
 DAILY_ENDPOINTS = {
     "stats": lambda api, d: api.get_stats(d),
@@ -99,12 +87,13 @@ def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
 
 
 def backfill_health(data_dir: Path = DATA_DIR) -> None:
-    """Scarica lo storico delle metriche di salute, dal 2025 a oggi.
+    """Scarica lo storico delle metriche di salute, da `history_start`
+    (`user/config.yaml`) a oggi.
 
     E' un comando a parte (`make backfill_health`) e non un pezzo di
-    `update_activity` per via di quanto costa: circa 640 giorni per 9 endpoint
-    sono quasi 5.800 chiamate, e con la pausa fra una e l'altra ci vuole
-    mezz'ora abbondante. Si puo' interrompere con Ctrl+C e rilanciare: i giorni
-    gia' scaricati vengono saltati."""
+    `update_activity` per via di quanto costa: ogni giorno sono 9 chiamate, e
+    con la pausa fra una e l'altra un anno di storico richiede 30-45 minuti. Si
+    puo' interrompere con Ctrl+C e rilanciare: i giorni gia' scaricati vengono
+    saltati."""
     api = init_api()
-    export_daily_health(api, Path(data_dir), HEALTH_BACKFILL_START, date.today())
+    export_daily_health(api, Path(data_dir), HISTORY_START, date.today())
