@@ -42,12 +42,12 @@ def load_activities(data_dir: Path = DATA_DIR) -> pd.DataFrame:
 
 @st.cache_data(ttl=ACTIVITIES_TTL_SECONDS)
 def load_health_metrics(data_dir: Path = DATA_DIR) -> pd.DataFrame:
-    """Le metriche di salute come `load_health()`, senza rileggere i JSON a
-    ogni rerun.
+    """Le metriche di salute come `load_health()`, senza rifare il sync di
+    `health_daily` a ogni rerun.
 
     Stesso TTL delle attivita' e stessa ragione per cui il decoratore sta qui e
     non sul loader: `training.interface.health` non deve dipendere da
-    Streamlit. Leggerle costa poco (circa 1,7 ms al giorno, cioe' un secondo
-    scarso sullo storico intero), ma e' un costo inutile da pagare a ogni
+    Streamlit. Il sync guarda l'mtime dei JSON e rilegge solo i giorni
+    cambiati, quindi costa poco, ma e' un costo inutile da pagare a ogni
     click."""
     return load_health(data_dir)

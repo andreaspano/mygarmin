@@ -84,6 +84,8 @@ che c'e', e questo todo aggiunge il modo per scaricare lo storico (vedi Work),
 - Non toccare `period_page.py`, `db.py`, `fit.py`: i dati di salute non passano
   da SQLite. Con un file per giorno e poche centinaia di giorni, leggere i JSON
   e metterli in cache basta.
+  (Superato dal todo 16, `16_health_db.md`: ora i JSON finiscono in una tabella
+  `health_daily` dentro `activities.db`, una cache derivata da loro.)
 
 ## Rischi
 

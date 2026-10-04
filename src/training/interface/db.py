@@ -14,6 +14,12 @@ picked up automatically without a manual cache-clear or restart.
 The Streamlit pages do not call list_activities() directly: passano da
 data.load_activities(), che ci mette davanti una cache con un ttl breve per
 non rifare la scansione a ogni rerun.
+
+Nello stesso file sta anche la tabella `health_daily`, ma non e' di questo
+modulo: la costruisce `health_db.py` dai JSON di salute, non dai FIT, con la
+sua versione (`health_logic_version` in schema_meta). rebuild() cancella il
+file intero e quindi anche lei; il primo `health_db.sync_health()` dopo la
+riempie di nuovo dai JSON.
 """
 
 import sqlite3
