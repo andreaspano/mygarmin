@@ -22,11 +22,11 @@ Il formato e' stato deciso su un report di prova (la settimana del
   dice con parole semplici ("your training load is back in a healthy range",
   "almost no harder efforts").
 - **Tre sezioni**, in quest'ordine, con questi titoli esatti:
-  - `## 1. Training`: le sedute, come sono distribuite nella settimana,
+  - `## Training`: le sedute, come sono distribuite nella settimana,
     l'intensita', il carico rispetto alla settimana prima;
-  - `## 2. Recovery`: readiness, FC a riposo, HRV, sonno, stress, cioe' come
+  - `## Recovery`: readiness, FC a riposo, HRV, sonno, stress, cioe' come
     il corpo ha risposto giorno per giorno;
-  - `## 3. Trend`: le ultime quattro settimane, cosa sale, cosa scende, cosa
+  - `## Trend`: le ultime quattro settimane, cosa sale, cosa scende, cosa
     e' stabile. Le variazioni piccole sono rumore e vanno dette come tali.
 - **Niente** piani, niente suggerimenti per la settimana dopo, niente
   riferimenti a `summary/05.plan/`, niente tabelle.
@@ -159,7 +159,7 @@ Write, passi obbligatori.
 
 Week: 2026-09-21 to 2026-09-27 · Health data: 7/7 days
 
-## 1. Training
+## Training
 
 A well-balanced week: three runs and two road rides, with two
 rest days placed so that no two demanding days came back to back. Friday's run
@@ -172,7 +172,7 @@ your training load back into a healthy range. The one thing missing over the
 past month is harder work. Almost all of your training is easy, and Garmin
 also notes the shortage of tempo or faster efforts.
 
-## 2. Recovery
+## Recovery
 
 You started the week tired. Monday's readiness was very low, the
 clear echo of the previous hilly weekend, and the night going into Monday was
@@ -186,7 +186,7 @@ Sleep was good overall. There were a couple of shorter nights (Tuesday and
 Friday), but they didn't knock you back, and a long, restful Saturday night
 closed the week well. Day-to-day stress stayed low.
 
-## 3. Trend
+## Trend
 
 The month tells a clear story: a gradual build, one big
 hilly week that pushed you hard, and this week to absorb it. Your body handled
