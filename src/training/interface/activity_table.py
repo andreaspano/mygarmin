@@ -19,11 +19,12 @@ SPORT_ICON_FILES = {
 }
 _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
-# Solo le tre grandezze che dicono "che uscita e' stata": quanto lunga, quanto
-# e' durata, quanto saliva. Velocita', battito e VO2max stanno nella scheda di
-# dettaglio sotto la tabella (`activity_detail`), che si apre sulla riga
-# selezionata: erano sei numeri per riga da leggere di sfuggita, e la riga ne
-# regge tre. Il sotto-tipo (`sub_sport`: "Road", "Generic", ...) non ha una
+# Le tre grandezze che dicono "che uscita e' stata" (quanto lunga, quanto e'
+# durata, quanto saliva) piu' la velocita' equivalente in piano, che serve a
+# confrontare le uscite fra loro riga per riga, al netto del dislivello (todo
+# 26, scelta di Andrea). Velocita' media, battito e VO2max stanno nella scheda
+# di dettaglio sotto la tabella (`activity_detail`), che si apre sulla riga
+# selezionata: erano sei numeri per riga da leggere di sfuggita. Il sotto-tipo (`sub_sport`: "Road", "Generic", ...) non ha una
 # colonna: diceva poco. Resta nei dati, come le metriche spostate.
 ACTIVITY_COLUMNS = [
     "icon",
@@ -34,6 +35,7 @@ ACTIVITY_COLUMNS = [
     "total_distance_km",
     "total_time_min",
     "total_ascent_m",
+    "equiv_speed_kmh",
 ]
 ACTIVITY_COLUMN_CONFIG = {
     "icon": st.column_config.ImageColumn("", width=50),
@@ -52,6 +54,14 @@ ACTIVITY_COLUMN_CONFIG = {
     ),
     "total_ascent_m": st.column_config.NumberColumn(
         "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."
+    ),
+    "equiv_speed_kmh": st.column_config.NumberColumn(
+        "Eq km/h",
+        format="%.1f",
+        width=75,
+        alignment="right",
+        help="Grade-adjusted speed: the flat-ground speed with the same energy cost "
+        "(Minetti 2002), over moving time. Running, hiking and walking only.",
     ),
 }
 

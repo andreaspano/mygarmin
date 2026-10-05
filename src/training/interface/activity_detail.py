@@ -12,6 +12,7 @@ from training.garmin.config import DATA_DIR
 from training.interface.activity_report import load_activity_comments
 from training.interface.activity_table import sport_icon_path, sport_label
 from training.interface.db import load_activity_records
+from training.interface.grade import slope_pct
 
 alt.data_transformers.disable_max_rows()
 
@@ -165,10 +166,7 @@ def show_activity_detail(activity) -> None:
         for col in ("heart_rate", "speed_kmh"):
             chart_records[f"{col}_smooth"] = chart_records[col].rolling("5min", min_periods=1, center=True).mean()
 
-        altitude_diff_m = chart_records["altitude_m"].astype(float).diff()
-        distance_diff_m = (chart_records["distance_km"].astype(float).diff() * 1000).mask(lambda s: s == 0)
-        raw_slope_pct = (altitude_diff_m / distance_diff_m) * 100
-        chart_records["slope_pct"] = raw_slope_pct.rolling("30s", min_periods=1, center=True).mean().clip(-30, 30)
+        chart_records["slope_pct"] = slope_pct(chart_records).clip(-30, 30)
 
         chart_data = chart_records.reset_index()
         hover = alt.selection_point(

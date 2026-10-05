@@ -38,6 +38,7 @@ from training.interface.fit import (
     load_activity_types,
 )
 from training.interface.fit import load_activity_records as _parse_fit_records
+from training.interface.grade import EQUIV_SPEED_SPORTS, equivalent_speed_kmh
 
 DB_FILENAME = "activities.db"
 
@@ -96,7 +97,11 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 # "4": `avg_speed_kmh` leggeva solo il campo `avg_speed`, che l'orologio nuovo
 # non scrive piu' (vedi `fit._avg_speed_kmh`): 45 attivita' erano in cache con
 # 0 km/h al posto della velocita'.
-LOGIC_VERSION = "4"
+#
+# "5": colonna `equiv_speed_kmh`, la velocita' equivalente in piano (vedi
+# `grade.py`), calcolata dai record: come per "3", i file gia' in cache vanno
+# riletti tutti.
+LOGIC_VERSION = "5"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -119,6 +124,7 @@ CREATE TABLE IF NOT EXISTS activities (
     total_ascent_m    REAL,
     total_descent_m   REAL,
     vo2max            REAL,
+    equiv_speed_kmh   REAL,
     activity_name     TEXT,
     parsed_at         TEXT NOT NULL
 );
@@ -185,11 +191,11 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
         INSERT INTO activities (
             activity_id, path, sport, sub_sport, start_time, total_distance_km,
             total_time_min, avg_heart_rate, max_heart_rate, avg_speed_kmh,
-            total_calories, total_ascent_m, total_descent_m, vo2max, activity_name, parsed_at
+            total_calories, total_ascent_m, total_descent_m, vo2max, equiv_speed_kmh, activity_name, parsed_at
         ) VALUES (
             :activity_id, :path, :sport, :sub_sport, :start_time, :total_distance_km,
             :total_time_min, :avg_heart_rate, :max_heart_rate, :avg_speed_kmh,
-            :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :activity_name, :parsed_at
+            :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :equiv_speed_kmh, :activity_name, :parsed_at
         )
         ON CONFLICT(activity_id) DO UPDATE SET
             path=excluded.path, sport=excluded.sport, sub_sport=excluded.sub_sport,
@@ -198,6 +204,7 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
             max_heart_rate=excluded.max_heart_rate, avg_speed_kmh=excluded.avg_speed_kmh,
             total_calories=excluded.total_calories, total_ascent_m=excluded.total_ascent_m,
             total_descent_m=excluded.total_descent_m, vo2max=excluded.vo2max,
+            equiv_speed_kmh=excluded.equiv_speed_kmh,
             activity_name=excluded.activity_name,
             parsed_at=excluded.parsed_at
         """,
@@ -228,6 +235,11 @@ def _parse_and_store(
     records = _parse_fit_records(path)
     activity_id = str(summary["activity_id"])
     summary["sport"] = sport_from_garmin_type(summary.get("sport"), types.get(activity_id))
+    # Dai record gia' letti qui sopra: il FIT non si rilegge. Solo per gli
+    # sport in cui il modello di costo ha senso; per gli altri resta vuota.
+    summary["equiv_speed_kmh"] = (
+        equivalent_speed_kmh(records, summary["avg_speed_kmh"]) if summary["sport"] in EQUIV_SPEED_SPORTS else None
+    )
     _insert_activity(conn, summary, names.get(activity_id), parsed_at)
     _insert_records(conn, summary["activity_id"], records)
     return True
