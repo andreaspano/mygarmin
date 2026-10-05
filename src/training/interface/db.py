@@ -38,7 +38,7 @@ from training.interface.fit import (
     load_activity_types,
 )
 from training.interface.fit import load_activity_records as _parse_fit_records
-from training.interface.grade import EQUIV_SPEED_SPORTS, equivalent_speed_kmh
+from training.interface.grade import EQUIV_SPEED_SPORTS, equivalent_speed_kmh, equivalent_speed_series
 
 DB_FILENAME = "activities.db"
 
@@ -101,7 +101,10 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 # "5": colonna `equiv_speed_kmh`, la velocita' equivalente in piano (vedi
 # `grade.py`), calcolata dai record: come per "3", i file gia' in cache vanno
 # riletti tutti.
-LOGIC_VERSION = "5"
+#
+# "6": colonna `equiv_speed_kmh` anche nella tabella `records`, la velocita'
+# equivalente campione per campione per il grafico Speed della scheda.
+LOGIC_VERSION = "6"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -142,11 +145,14 @@ CREATE TABLE IF NOT EXISTS records (
     lat         REAL,
     lon         REAL,
     distance_km REAL,
+    equiv_speed_kmh REAL,
     PRIMARY KEY (activity_id, ts_epoch)
 ) WITHOUT ROWID;
 """
 
-_RECORD_COLUMNS = ("heart_rate", "speed_kmh", "altitude_m", "cadence", "power", "lat", "lon", "distance_km")
+_RECORD_COLUMNS = (
+    "heart_rate", "speed_kmh", "altitude_m", "cadence", "power", "lat", "lon", "distance_km", "equiv_speed_kmh",
+)
 
 
 def _db_path(data_dir: Path) -> Path:
@@ -237,9 +243,19 @@ def _parse_and_store(
     summary["sport"] = sport_from_garmin_type(summary.get("sport"), types.get(activity_id))
     # Dai record gia' letti qui sopra: il FIT non si rilegge. Solo per gli
     # sport in cui il modello di costo ha senso; per gli altri resta vuota.
+    # Se `sync()` riclassifica lo sport piu' tardi, questi valori (quello
+    # dell'attivita' e quelli dei record) non si ricalcolano fino al prossimo
+    # rebuild.
+    with_equiv = summary["sport"] in EQUIV_SPEED_SPORTS
     summary["equiv_speed_kmh"] = (
-        equivalent_speed_kmh(records, summary["avg_speed_kmh"]) if summary["sport"] in EQUIV_SPEED_SPORTS else None
+        equivalent_speed_kmh(records, summary["avg_speed_kmh"]) if with_equiv else None
     )
+    if not records.empty:
+        records["equiv_speed_kmh"] = (
+            equivalent_speed_series(records)
+            if with_equiv and records["altitude_m"].notna().any()
+            else None
+        )
     _insert_activity(conn, summary, names.get(activity_id), parsed_at)
     _insert_records(conn, summary["activity_id"], records)
     return True

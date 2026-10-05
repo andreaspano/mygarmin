@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Velocita' equivalente nel grafico Speed, salvata nei record
@@ -100,3 +100,18 @@ Non esiste una suite di test; l'app gira su http://localhost:8501.
 6. Passando il mouse su un grafico qualsiasi, il crosshair si muove ancora
    su tutti e tre.
 7. Le pagine si caricano senza eccezioni (AppTest o server headless).
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_27'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: la colonna `records.equiv_speed_kmh` resta in
+`activities.db` (189 MB invece di 178) fino al prossimo rebuild. E' innocua:
+il codice vecchio non la legge, e al primo avvio dopo il revert
+`LOGIC_VERSION` torna a "5", non combacia con il "6" salvato e `sync()`
+ricostruisce la cache da solo (circa 19 minuti).
+
+Dopo il revert, rifare il merge di `todo_27` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
