@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Weekly: un report per settimana in `summary/02.weekly/`
@@ -224,3 +224,17 @@ concern.
 The first week of September is hard to compare: the watch wasn't worn for most
 of it.
 ```
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_18'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. Lo script legge soltanto: al massimo
+aggiorna la cache di `activities.db` dai FIT e dai JSON gia' scaricati,
+come fa gia' l'app. I report in `summary/02.weekly/` sono nel repo e il
+revert li toglie (2026-09-21 torna il report di prova).
+
+Dopo il revert, rifare il merge di `todo_18` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

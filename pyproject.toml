@@ -20,6 +20,7 @@ training = "training:main"
 garmin-export-all = "training.garmin:main"
 training-fitness-status = "training.garmin.fitness_status:main"
 training-activity-reports = "training.interface.activity_report:main"
+training-weekly-data = "training.interface.weekly_data:main"
 
 [build-system]
 requires = ["uv_build>=0.12.6,<0.13.0"]
