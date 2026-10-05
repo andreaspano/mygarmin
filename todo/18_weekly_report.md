@@ -231,10 +231,13 @@ of it.
 git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_18'$" --format=%H -1)
 ```
 
-Effetti fuori dal repo: nessuno. Lo script legge soltanto: al massimo
-aggiorna la cache di `activities.db` dai FIT e dai JSON gia' scaricati,
-come fa gia' l'app. I report in `summary/02.weekly/` sono nel repo e il
-revert li toglie (2026-09-21 torna il report di prova).
+Effetti fuori dal repo: lo script legge soltanto (al massimo aggiorna la
+cache di `activities.db` dai FIT e dai JSON gia' scaricati, come fa gia'
+l'app). I report di `summary/02.weekly/` non sono nel merge: `summary/` e'
+in `.gitignore` e sono entrati dopo, con `git add -f`, in un commit a parte;
+il revert li lascia dove sono. Il report di prova del 2026-09-21 non era nel
+repo ed e' stato sovrascritto: il suo testo resta in questo file e
+nell'esempio dell'agente.
 
 Dopo il revert, rifare il merge di `todo_18` non riporta le modifiche (git le
 considera gia' unite): per riaverle serve il revert del revert.
