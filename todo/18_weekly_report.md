@@ -164,6 +164,15 @@ Write, passi obbligatori.
    nessun riferimento a piani o alla settimana dopo, nessuna tabella, fatti
    coerenti con il report di prova. Il file sovrascrive
    `summary/02.weekly/2026-09-21.md`, e la pagina Week lo mostra.
+7. L'agente su altre due settimane, per provare che il report viene dal JSON
+   e non ricalca l'esempio:
+   - **2026-09-28** (l'ultima chiusa, senza report di prova): stesse regole
+     del punto 6, ogni frase sul calendario verificata contro `days`, il
+     file in `summary/02.weekly/2026-09-28.md`;
+   - **2026-08-31** (orologio assente dal 09-01 al 09-06): Recovery dice che
+     sonno, HRV e FC a riposo hanno un giorno solo e non li commenta come una
+     settimana intera; la riga in testa dice `Health data: 1/7 days`; Trend
+     non confronta le medie di quella settimana come se fossero piene.
 
 ## Il report di prova (2026-09-21)
 
