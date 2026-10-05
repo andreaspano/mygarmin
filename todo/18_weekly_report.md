@@ -61,25 +61,38 @@ modello.
   un errore, non viene arrotondata); senza argomento, l'ultima settimana
   chiusa. Target `make weekly_data WEEK=YYYY-MM-DD` (WEEK facoltativo).
 - Legge solo dati locali: `db.list_activities()` e
-  `health_db.load_health_db()`. Niente chiamate a Garmin, niente scritture.
+  `health_db.load_health_db()`. Niente chiamate a Garmin, niente scritture
+  fuori dalla cache: le due funzioni aggiornano `activities.db` dai FIT e dai
+  JSON gia' scaricati (`sync()`, `sync_health()`), e va bene cosi'.
 - Il JSON:
   - `week`: `start`, `end`, `partial`, `last_day`;
   - `activities`: una riga per attivita' (giorno della settimana e data,
-    sport, nome, distanza, durata, dislivello, FC media e massima);
+    sport, nome, distanza, durata, dislivello, FC media e massima).
+    Un'attivita' appartiene al giorno in cui comincia (`start_time`, gia' in
+    ora locale), anche se finisce dopo mezzanotte;
   - `days`: una riga per ognuno dei 7 giorni, con le attivita' del giorno
     (o nessuna) e le misure di recupero di quella mattina. Serve all'agente
     per non sbagliare il calendario (vedi sotto);
-  - `training`: sedute, tempo, distanza **per sport** (mai sommata fra corsa
-    e bici: insieme non vuol dire niente), dislivello, giorni di riposo;
+  - `training`: sedute, tempo, distanza **per sport** (mai sommata fra sport
+    diversi, corsa e bici o corsa e camminata: insieme non vuol dire niente),
+    dislivello, giorni di riposo;
   - `load`: carico acuto e cronico, ACWR e il suo stato, training status,
     bilancio del carico con la frase di Garmin, presi dall'ultimo giorno
     della settimana che li ha (e quale giorno e');
   - `vo2max`: le misure con `vo2max_date` dentro la settimana;
   - `coverage`: **per metrica**, quanti giorni su 7 hanno un valore (vedi
-    Rischi);
+    Rischi). Solo le metriche che il report commenta: `readiness`,
+    `sleep_hours`, `sleep_score`, `hrv_last_night`, `resting_hr`,
+    `stress_avg`, `load_acute`. Non SpO2, che l'orologio non misura (0/7
+    anche nelle settimane complete);
   - `four_weeks`: per questa settimana e le tre prima, gli stessi totali e
     le medie di recupero, ognuna con il numero di giorni su cui e' fatta.
 - Una media su zero giorni e' `null`, mai `0`.
+- L'HRV si legge sempre da `hrv_last_night`, sia per `coverage` sia per le
+  medie. `hrv_weekly_avg` e `hrv_status` no: Garmin li porta avanti anche
+  nei giorni senza orologio (nella settimana del 2026-08-31 sono 4/7 contro
+  1/7 di `hrv_last_night`), e farebbero sembrare misurate notti che non lo
+  sono.
 
 ### L'agente: `.claude/agents/weekly-report.md`
 
@@ -129,9 +142,9 @@ Write, passi obbligatori.
   Un unico "7/7" li avrebbe fatti sembrare confrontabili. La riga
   `Health data: <n>/7` usa i giorni con il sonno registrato, cioe' quelli con
   l'orologio.
-- **Buchi nei dati di salute**: oggi mancano dal 2025-01-01 al 2026-07-31.
-  Per quelle settimane la sezione Recovery dice che non ci sono dati, e Trend
-  confronta solo quello che c'e'.
+- **Buchi nei dati di salute**: oggi mancano dal 2024-11-29 al 2025-08-09
+  (e dal 2020-03-08 al 2023-01-01). Per quelle settimane la sezione Recovery
+  dice che non ci sono dati, e Trend confronta solo quello che c'e'.
 - **Il carico di Garmin e' a fine giornata**: si prende l'ultimo giorno della
   settimana che lo ha.
 
@@ -139,14 +152,14 @@ Write, passi obbligatori.
 
 1. `uv run training-weekly-data --week 2026-09-21`: settimana 2026-09-21 ->
    2026-09-27, 5 attivita' (3 corse, 2 uscite in bici), riposo martedi' e
-   giovedi', `coverage` 7/7 su tutte le metriche.
+   giovedi', `coverage` 7/7 su tutte le metriche di `coverage`.
 2. I totali dello script contro query dirette su `activities.db` per la
    stessa settimana: devono coincidere.
-3. `--week 2026-08-31`: `coverage` di sonno, HRV e FC a riposo 1/7, readiness
-   7/7.
+3. `--week 2026-08-31`: `coverage` di sonno, HRV (`hrv_last_night`) e FC a
+   riposo 1/7, readiness 7/7.
 4. `--week 2026-09-22` (un martedi'): errore chiaro.
-5. Una settimana del 2025: nessun dato di salute, medie `null`, nessuna
-   eccezione.
+5. Una settimana dentro il buco, per esempio `--week 2025-03-03`: nessun
+   dato di salute, medie `null`, nessuna eccezione.
 6. L'agente sulla settimana del 2026-09-21: tre sezioni con i titoli esatti,
    nessun riferimento a piani o alla settimana dopo, nessuna tabella, fatti
    coerenti con il report di prova. Il file sovrascrive
