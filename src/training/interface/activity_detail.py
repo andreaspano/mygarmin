@@ -53,12 +53,21 @@ def _synced_series_chart(
     area: bool = False,
     y_scale: alt.Scale | None = None,
     smooth_field: str | None = None,
+    extra_field: str | None = None,
+    extra_title: str | None = None,
+    extra_color: str | None = None,
+    subtitle: str | None = None,
 ) -> alt.LayerChart:
     """Grafico temporale che partecipa a un crosshair verticale condiviso:
     passando lo stesso oggetto `hover` a piu' grafici e componendoli in un
     unico vconcat, il mouse su uno qualsiasi sposta la linea verticale (e il
     punto evidenziato) alla stessa ora su tutti, per confrontare facilmente
-    FC/velocita'/altitudine nello stesso istante."""
+    FC/velocita'/altitudine nello stesso istante.
+
+    `extra_field` e' una curva in piu', con il suo colore, sopra le altre
+    (oggi la velocita' equivalente nel grafico Speed); entra anche nel
+    tooltip. `subtitle` serve a dire cosa sono le curve, che non hanno una
+    legenda: i colori sono fissi, non codificano un campo."""
     base = alt.Chart(data).encode(x=alt.X("timestamp:T", title="Time"))
     y_enc = alt.Y(f"{y_field}:Q", title=y_title, scale=y_scale) if y_scale else alt.Y(f"{y_field}:Q", title=y_title)
 
@@ -73,12 +82,20 @@ def _synced_series_chart(
         layers.append(
             base.mark_line(color="red", strokeWidth=2).encode(y=alt.Y(f"{smooth_field}:Q", title=y_title))
         )
+    if extra_field:
+        layers.append(
+            base.mark_line(color=extra_color, strokeWidth=2).encode(y=alt.Y(f"{extra_field}:Q", title=y_title))
+        )
+
+    tooltip = [alt.Tooltip("timestamp:T", title="Time"), alt.Tooltip(f"{y_field}:Q", title=y_title)]
+    if extra_field:
+        tooltip.append(alt.Tooltip(f"{extra_field}:Q", title=extra_title, format=".1f"))
 
     selectors = (
         base.mark_point(opacity=0)
         .encode(
             y=alt.Y(f"{y_field}:Q"),
-            tooltip=[alt.Tooltip("timestamp:T", title="Time"), alt.Tooltip(f"{y_field}:Q", title=y_title)],
+            tooltip=tooltip,
         )
         .add_params(hover)
     )
@@ -89,7 +106,10 @@ def _synced_series_chart(
         y=y_enc, opacity=alt.condition(hover, alt.value(1), alt.value(0))
     )
     layers.extend([selectors, rule, point])
-    return alt.layer(*layers).properties(title=alt.TitleParams(title, anchor="start"))
+    title_params = (
+        alt.TitleParams(title, anchor="start", subtitle=subtitle) if subtitle else alt.TitleParams(title, anchor="start")
+    )
+    return alt.layer(*layers).properties(title=title_params)
 
 
 def show_activity_detail(activity) -> None:
@@ -163,8 +183,12 @@ def show_activity_detail(activity) -> None:
         st.warning("No sampled data (records) in this file.")
     else:
         chart_records = _with_gap_breaks(records)
-        for col in ("heart_rate", "speed_kmh"):
-            chart_records[f"{col}_smooth"] = chart_records[col].rolling("5min", min_periods=1, center=True).mean()
+        # La velocita' equivalente (todo 27) c'e' solo per gli sport a piedi
+        # con la quota: per gli altri la colonna e' tutta vuota, e il grafico
+        # Speed resta com'era. Grezza nel database, si liscia qui come le altre.
+        has_equiv = records["equiv_speed_kmh"].notna().any()
+        for col in ("heart_rate", "speed_kmh", "equiv_speed_kmh"):
+            chart_records[f"{col}_smooth"] = chart_records[col].astype(float).rolling("5min", min_periods=1, center=True).mean()
 
         chart_records["slope_pct"] = slope_pct(chart_records).clip(-30, 30)
 
@@ -197,6 +221,14 @@ def show_activity_detail(activity) -> None:
                     "Speed",
                     "#60a5fa",
                     smooth_field="speed_kmh_smooth",
+                    # La media di questa curva e' vicina ma non uguale a "Eq
+                    # km/h" della tabella: li' i tratti pesano per la distanza.
+                    extra_field="equiv_speed_kmh_smooth" if has_equiv else None,
+                    extra_title="Grade-adjusted (km/h)",
+                    extra_color="#16a34a",
+                    subtitle="Red: 5-min average. Green: grade-adjusted speed, 5-min average."
+                    if has_equiv
+                    else None,
                 ).properties(width="container")
             )
 

@@ -42,6 +42,26 @@ def minetti_cost(i):
     return 155.4 * i**5 - 30.4 * i**4 - 43.3 * i**3 + 46.3 * i**2 + 19.5 * i + _FLAT_COST
 
 
+def _cost_factor(records: pd.DataFrame) -> pd.Series:
+    """Il costo di ogni campione relativo alla pianura (1 = come in piano).
+
+    Dove la pendenza non si sa (quota mancante in quel tratto) il campione
+    vale come in piano: meglio che buttarlo."""
+    limit = _MODEL_SLOPE_LIMIT_PCT
+    slope = slope_pct(records).clip(-limit, limit) / 100
+    return (minetti_cost(slope) / _FLAT_COST).fillna(1.0)
+
+
+def equivalent_speed_series(records: pd.DataFrame) -> pd.Series:
+    """La velocita' equivalente in piano campione per campione, in km/h.
+
+    Grezza, non lisciata: il rumore dell'altimetro passa nel fattore, e la
+    media mobile la fa chi la disegna. Una media nel tempo di questa serie e'
+    vicina ma non uguale a `equivalent_speed_kmh`, che pesa i tratti per la
+    distanza e parte dalla velocita' media di Garmin."""
+    return records["speed_kmh"].astype(float) * _cost_factor(records)
+
+
 def equivalent_speed_kmh(records: pd.DataFrame, avg_speed_kmh: float | None) -> float | None:
     """La velocita' equivalente in piano dell'attivita', in km/h, o None.
 
@@ -67,10 +87,5 @@ def equivalent_speed_kmh(records: pd.DataFrame, avg_speed_kmh: float | None) -> 
     if total_m <= 0:
         return None
 
-    limit = _MODEL_SLOPE_LIMIT_PCT
-    slope = slope_pct(records).clip(-limit, limit) / 100
-    # Dove la pendenza non si sa (quota mancante in quel tratto) il tratto
-    # vale come in piano: meglio che buttarlo.
-    factor = (minetti_cost(slope) / _FLAT_COST).fillna(1.0)
-    equivalent_m = float(np.nansum(distance_diff_m * factor))
+    equivalent_m = float(np.nansum(distance_diff_m * _cost_factor(records)))
     return avg_speed_kmh * equivalent_m / total_m
