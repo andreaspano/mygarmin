@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Velocita' equivalente in piano (pendenza normalizzata), in tabella
@@ -107,3 +107,18 @@ Non esiste una suite di test; l'app gira su http://localhost:8501.
 4. Il conteggio per sport delle celle piene e vuote, stampato.
 5. Due rebuild di fila danno gli stessi numeri.
 6. Lo scatter della scheda di dettaglio e' colorato come prima.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_26'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: la colonna `equiv_speed_kmh` resta in `activities.db`
+fino al prossimo rebuild. E' innocua: il codice vecchio non la legge, e al
+primo avvio dopo il revert `LOGIC_VERSION` torna a "4", non combacia con il
+"5" salvato e `sync()` ricostruisce la cache da solo (circa 19 minuti con 968
+attivita').
+
+Dopo il revert, rifare il merge di `todo_26` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
