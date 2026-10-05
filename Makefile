@@ -1,4 +1,4 @@
-.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface activity_reports
+.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface activity_reports weekly_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -40,3 +40,10 @@ interface:
 
 activity_reports:
 	uv run training-activity-reports
+
+# I fatti di una settimana in JSON, per il report settimanale. Solo dati
+# locali: per la settimana aggiornata, prima make update_activity.
+#   make weekly_data                   (l'ultima settimana chiusa)
+#   make weekly_data WEEK=2026-09-21   (un lunedi')
+weekly_data:
+	uv run training-weekly-data $(if $(WEEK),--week $(WEEK))
