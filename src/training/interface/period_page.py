@@ -951,7 +951,20 @@ def render(spec: PeriodSpec) -> None:
     # sommando questa si ottiene il conteggio senza una strada a parte.
     activities["_count"] = 1
 
-    period_totals = _totals(activities, "period_start").sort_index(ascending=False)
+    period_totals = _totals(activities, "period_start")
+
+    # Il periodo in corso c'e' sempre, anche vuoto: il lunedi' mattina la
+    # settimana nuova deve gia' comparire, a zero, invece di sembrare
+    # dimenticata. Conteggi e somme a zero; FC, velocita' e VO2max vuoti, come
+    # per una settimana senza dati.
+    current_period = spec.bucket(pd.Series([pd.Timestamp.today()])).iloc[0]
+    if current_period not in period_totals.index:
+        empty = pd.DataFrame(
+            {"n": [0], "distance": [0.0], "time": [0.0], "d+": [0.0]},
+            index=pd.DatetimeIndex([current_period], name=period_totals.index.name),
+        )
+        period_totals = pd.concat([period_totals, empty])
+    period_totals = period_totals.sort_index(ascending=False)
 
     # Con i report la cima si divide in due: a sinistra filtro e tabella, a
     # destra il report del periodo scelto, alto quanto i due insieme. Stanno
@@ -982,9 +995,14 @@ def render(spec: PeriodSpec) -> None:
     # Un periodo entra se si sovrappone all'intervallo, non solo se ci cade
     # dentro il primo giorno: scegliendo un mercoledi' ci si aspetta di vedere
     # anche la settimana che lo contiene, e un 15 del mese il suo mese intero.
+    # Il "To" non va oltre l'ultima attivita', quindi un periodo in corso
+    # ancora vuoto ne resterebbe sempre fuori: entra quando l'intervallo arriva
+    # fino in fondo ai dati.
     period_end = spec.bucket_end(period_totals.index)
+    reaches_latest = end_date >= activities["start_time"].max().date()
     period_totals = period_totals[
-        (period_totals.index.date <= end_date) & (period_end.date >= start_date)
+        ((period_totals.index.date <= end_date) & (period_end.date >= start_date))
+        | (reaches_latest & (period_totals.index == current_period))
     ]
 
     if period_totals.empty:
