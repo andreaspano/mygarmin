@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Grafico di analisi della corsa a tre fasce
@@ -214,7 +214,12 @@ Non esiste una suite di test; l'app gira su http://localhost:8501.
 git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_28'$" --format=%H -1)
 ```
 
-Effetti fuori dal repo: le colonne nuove restano in `activities.db` fino al
-prossimo rebuild. Sono innocue: al primo avvio dopo il revert
-`LOGIC_VERSION` torna a "6", non combacia con il "7" salvato e `sync()`
-ricostruisce la cache da solo (circa 19 minuti), con la pendenza di prima.
+Effetti fuori dal repo: le colonne `aerobic_te`, `anaerobic_te`,
+`hr_zone_bounds` e `threshold_hr` restano in `activities.db` (198 MB) fino al
+prossimo rebuild, e `equiv_speed_kmh` resta calcolata con la pendenza nuova.
+Sono innocue: al primo avvio dopo il revert `LOGIC_VERSION` torna a "6", non
+combacia con il "7" salvato e `sync()` ricostruisce la cache da solo (circa
+13 minuti, misurati sul rebuild di questo todo), con la pendenza di prima.
+
+Dopo il revert, rifare il merge di `todo_28` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

@@ -104,7 +104,12 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 #
 # "6": colonna `equiv_speed_kmh` anche nella tabella `records`, la velocita'
 # equivalente campione per campione per il grafico Speed della scheda.
-LOGIC_VERSION = "6"
+#
+# "7": pendenza nuova (finestra di 30 m attorno al campione, vedi
+# `grade.slope_pct`), quindi `equiv_speed_kmh` cambia in entrambe le tabelle;
+# e colonne nuove in `activities` per il grafico della scheda (todo 28): i
+# Training Effect di Garmin, i tetti delle zone cardiache e la soglia.
+LOGIC_VERSION = "7"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -128,6 +133,10 @@ CREATE TABLE IF NOT EXISTS activities (
     total_descent_m   REAL,
     vo2max            REAL,
     equiv_speed_kmh   REAL,
+    aerobic_te        REAL,
+    anaerobic_te      REAL,
+    hr_zone_bounds    TEXT,
+    threshold_hr      INTEGER,
     activity_name     TEXT,
     parsed_at         TEXT NOT NULL
 );
@@ -197,11 +206,13 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
         INSERT INTO activities (
             activity_id, path, sport, sub_sport, start_time, total_distance_km,
             total_time_min, avg_heart_rate, max_heart_rate, avg_speed_kmh,
-            total_calories, total_ascent_m, total_descent_m, vo2max, equiv_speed_kmh, activity_name, parsed_at
+            total_calories, total_ascent_m, total_descent_m, vo2max, equiv_speed_kmh,
+            aerobic_te, anaerobic_te, hr_zone_bounds, threshold_hr, activity_name, parsed_at
         ) VALUES (
             :activity_id, :path, :sport, :sub_sport, :start_time, :total_distance_km,
             :total_time_min, :avg_heart_rate, :max_heart_rate, :avg_speed_kmh,
-            :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :equiv_speed_kmh, :activity_name, :parsed_at
+            :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :equiv_speed_kmh,
+            :aerobic_te, :anaerobic_te, :hr_zone_bounds, :threshold_hr, :activity_name, :parsed_at
         )
         ON CONFLICT(activity_id) DO UPDATE SET
             path=excluded.path, sport=excluded.sport, sub_sport=excluded.sub_sport,
@@ -211,6 +222,8 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
             total_calories=excluded.total_calories, total_ascent_m=excluded.total_ascent_m,
             total_descent_m=excluded.total_descent_m, vo2max=excluded.vo2max,
             equiv_speed_kmh=excluded.equiv_speed_kmh,
+            aerobic_te=excluded.aerobic_te, anaerobic_te=excluded.anaerobic_te,
+            hr_zone_bounds=excluded.hr_zone_bounds, threshold_hr=excluded.threshold_hr,
             activity_name=excluded.activity_name,
             parsed_at=excluded.parsed_at
         """,

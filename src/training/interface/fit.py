@@ -92,6 +92,35 @@ def _vo2max(fit: FitFile) -> float | None:
     return None
 
 
+# Le zone cardiache stanno nel messaggio `time_in_zone` (216), che la
+# versione di fitparse in uso non conosce per nome: i campi si leggono per
+# numero, come il VO2max. Il messaggio c'e' una volta per la sessione
+# (`reference_mesg` = 18) e una per ogni giro; serve quello della sessione.
+# Nel campo 6 ci sono sei tetti: il primo e' quello della "zona 0", i tetti di
+# Z1-Z4 sono i quattro dopo (il sesto e' il massimo). Nel 13 la soglia
+# anaerobica. Sul file del 03/10/2026: (86, 106, 121, 141, 157, 176) e 155.
+_TIME_IN_ZONE_MESSAGE = 216
+_SESSION_MESSAGE = 18
+_ZONE_FIELDS = {"reference_mesg": 0, "hr_zone_high_boundary": 6, "threshold_heart_rate": 13}
+
+
+def _hr_zones(fit: FitFile) -> tuple[list[int] | None, int | None]:
+    """I tetti di Z1-Z4 e la soglia anaerobica della sessione, o None.
+
+    I file vecchi il messaggio non lo hanno, o lo hanno vuoto."""
+    for message in fit.get_messages(_TIME_IN_ZONE_MESSAGE):
+        fields = {field.def_num: field.value for field in message.fields}
+        if fields.get(_ZONE_FIELDS["reference_mesg"]) != _SESSION_MESSAGE:
+            continue
+        bounds = fields.get(_ZONE_FIELDS["hr_zone_high_boundary"])
+        threshold = fields.get(_ZONE_FIELDS["threshold_heart_rate"])
+        tops = list(bounds[1:5]) if isinstance(bounds, (tuple, list)) and len(bounds) >= 5 else None
+        if tops is not None and any(not isinstance(top, int) for top in tops):
+            tops = None
+        return tops, threshold if isinstance(threshold, int) else None
+    return None, None
+
+
 def _avg_speed_kmh(values: dict) -> float | None:
     """La velocita' media in km/h, o None se non si puo' ricavare.
 
@@ -120,6 +149,7 @@ def load_activity_summary(path: Path) -> dict:
     fit = FitFile(str(path))
     session = next(fit.get_messages("session"), None)
     values = session.get_values() if session else {}
+    zone_tops, threshold_hr = _hr_zones(fit)
 
     return {
         "activity_id": activity_id_from_path(path),
@@ -136,6 +166,11 @@ def load_activity_summary(path: Path) -> dict:
         "total_ascent_m": values.get("total_ascent"),
         "total_descent_m": values.get("total_descent"),
         "vo2max": _vo2max(fit),
+        # I Training Effect di Garmin: il suo algoritmo, nel file solo i totali.
+        "aerobic_te": values.get("total_training_effect"),
+        "anaerobic_te": values.get("total_anaerobic_training_effect"),
+        "hr_zone_bounds": json.dumps(zone_tops) if zone_tops else None,
+        "threshold_hr": threshold_hr,
     }
 
 

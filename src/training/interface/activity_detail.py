@@ -4,6 +4,8 @@ e traccia.
 Sta qui e non nella pagina Activities perche' la stessa scheda si apre anche
 dalla pagina Week, cliccando una riga della tabella delle attivita'."""
 
+import json
+
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -12,7 +14,7 @@ from training.garmin.config import DATA_DIR
 from training.interface.activity_report import load_activity_comments
 from training.interface.activity_table import sport_icon_path, sport_label
 from training.interface.db import load_activity_records
-from training.interface.grade import slope_pct
+from training.interface.run_chart import EFFECTS, effects, has_effects, run_analysis_chart
 
 alt.data_transformers.disable_max_rows()
 
@@ -30,86 +32,52 @@ def _records(activity_id: int) -> pd.DataFrame:
     return load_activity_records(activity_id, DATA_DIR)
 
 
-def _with_gap_breaks(df: pd.DataFrame, threshold: pd.Timedelta = pd.Timedelta(seconds=30)) -> pd.DataFrame:
-    """Inserisce una riga nulla in corrispondenza dei buchi nei timestamp
-    (es. una pausa di registrazione): senza interromperli, i grafici a
-    linea/area unirebbero i due lati della pausa con una diagonale,
-    disegnando un cambiamento (di FC, velocita', altitudine, ...) che non
-    e' mai avvenuto. Vega-Lite interrompe la linea/area sui valori nulli."""
-    gap = df.index.to_series().diff() > threshold
-    if not gap.any():
-        return df
-    breaks = pd.DataFrame(index=df.index[gap] - pd.Timedelta(seconds=1), columns=df.columns)
-    return pd.concat([df, breaks]).sort_index()
+def _zone_settings(activity) -> tuple[list[int] | None, int | None]:
+    """I tetti di Z1-Z4 e la soglia anaerobica salvati dal FIT, o None (file
+    vecchi senza il messaggio delle zone)."""
+    bounds = json.loads(activity.hr_zone_bounds) if isinstance(activity.hr_zone_bounds, str) else None
+    threshold = int(activity.threshold_hr) if pd.notna(activity.threshold_hr) else None
+    return bounds, threshold
 
 
-def _synced_series_chart(
-    data: pd.DataFrame,
-    hover: alt.Parameter,
-    y_field: str,
-    y_title: str,
-    title: str,
-    color: str,
-    area: bool = False,
-    y_scale: alt.Scale | None = None,
-    smooth_field: str | None = None,
-    extra_field: str | None = None,
-    extra_title: str | None = None,
-    extra_color: str | None = None,
-    subtitle: str | None = None,
-) -> alt.LayerChart:
-    """Grafico temporale che partecipa a un crosshair verticale condiviso:
-    passando lo stesso oggetto `hover` a piu' grafici e componendoli in un
-    unico vconcat, il mouse su uno qualsiasi sposta la linea verticale (e il
-    punto evidenziato) alla stessa ora su tutti, per confrontare facilmente
-    FC/velocita'/altitudine nello stesso istante.
+def _show_analysis(activity, records: pd.DataFrame) -> None:
+    """Il riepilogo degli effetti e il grafico a tre fasce (todo 28), che ha
+    preso il posto dei sei grafici di prima (FC, velocita', quota, velocita'
+    contro FC e i due istogrammi)."""
+    bounds, threshold = _zone_settings(activity)
+    has_hr = records["heart_rate"].notna().any()
 
-    `extra_field` e' una curva in piu', con il suo colore, sopra le altre
-    (oggi la velocita' equivalente nel grafico Speed); entra anche nel
-    tooltip. `subtitle` serve a dire cosa sono le curve, che non hanno una
-    legenda: i colori sono fissi, non codificano un campo."""
-    base = alt.Chart(data).encode(x=alt.X("timestamp:T", title="Time"))
-    y_enc = alt.Y(f"{y_field}:Q", title=y_title, scale=y_scale) if y_scale else alt.Y(f"{y_field}:Q", title=y_title)
+    # Cinque riquadri: i minuti per effetto, stimati sui battiti, e i due
+    # Training Effect di Garmin. Quello che manca non si mostra; senza niente
+    # il riepilogo sparisce.
+    tiles = []
+    if has_effects(bounds, threshold) and has_hr:
+        seconds = effects(records, bounds, threshold)
+        tiles += [(f"{name} (est.)", _hm(seconds[name] / 60)) for name in EFFECTS]
+    if pd.notna(activity.aerobic_te):
+        tiles.append(("Aerobic TE", f"{activity.aerobic_te:.1f}"))
+    if pd.notna(activity.anaerobic_te):
+        tiles.append(("Anaerobic TE", f"{activity.anaerobic_te:.1f}"))
+    if tiles:
+        for column, (label, value) in zip(st.columns(len(tiles)), tiles):
+            column.metric(
+                label,
+                value,
+                border=True,
+                help="Estimated from heart rate against your zones: Garmin computes its own "
+                "Training Effect, and the file only keeps the session totals."
+                if label.endswith("(est.)")
+                else "Garmin's Training Effect for the session, 0-5.",
+            )
 
-    series = (
-        base.mark_area(line={"color": color}, color=color + "80", clip=True)
-        if area
-        else base.mark_line(color=color)
-    ).encode(y=y_enc)
-
-    layers = [series]
-    if smooth_field:
-        layers.append(
-            base.mark_line(color="red", strokeWidth=2).encode(y=alt.Y(f"{smooth_field}:Q", title=y_title))
-        )
-    if extra_field:
-        layers.append(
-            base.mark_line(color=extra_color, strokeWidth=2).encode(y=alt.Y(f"{extra_field}:Q", title=y_title))
-        )
-
-    tooltip = [alt.Tooltip("timestamp:T", title="Time"), alt.Tooltip(f"{y_field}:Q", title=y_title)]
-    if extra_field:
-        tooltip.append(alt.Tooltip(f"{extra_field}:Q", title=extra_title, format=".1f"))
-
-    selectors = (
-        base.mark_point(opacity=0)
-        .encode(
-            y=alt.Y(f"{y_field}:Q"),
-            tooltip=tooltip,
-        )
-        .add_params(hover)
-    )
-    rule = base.mark_rule(color="#9ca3af", strokeDash=[4, 4]).encode(
-        opacity=alt.condition(hover, alt.value(1), alt.value(0))
-    )
-    point = base.mark_point(color=color, size=60, filled=True).encode(
-        y=y_enc, opacity=alt.condition(hover, alt.value(1), alt.value(0))
-    )
-    layers.extend([selectors, rule, point])
-    title_params = (
-        alt.TitleParams(title, anchor="start", subtitle=subtitle) if subtitle else alt.TitleParams(title, anchor="start")
-    )
-    return alt.layer(*layers).properties(title=title_params)
+    # Il tema decide i colori: la velocita' e' nel colore del testo, e il viola
+    # delle zone si schiarisce sul fondo scuro.
+    theme = st.context.theme.type or "light"
+    chart = run_analysis_chart(records, bounds, threshold, theme)
+    if chart is None:
+        st.info("No heart rate or speed to plot for this activity.")
+    else:
+        st.altair_chart(chart, width="stretch")
 
 
 def show_activity_detail(activity) -> None:
@@ -181,166 +149,10 @@ def show_activity_detail(activity) -> None:
 
     if records.empty:
         st.warning("No sampled data (records) in this file.")
-    else:
-        chart_records = _with_gap_breaks(records)
-        # La velocita' equivalente (todo 27) c'e' solo per gli sport a piedi
-        # con la quota: per gli altri la colonna e' tutta vuota, e il grafico
-        # Speed resta com'era. Grezza nel database, si liscia qui come le altre.
-        has_equiv = records["equiv_speed_kmh"].notna().any()
-        for col in ("heart_rate", "speed_kmh", "equiv_speed_kmh"):
-            chart_records[f"{col}_smooth"] = chart_records[col].astype(float).rolling("5min", min_periods=1, center=True).mean()
+        return
 
-        chart_records["slope_pct"] = slope_pct(chart_records).clip(-30, 30)
+    _show_analysis(activity, records)
 
-        chart_data = chart_records.reset_index()
-        hover = alt.selection_point(
-            fields=["timestamp"], nearest=True, on="pointermove", empty=False, clear="pointerout"
-        )
-
-        top_charts = []
-        if records["heart_rate"].notna().any():
-            top_charts.append(
-                _synced_series_chart(
-                    chart_data,
-                    hover,
-                    "heart_rate",
-                    "HR (bpm)",
-                    "Heart rate",
-                    "#60a5fa",
-                    smooth_field="heart_rate_smooth",
-                ).properties(width="container")
-            )
-
-        if records["speed_kmh"].notna().any():
-            top_charts.append(
-                _synced_series_chart(
-                    chart_data,
-                    hover,
-                    "speed_kmh",
-                    "Speed (km/h)",
-                    "Speed",
-                    "#60a5fa",
-                    smooth_field="speed_kmh_smooth",
-                    # La media di questa curva e' vicina ma non uguale a "Eq
-                    # km/h" della tabella: li' i tratti pesano per la distanza.
-                    extra_field="equiv_speed_kmh_smooth" if has_equiv else None,
-                    extra_title="Grade-adjusted (km/h)",
-                    extra_color="#16a34a",
-                    subtitle="Red: 5-min average. Green: grade-adjusted speed, 5-min average."
-                    if has_equiv
-                    else None,
-                ).properties(width="container")
-            )
-
-        # Ogni grafico e' incorporato nella sua colonna Streamlit: cosi' la coppia
-        # occupa sempre l'intera larghezza della riga (come la tabella), cosa che
-        # Vega-Lite non garantisce per un hconcat con figli responsive (i figli
-        # senza larghezza esplicita non si dividono lo spazio del contenitore).
-        if len(top_charts) == 2:
-            top_col1, top_col2 = st.columns(2)
-            top_col1.altair_chart(top_charts[0], width="stretch")
-            top_col2.altair_chart(top_charts[1], width="stretch")
-        elif top_charts:
-            st.altair_chart(top_charts[0], width="stretch")
-
-        altitude_chart = None
-        if records["altitude_m"].notna().any():
-            min_altitude = records["altitude_m"].min()
-            max_altitude = records["altitude_m"].max()
-            padding = max((max_altitude - min_altitude) * 0.1, 1)
-            altitude_chart = _synced_series_chart(
-                chart_data,
-                hover,
-                "altitude_m",
-                "Altitude (m)",
-                "Elevation profile",
-                "#c2410c",
-                area=True,
-                y_scale=alt.Scale(domain=[min_altitude, max_altitude + padding], nice=False),
-            ).properties(width="container")
-
-        scatter = None
-        if records[["speed_kmh", "heart_rate"]].notna().all(axis=1).any():
-            speed_q1, speed_q3 = records["speed_kmh"].quantile([0.25, 0.75])
-            speed_iqr = speed_q3 - speed_q1
-            speed_low = speed_q1 - 1.5 * speed_iqr
-            speed_high = speed_q3 + 1.5 * speed_iqr
-            scatter_data = chart_data[chart_data["speed_kmh"].between(speed_low, speed_high)]
-            x_min, x_max = scatter_data["speed_kmh"].min(), scatter_data["speed_kmh"].max()
-            y_min, y_max = scatter_data["heart_rate"].min(), scatter_data["heart_rate"].max()
-            x_pad = max((x_max - x_min) * 0.05, 0.1)
-            y_pad = max((y_max - y_min) * 0.05, 1)
-            slope_abs_max = max(scatter_data["slope_pct"].abs().max(skipna=True) or 0, 1)
-            scatter = (
-                alt.Chart(scatter_data)
-                .mark_circle(opacity=0.7, size=40)
-                .encode(
-                    x=alt.X(
-                        "speed_kmh:Q",
-                        title="Speed (km/h)",
-                        scale=alt.Scale(domain=[x_min - x_pad, x_max + x_pad], nice=False),
-                    ),
-                    y=alt.Y(
-                        "heart_rate:Q",
-                        title="HR (bpm)",
-                        scale=alt.Scale(domain=[y_min - y_pad, y_max + y_pad], nice=False),
-                    ),
-                    color=alt.Color(
-                        "slope_pct:Q",
-                        title="Slope (%)",
-                        scale=alt.Scale(domain=[-slope_abs_max, slope_abs_max], range=["red", "green"]),
-                    ),
-                    tooltip=[
-                        alt.Tooltip("speed_kmh:Q", title="Speed (km/h)"),
-                        alt.Tooltip("heart_rate:Q", title="HR (bpm)"),
-                        alt.Tooltip("slope_pct:Q", title="Slope (%)", format=".1f"),
-                    ],
-                )
-                .properties(title=alt.TitleParams("Speed vs HR", anchor="start"), width="container")
-            )
-
-        mid_charts = [c for c in (altitude_chart, scatter) if c is not None]
-        if len(mid_charts) == 2:
-            mid_col1, mid_col2 = st.columns(2)
-            mid_col1.altair_chart(mid_charts[0], width="stretch")
-            mid_col2.altair_chart(mid_charts[1], width="stretch")
-        elif mid_charts:
-            st.altair_chart(mid_charts[0], width="stretch")
-
-        speed_histogram = None
-        if records["speed_kmh"].notna().any():
-            speed_histogram = (
-                alt.Chart(chart_data)
-                .mark_bar(color="#60a5fa")
-                .encode(
-                    x=alt.X("speed_kmh:Q", bin=alt.Bin(maxbins=30), title="Speed (km/h)"),
-                    y=alt.Y("count():Q", title="Count"),
-                    tooltip=[alt.Tooltip("count():Q", title="Count")],
-                )
-                .properties(title=alt.TitleParams("Speed distribution", anchor="start"), width="container")
-            )
-
-        hr_histogram = None
-        if records["heart_rate"].notna().any():
-            hr_histogram = (
-                alt.Chart(chart_data)
-                .mark_bar(color="#60a5fa")
-                .encode(
-                    x=alt.X("heart_rate:Q", bin=alt.Bin(maxbins=30), title="HR (bpm)"),
-                    y=alt.Y("count():Q", title="Count"),
-                    tooltip=[alt.Tooltip("count():Q", title="Count")],
-                )
-                .properties(title=alt.TitleParams("HR distribution", anchor="start"), width="container")
-            )
-
-        hist_charts = [c for c in (speed_histogram, hr_histogram) if c is not None]
-        if len(hist_charts) == 2:
-            hist_col1, hist_col2 = st.columns(2)
-            hist_col1.altair_chart(hist_charts[0], width="stretch")
-            hist_col2.altair_chart(hist_charts[1], width="stretch")
-        elif hist_charts:
-            st.altair_chart(hist_charts[0], width="stretch")
-
-        if records[["lat", "lon"]].notna().all(axis=1).any():
-            st.markdown("**Route**")
-            st.map(records[["lat", "lon"]].dropna(), latitude="lat", longitude="lon", size=3)
+    if records[["lat", "lon"]].notna().all(axis=1).any():
+        st.markdown("**Route**")
+        st.map(records[["lat", "lon"]].dropna(), latitude="lat", longitude="lon", size=3)
