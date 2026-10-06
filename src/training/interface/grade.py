@@ -20,21 +20,80 @@ import pandas as pd
 EQUIV_SPEED_SPORTS = {"running", "hiking", "walking"}
 
 # L'intervallo in cui Minetti ha misurato il polinomio: fuori si estrapola.
-_MODEL_SLOPE_LIMIT_PCT = 45
+MODEL_SLOPE_LIMIT_PCT = 45
 _FLAT_COST = 3.6
+
+# Un buco fra due record oltre questa soglia e' una pausa: l'orologio fermo
+# non scrive record. Le medie mobili si fanno dentro i tratti fra due pause,
+# mai a cavallo, se no mescolano i due lati della sosta. I 5 s valgono per i
+# file a un record al secondo; quelli vecchi (registrazione "smart") ne hanno
+# uno ogni 3-9 s anche in movimento, e li' la soglia sale a quattro volte
+# l'intervallo tipico del file, se no ogni campione sarebbe una pausa.
+_PAUSE_GAP_MIN = pd.Timedelta(seconds=5)
+_PAUSE_GAP_INTERVALS = 4
+
+# La pendenza (todo 28): quota lisciata nel tempo, poi dislivello su una
+# finestra in metri attorno al campione. In metri e non in secondi perche'
+# nei tratti lenti pochi secondi coprono pochi metri e il rapporto impazzisce.
+_ALTITUDE_SMOOTH = "15s"
+_SLOPE_HALF_WINDOW_M = 30
+_SLOPE_MIN_SPAN_M = 20
+# La pendenza che entra nel modello di costo e' lisciata a 90 s: con meno la
+# velocita' equivalente amplifica ogni oscillazione del barometro, e nel
+# tempo una salita lunga resta intatta mentre i saliscendi brevi si
+# compensano.
+_COST_SLOPE_SMOOTH = "90s"
+
+
+def pause_gap(index: pd.DatetimeIndex) -> pd.Timedelta:
+    """Il buco oltre il quale c'e' una pausa, per questo file: 5 s, o quattro
+    volte l'intervallo mediano fra due record se e' piu' lungo."""
+    step = index.to_series().diff().median()
+    if pd.isna(step):
+        return _PAUSE_GAP_MIN
+    return max(_PAUSE_GAP_MIN, step * _PAUSE_GAP_INTERVALS)
+
+
+def segments(index: pd.DatetimeIndex) -> pd.Series:
+    """Il numero del tratto continuo di ogni campione: cresce di uno a ogni
+    pausa (vedi `pause_gap`)."""
+    gaps = index.to_series().diff() > pause_gap(index)
+    return gaps.cumsum()
+
+
+def rolling_mean(series: pd.Series, window: str) -> pd.Series:
+    """Media mobile centrata nel tempo, dentro ogni tratto fra due pause.
+
+    Su una finestra di tempo e non di campioni: i file vecchi non hanno un
+    record al secondo. Estremi compresi, cosi' la finestra e' simmetrica
+    attorno al campione (90 s sono 45 s prima e 45 dopo)."""
+    return series.astype(float).groupby(segments(series.index), group_keys=False).apply(
+        lambda part: part.rolling(window, min_periods=1, center=True, closed="both").mean()
+    )
 
 
 def slope_pct(records: pd.DataFrame) -> pd.Series:
     """La pendenza in percentuale, campione per campione, senza clip.
 
-    Dislivello diviso distanza fra due campioni consecutivi; dove la distanza
-    non cambia (fermi) la pendenza e' NaN invece di un infinito. La media
-    mobile di 30s centrata toglie il grosso del rumore dell'altimetro. La clip
-    la fa chi chiama: il modello e il grafico vogliono limiti diversi."""
-    altitude_diff_m = records["altitude_m"].astype(float).diff()
-    distance_diff_m = (records["distance_km"].astype(float).diff() * 1000).mask(lambda s: s == 0)
-    raw = (altitude_diff_m / distance_diff_m) * 100
-    return raw.rolling("30s", min_periods=1, center=True).mean()
+    La quota si liscia a 15 s; poi, per ogni campione, il primo punto a non
+    piu' di 30 m indietro e l'ultimo a non piu' di 30 m avanti lungo la
+    distanza: dislivello diviso distanza fra i due. Sotto i 20 m di finestra
+    (fermi, o distanza mancante) la pendenza e' NaN. La distanza
+    dell'orologio e' trattata come orizzontale. Le lisciature successive e
+    la clip le fa chi chiama: il modello e il grafico ne vogliono di diverse."""
+    if records.empty:
+        return pd.Series(dtype=float, index=records.index)
+    altitude = rolling_mean(records["altitude_m"], _ALTITUDE_SMOOTH).to_numpy()
+    # Cummax: la distanza non deve mai tornare indietro, se no la ricerca
+    # binaria sotto non vale.
+    distance_m = records["distance_km"].astype(float).fillna(0).cummax().to_numpy() * 1000
+    back = np.searchsorted(distance_m, distance_m - _SLOPE_HALF_WINDOW_M, side="left")
+    ahead = np.searchsorted(distance_m, distance_m + _SLOPE_HALF_WINDOW_M, side="right") - 1
+    span_m = distance_m[ahead] - distance_m[back]
+    rise_m = altitude[ahead] - altitude[back]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        slope = np.where(span_m >= _SLOPE_MIN_SPAN_M, rise_m / span_m * 100, np.nan)
+    return pd.Series(slope, index=records.index)
 
 
 def minetti_cost(i):
@@ -47,8 +106,8 @@ def _cost_factor(records: pd.DataFrame) -> pd.Series:
 
     Dove la pendenza non si sa (quota mancante in quel tratto) il campione
     vale come in piano: meglio che buttarlo."""
-    limit = _MODEL_SLOPE_LIMIT_PCT
-    slope = slope_pct(records).clip(-limit, limit) / 100
+    limit = MODEL_SLOPE_LIMIT_PCT
+    slope = rolling_mean(slope_pct(records), _COST_SLOPE_SMOOTH).clip(-limit, limit) / 100
     return (minetti_cost(slope) / _FLAT_COST).fillna(1.0)
 
 
