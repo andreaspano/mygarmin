@@ -48,14 +48,33 @@ def _effect_rows(activity, records: pd.DataFrame) -> list[list[tuple[str, str, s
     estimated, garmin = [], []
     if has_effects(bounds, threshold) and records["heart_rate"].notna().any():
         seconds = effects(records, bounds, threshold)
-        help_text = (
-            "Estimated from heart rate against your zones: Garmin computes its own "
-            "Training Effect, and the file only keeps the session totals."
+        # Le soglie nell'aiuto sono quelle di questa attivita', lette dal FIT:
+        # cambiano nel tempo, e il numero dice piu' del nome della zona.
+        z3_top = bounds[2]
+        ranges = (
+            f"heart rate at or below the top of Z3 ({z3_top} bpm)",
+            f"heart rate between the top of Z3 and the anaerobic threshold "
+            f"({z3_top + 1}-{threshold} bpm)",
+            f"heart rate above the anaerobic threshold ({threshold} bpm)",
         )
-        estimated = [(f"{name} (est.)", _hm(seconds[name] / 60), help_text) for name in EFFECTS]
+        estimated = [
+            (
+                f"{name} (est.)",
+                _hm(seconds[name] / 60),
+                f"Time (hh:mm) with {hr_range}. Estimated from heart rate: Garmin computes "
+                "its own Training Effect, and the file only keeps the session totals.",
+            )
+            for name, hr_range in zip(EFFECTS, ranges)
+        ]
+    te_help = {
+        "Aerobic TE": "Garmin's aerobic Training Effect for the session, from 0 to 5: how much "
+        "the activity improved your aerobic fitness.",
+        "Anaerobic TE": "Garmin's anaerobic Training Effect for the session, from 0 to 5: how "
+        "much the activity improved your capacity for high-intensity efforts.",
+    }
     for label, value in (("Aerobic TE", activity.aerobic_te), ("Anaerobic TE", activity.anaerobic_te)):
         if pd.notna(value):
-            garmin.append((label, f"{value:.1f}", "Garmin's Training Effect for the session, 0-5."))
+            garmin.append((label, f"{value:.1f}", te_help[label]))
     return [row for row in (estimated, garmin) if row]
 
 
@@ -101,13 +120,23 @@ def show_activity_detail(activity) -> None:
         # stesso ordine, cosi' l'occhio le ritrova; sotto le tre che dalla
         # tabella sono state tolte e che vivono solo qui.
         distance_col, time_col, ascent_col = st.columns(3)
-        distance_col.metric("Distance", f"{activity.total_distance_km:.1f} km")
-        time_col.metric("Duration", _hm(activity.total_time_min))
+        distance_col.metric(
+            "Distance",
+            f"{activity.total_distance_km:.1f} km",
+            help="Total distance recorded by the watch, in km.",
+        )
+        time_col.metric(
+            "Duration",
+            _hm(activity.total_time_min),
+            help="Elapsed time from start to finish, in hh:mm, pauses and stops included.",
+        )
         ascent_col.metric(
             "Elevation",
             f"+{activity.total_ascent_m:.0f} / -{activity.total_descent_m:.0f} m"
             if pd.notna(activity.total_ascent_m)
             else "-",
+            help="Total ascent and descent recorded by the watch, in metres. "
+            "Empty when the watch stored no altitude.",
         )
 
         speed_col, hr_col, vo2_col = st.columns(3)
@@ -122,6 +151,8 @@ def show_activity_detail(activity) -> None:
         hr_col.metric(
             "Avg HR",
             f"{activity.avg_heart_rate:.0f} bpm" if pd.notna(activity.avg_heart_rate) else "-",
+            help="Average heart rate over the activity, in beats per minute. Empty when "
+            "no heart rate was recorded.",
         )
         # La stima dell'orologio a fine attivita' (vedi `fit._vo2max`): manca
         # per le attivita' che l'orologio non considera, come le escursioni.
