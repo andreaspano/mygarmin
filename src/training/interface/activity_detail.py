@@ -40,35 +40,30 @@ def _zone_settings(activity) -> tuple[list[int] | None, int | None]:
     return bounds, threshold
 
 
-def _show_analysis(activity, records: pd.DataFrame) -> None:
-    """Il riepilogo degli effetti e il grafico a tre fasce (todo 28), che ha
-    preso il posto dei sei grafici di prima (FC, velocita', quota, velocita'
-    contro FC e i due istogrammi)."""
+def _effect_rows(activity, records: pd.DataFrame) -> list[list[tuple[str, str, str]]]:
+    """Le righe della scheda con gli effetti: i minuti per effetto, stimati
+    sui battiti, e i due Training Effect di Garmin, come (etichetta, valore,
+    aiuto). Quello che manca non si mostra, e una riga vuota sparisce."""
     bounds, threshold = _zone_settings(activity)
-    has_hr = records["heart_rate"].notna().any()
-
-    # Cinque riquadri: i minuti per effetto, stimati sui battiti, e i due
-    # Training Effect di Garmin. Quello che manca non si mostra; senza niente
-    # il riepilogo sparisce.
-    tiles = []
-    if has_effects(bounds, threshold) and has_hr:
+    estimated, garmin = [], []
+    if has_effects(bounds, threshold) and records["heart_rate"].notna().any():
         seconds = effects(records, bounds, threshold)
-        tiles += [(f"{name} (est.)", _hm(seconds[name] / 60)) for name in EFFECTS]
-    if pd.notna(activity.aerobic_te):
-        tiles.append(("Aerobic TE", f"{activity.aerobic_te:.1f}"))
-    if pd.notna(activity.anaerobic_te):
-        tiles.append(("Anaerobic TE", f"{activity.anaerobic_te:.1f}"))
-    if tiles:
-        for column, (label, value) in zip(st.columns(len(tiles)), tiles):
-            column.metric(
-                label,
-                value,
-                border=True,
-                help="Estimated from heart rate against your zones: Garmin computes its own "
-                "Training Effect, and the file only keeps the session totals."
-                if label.endswith("(est.)")
-                else "Garmin's Training Effect for the session, 0-5.",
-            )
+        help_text = (
+            "Estimated from heart rate against your zones: Garmin computes its own "
+            "Training Effect, and the file only keeps the session totals."
+        )
+        estimated = [(f"{name} (est.)", _hm(seconds[name] / 60), help_text) for name in EFFECTS]
+    for label, value in (("Aerobic TE", activity.aerobic_te), ("Anaerobic TE", activity.anaerobic_te)):
+        if pd.notna(value):
+            garmin.append((label, f"{value:.1f}", "Garmin's Training Effect for the session, 0-5."))
+    return [row for row in (estimated, garmin) if row]
+
+
+def _show_analysis(activity, records: pd.DataFrame) -> None:
+    """Il grafico a tre fasce (todo 28), che ha preso il posto dei sei
+    grafici di prima (FC, velocita', quota, velocita' contro FC e i due
+    istogrammi). Il riepilogo degli effetti sta nella scheda, sopra."""
+    bounds, threshold = _zone_settings(activity)
 
     # Il tema decide i colori: la velocita' e' nel colore del testo, e il viola
     # delle zone si schiarisce sul fondo scuro.
@@ -137,6 +132,13 @@ def show_activity_detail(activity) -> None:
             "Runs update it; other activities carry the last value. Empty when the "
             "watch stored none.",
         )
+
+        # Sotto, nello stesso riquadro e sulla stessa griglia da tre, gli
+        # effetti dell'allenamento: prima la stima sui battiti, poi i valori
+        # di Garmin.
+        for row in _effect_rows(activity, records):
+            for column, (label, value, help_text) in zip(st.columns(3), row):
+                column.metric(label, value, help=help_text)
 
     with comment_col:
         st.markdown("**Comment**")
