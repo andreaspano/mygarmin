@@ -69,7 +69,7 @@ def _elapsed_s(records: pd.DataFrame) -> np.ndarray:
     return (records.index - records.index[0]).total_seconds().to_numpy()
 
 
-def _durations_s(records: pd.DataFrame) -> pd.Series:
+def durations_s(records: pd.DataFrame) -> pd.Series:
     """Quanti secondi vale ogni record: fino al record dopo, e uno solo
     attraverso una pausa e per l'ultimo. Con un record al secondo e' un
     conteggio; i file vecchi ne hanno di piu' radi."""
@@ -180,7 +180,7 @@ def effects(records: pd.DataFrame, bounds: list[int], threshold_hr: int) -> dict
     E' una stima: Garmin calcola il Training Effect con un algoritmo suo, e
     nel file salva solo i totali della sessione."""
     hr = records["heart_rate"].astype(float)
-    seconds = _durations_s(records)
+    seconds = durations_s(records)
     result = dict.fromkeys(EFFECTS, 0.0)
     for value, duration in zip(hr, seconds):
         if pd.notna(value):
@@ -203,7 +203,7 @@ def bins(records: pd.DataFrame) -> pd.DataFrame:
     t = _elapsed_s(records)
     frame = pd.DataFrame(index=records.index)
     frame["bin"] = (t // BIN_S).astype(int)
-    frame["seconds"] = _durations_s(records).to_numpy()
+    frame["seconds"] = durations_s(records).to_numpy()
     frame["hr"] = records["heart_rate"].astype(float)
     frame["speed"] = rolling_mean(records["speed_kmh"], _SPEED_SMOOTH)
     frame["equiv"] = records["equiv_speed_kmh"].astype(float)
