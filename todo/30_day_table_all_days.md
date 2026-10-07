@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Pagina Day: una riga per ogni giorno, anche senza attivita'
