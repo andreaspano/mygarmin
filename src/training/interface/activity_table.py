@@ -74,6 +74,22 @@ def sport_icons() -> dict:
     return icons
 
 
+# L'icona dei giorni di riposo nella tabella della Day (righe vuote, todo 30):
+# grigia, per restare indietro rispetto ai colori degli sport.
+REST_ICON_FILE = "rest.png"
+
+
+@st.cache_data
+def rest_icon() -> str | None:
+    """L'icona del riposo come data URI, come quelle degli sport, o None se il
+    file manca."""
+    path = ICONS_DIR / REST_ICON_FILE
+    if not path.exists():
+        return None
+    mime = _ICON_MIME_TYPES.get(path.suffix.lower(), "application/octet-stream")
+    return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
+
+
 def sport_label(value: str | None) -> str:
     """Il nome di uno sport (o di un sotto-tipo) come si legge a schermo.
 
