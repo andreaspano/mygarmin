@@ -9,7 +9,13 @@ import streamlit as st
 
 from training.garmin.config import DATA_DIR
 from training.interface.activity_detail import show_activity_detail
-from training.interface.activity_table import activity_table, sport_label, with_empty_days
+from training.interface.activity_table import (
+    activity_table,
+    rest_icon,
+    sport_label,
+    with_empty_days,
+    with_icons,
+)
 from training.interface.data import load_activities
 from training.interface.filters import date_range
 from training.interface.report_view import show_report
@@ -62,7 +68,14 @@ latest = latest.copy()
 # Un giorno senza attivita' (dello sport scelto, se c'e' il filtro) ha una riga
 # vuota con la sola data: dalla tabella si vede anche quando non ci si e'
 # allenati. Per questo un intervallo senza attivita' non ferma la pagina.
-rows = with_empty_days(latest, start_date, end_date)
+rows = with_icons(with_empty_days(latest, start_date, end_date))
+# Le righe vuote prendono l'icona del riposo, ma non sempre: non oggi, che la
+# giornata non e' finita e ci si puo' ancora allenare; e non con un filtro per
+# sport, dove una riga vuota vuol dire "niente ciclismo quel giorno", non "un
+# giorno di riposo".
+if not sports:
+    rest_days = rows["activity_id"].isna() & (rows["day"] != dt.date.today())
+    rows.loc[rest_days, "icon"] = rest_icon()
 
 # Larga quanto il riquadro della scheda sotto (`activity_detail`, prima di
 # due colonne 3:2): con sei colonne, a tutta pagina meta' tabella era vuota.

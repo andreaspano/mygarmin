@@ -488,7 +488,11 @@ def run_analysis_chart(
                     "slope_abs:Q",
                     title="Slope (°)",
                     scale=alt.Scale(domain=[0, _ceil(data["slope_abs"].max())], nice=False),
-                    axis=alt.Axis(orient="right", tickCount=3),
+                    # A sinistra come gli altri due pannelli: a destra, con il
+                    # grafico largo quanto il contenitore, Vega-Lite non lascia
+                    # spazio all'asse e Streamlit lo tagliava (tacche, numeri e
+                    # titolo spariti).
+                    axis=alt.Axis(tickCount=3),
                 ),
                 y2=alt.datum(0),
                 color=alt.Color(
