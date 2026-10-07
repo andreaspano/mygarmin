@@ -1,5 +1,5 @@
-"""Scheda di dettaglio di una singola attivita': metriche, commento, grafici
-e traccia.
+"""Scheda di dettaglio di una singola attivita': metriche, grafico e
+traccia.
 
 Sta qui e non nella pagina Activities perche' la stessa scheda si apre anche
 dalla pagina Week, cliccando una riga della tabella delle attivita'."""
@@ -11,7 +11,6 @@ import pandas as pd
 import streamlit as st
 
 from training.garmin.config import DATA_DIR
-from training.interface.activity_report import load_activity_comments
 from training.interface.activity_table import sport_icon_path, sport_label
 from training.interface.db import load_activity_records
 from training.interface.run_chart import EFFECTS, effects, has_effects, run_analysis_chart
@@ -100,13 +99,15 @@ def show_activity_detail(activity) -> None:
 
     # La scheda ha lo stesso impianto di quelle per sport della pagina Week:
     # riquadro con bordo, icona e titolo sulla stessa riga, metriche su due
-    # righe da tre e due. Il commento sta accanto invece di finire sotto.
+    # righe da tre. Il commento del report, che stava accanto, e' stato tolto
+    # per scelta di Andrea: la seconda colonna resta vuota, cosi' il riquadro
+    # resta largo quanto la tabella sopra (pagina Day).
     #
     # Tre quinti della pagina e non un terzo come le schede della Week: a un
     # terzo i valori grandi delle metriche ("+164 / -163 m", "135 bpm") non ci
     # stanno e Streamlit li taglia con i puntini, e a meta' succedeva ancora a
     # 1280px. Misurato nel browser a 1440 e a 1280.
-    card_col, comment_col = st.columns([3, 2])
+    card_col, _ = st.columns([3, 2])
     with card_col.container(border=True):
         head = st.container(horizontal=True, vertical_alignment="center")
         icon_path = sport_icon_path(activity.sport)
@@ -170,15 +171,6 @@ def show_activity_detail(activity) -> None:
         for row in _effect_rows(activity, records):
             for column, (label, value, help_text) in zip(st.columns(3), row):
                 column.metric(label, value, help=help_text)
-
-    with comment_col:
-        st.markdown("**Comment**")
-        saved_comments = load_activity_comments(activity.activity_id)
-        if saved_comments is None:
-            st.info("Report not generated yet for this activity. Run `make activity_reports`.")
-        else:
-            for comment in saved_comments:
-                st.markdown(f"- {comment}")
 
     if records.empty:
         st.warning("No sampled data (records) in this file.")

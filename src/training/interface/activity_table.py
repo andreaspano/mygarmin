@@ -44,13 +44,13 @@ ACTIVITY_COLUMN_CONFIG = {
     # occhi riga per riga, e "km", "Min", "Bpm" si leggono al volo. Il nome
     # della grandezza sta nel `help`, per chi passa sopra l'intestazione.
     "total_distance_km": st.column_config.NumberColumn(
-        "km", format="%.1f", width=80, alignment="right", help="Distance."
+        "km", format="%.1f", width=80, alignment="center", help="Distance."
     ),
     "total_time_min": st.column_config.NumberColumn(
-        "Min", format="%.0f", width=70, alignment="right", help="Duration, in minutes."
+        "Min", format="%.0f", width=70, alignment="center", help="Duration, in minutes."
     ),
     "total_ascent_m": st.column_config.NumberColumn(
-        "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."
+        "D+", format="%.0f", width=60, alignment="center", help="Elevation gain, in metres."
     ),
 }
 
