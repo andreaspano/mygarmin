@@ -261,6 +261,47 @@ def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
     }
 
 
+def _hr_zones(activities: pd.DataFrame, day: date) -> dict[str, Any] | None:
+    """Le zone cardiache in bpm in vigore il giorno `day`: quelle dell'ultima
+    attivita' fino a quel giorno che le ha salvate (l'orologio le scrive nel
+    FIT e le aggiorna da solo: il 07/10/2026 il tetto di Z3 e' passato da 141 a
+    142). Servono al report per dare i bersagli in bpm. `None` se nessuna
+    attivita' le ha."""
+    known = activities[
+        (activities["start_time"].dt.date <= day) & activities["hr_zone_bounds"].notna()
+    ].sort_values("start_time")
+    if known.empty:
+        return None
+    activity = known.iloc[-1]
+    bounds, threshold = _zones(activity)
+    if not bounds:
+        return None
+    z1, z2, z3, z4 = bounds
+    zones = {
+        "Z1": {"max": z1},
+        "Z2": {"min": z1 + 1, "max": z2},
+        "Z3": {"min": z2 + 1, "max": z3},
+        "Z4": {"min": z3 + 1, "max": z4},
+        "Z5": {"min": z4 + 1},
+    }
+    # Una soglia che non sta sopra Z3 (alcuni file la salvano a zero) non e'
+    # una soglia: `None`, e niente fasce degli effetti.
+    valid = has_effects(bounds, threshold)
+    result = {
+        "as_of": activity["start_time"].date().isoformat(),
+        "zones": zones,
+        "threshold_hr": threshold if valid else None,
+    }
+    # Le fasce degli effetti, con le stesse regole di `run_chart.effect_of`.
+    if valid:
+        result["effects"] = {
+            EFFECTS[0]: {"max": z3},
+            EFFECTS[1]: {"min": z3 + 1, "max": threshold},
+            EFFECTS[2]: {"min": threshold + 1},
+        }
+    return result
+
+
 def _on(activities: pd.DataFrame, day: date) -> pd.DataFrame:
     return activities[activities["start_time"].dt.date == day].sort_values("start_time")
 
@@ -268,7 +309,12 @@ def _on(activities: pd.DataFrame, day: date) -> pd.DataFrame:
 def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, Any]:
     """Il contesto prima di D: da quanto non ci si allena, da quanto non si fa
     una seduta impegnativa, i riposi della settimana e le attivita' delle
-    ultime due settimane in una riga ciascuna."""
+    ultime due settimane in una riga ciascuna.
+
+    L'ultima attivita' e l'ultima seduta impegnativa sono *prima* di D, e lo
+    dicono i nomi delle chiavi: un'attivita' gia' fatta in D e' in
+    `trained_today` (e in `sessions.today`), cosi' "3 giorni dall'ultima
+    attivita'" non sembra vero quando ci si e' gia' allenati oggi."""
     dates = activities["start_time"].dt.date
     before = activities[dates < day].sort_values("start_time")
     last = before.iloc[-1]["start_time"].date() if not before.empty else None
@@ -285,10 +331,11 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
     active = set(dates[dates.isin(week)])
     listed = activities[(dates >= day - timedelta(days=RECENT_DAYS - 1)) & (dates <= day)].sort_values("start_time")
     return {
-        "last_activity": last.isoformat() if last else None,
-        "days_since_last_activity": (day - last).days if last else None,
-        "last_hard_session": last_hard.isoformat() if last_hard else None,
-        "days_since_last_hard_session": (day - last_hard).days if last_hard else None,
+        "trained_today": bool((dates == day).any()),
+        "last_activity_before_today": last.isoformat() if last else None,
+        "days_since_last_activity_before_today": (day - last).days if last else None,
+        "last_hard_session_before_today": last_hard.isoformat() if last_hard else None,
+        "days_since_last_hard_session_before_today": (day - last_hard).days if last_hard else None,
         "hard_session_rule": f"{HARD_SESSION_MIN}+ minutes above the top of Z3, "
         f"looked for in the last {BASELINE_LONG} days",
         "rest_days_last_7": len(week - active),
@@ -334,6 +381,7 @@ def build_daily_data(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any]:
             "today": [_session(a, data_dir) for _, a in _on(activities, day).iterrows()],
         },
         "recent": _recent(activities, day, data_dir),
+        "hr_zones": _hr_zones(activities, day),
         "missing": [name for name, item in morning.items() if isinstance(item, dict) and "value" in item and item["value"] is None],
     }
 

@@ -14,10 +14,19 @@ from training.interface.activity_table import ICONS_DIR
 # sezione si riconosce dal nome nel titolo ("1. Training" -> training.png),
 # non dal numero: un report con le sezioni in un altro ordine le trova lo
 # stesso, e una sezione senza icona resta col solo titolo.
+#
+# Il report giornaliero ha le stesse sezioni con titolo del settimanale:
+# "Training" e "Recovery" usano le stesse icone, "Load" prende quella del
+# trend (e' l'andamento del carico), "Health" (una croce) e "Next" (una
+# freccia) hanno la loro, disegnate nello stesso stile: cerchio pieno e tratto
+# bianco arrotondato.
 REPORT_SECTION_ICONS = {
     "training": "training.png",
     "recovery": "recovery.png",
     "trend": "trend.png",
+    "load": "trend.png",
+    "health": "health.png",
+    "next": "next.png",
 }
 # Piu' piccole delle icone delle schede (40px): qui accompagnano un titolo
 # dentro un testo, non aprono una scheda.
@@ -58,7 +67,7 @@ def show_report(path: Path, height: int, key: str, missing_text: str | None = No
     # Le sezioni ("## 1. Training", ...) una per una: ognuna ha la sua riga di
     # titolo con l'icona accanto, come le schede per sport. Il testo prima della
     # prima sezione, se c'e', sta in una sezione senza titolo: e' tutto il
-    # report giornaliero, che ha paragrafi in grassetto e non sezioni.
+    # testo dei report giornalieri vecchi, che avevano paragrafi in grassetto.
     sections: list[tuple[str | None, list[str]]] = [(None, [])]
     for line in lines:
         if line.startswith("## "):

@@ -93,9 +93,26 @@ def _show_analysis(activity, records: pd.DataFrame) -> None:
         st.altair_chart(chart, width="stretch")
 
 
-def show_activity_detail(activity) -> None:
-    """Disegna il dettaglio di `activity` (una riga di `list_activities`)."""
+# L'altezza della scheda, in pixel, per chi deve affiancarle qualcosa di alto
+# uguale (il report giornaliero nella Day). Streamlit non dice quanto e' alto
+# un contenitore: sono stime, sulle misure di Streamlit 1.63 come quelle della
+# tabella in `period_page`. Bordo e margini interni del riquadro, la riga con
+# icona e titolo, e una riga di metriche (etichetta e valore) con lo spazio
+# sotto.
+_CARD_FRAME_PX = 34
+_CARD_HEAD_PX = 56
+_CARD_METRIC_ROW_PX = 100
+
+
+def show_activity_detail(activity, card_container=None) -> int:
+    """Disegna il dettaglio di `activity` (una riga di `list_activities`) e
+    rende l'altezza stimata della scheda, in pixel.
+
+    Con `card_container` la scheda va li' (la Day la mette nella colonna della
+    tabella, con il report accanto); senza, nella prima di due colonne 3:2,
+    come prima. Grafico e mappa stanno comunque sotto, a tutta larghezza."""
     records = _records(activity.activity_id)
+    effect_rows = _effect_rows(activity, records)
 
     # La scheda ha lo stesso impianto di quelle per sport della pagina Week:
     # riquadro con bordo, icona e titolo sulla stessa riga, metriche su due
@@ -107,7 +124,7 @@ def show_activity_detail(activity) -> None:
     # terzo i valori grandi delle metriche ("+164 / -163 m", "135 bpm") non ci
     # stanno e Streamlit li taglia con i puntini, e a meta' succedeva ancora a
     # 1280px. Misurato nel browser a 1440 e a 1280.
-    card_col, _ = st.columns([3, 2])
+    card_col = card_container if card_container is not None else st.columns([3, 2])[0]
     with card_col.container(border=True):
         head = st.container(horizontal=True, vertical_alignment="center")
         icon_path = sport_icon_path(activity.sport)
@@ -168,16 +185,19 @@ def show_activity_detail(activity) -> None:
         # Sotto, nello stesso riquadro e sulla stessa griglia da tre, gli
         # effetti dell'allenamento: prima la stima sui battiti, poi i valori
         # di Garmin.
-        for row in _effect_rows(activity, records):
+        for row in effect_rows:
             for column, (label, value, help_text) in zip(st.columns(3), row):
                 column.metric(label, value, help=help_text)
 
+    card_height = _CARD_FRAME_PX + _CARD_HEAD_PX + _CARD_METRIC_ROW_PX * (2 + len(effect_rows))
+
     if records.empty:
         st.warning("No sampled data (records) in this file.")
-        return
+        return card_height
 
     _show_analysis(activity, records)
 
     if records[["lat", "lon"]].notna().all(axis=1).any():
         st.markdown("**Route**")
         st.map(records[["lat", "lon"]].dropna(), latitude="lat", longitude="lon", size=3)
+    return card_height

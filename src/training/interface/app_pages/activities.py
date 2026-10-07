@@ -22,9 +22,9 @@ DAILY_REPORT_DIR = Path("summary/01.daily")
 # piu' l'intestazione, come la tabella dei periodi nella Week. Oltre, la
 # tabella e il report scorrono dentro il loro riquadro.
 TABLE_HEIGHT_PX = 35 * 11 + 3
+# Lo spazio fra la tabella e la scheda sotto, nella stessa colonna.
+_COLUMN_GAP_PX = 16
 
-
-st.title("My activities")
 
 activities = load_activities(DATA_DIR)
 
@@ -92,33 +92,36 @@ with table_col:
     )
 
 selected_rows = event.selection.rows
+selected = rows.iloc[selected_rows[0]] if selected_rows else None
 
-# Il report c'e' anche per un giorno senza attivita': il riposo e' proprio il
-# giorno in cui serve.
-if selected_rows:
-    with report_col:
-        show_report(
-            DAILY_REPORT_DIR / f"{rows.iloc[selected_rows[0]]['day']:%Y-%m-%d}.md",
-            TABLE_HEIGHT_PX,
-            "day_report",
-            missing_text="No daily report for this day.",
-        )
-
-if not selected_rows:
+# Sotto la tabella, nella stessa colonna, la scheda dell'attivita' scelta (o
+# un messaggio); grafico e mappa vengono dopo, a tutta larghezza.
+card_height = 0
+if selected is None:
     # Senza nessuna attivita' nell'intervallo non c'e' niente da scegliere: lo
     # si dice, invece di chiedere di selezionare una riga.
-    st.info(
+    table_col.info(
         "Select an activity from the table to see its details."
         if rows["activity_id"].notna().any()
         else "No activity in the selected period."
     )
-    st.stop()
+elif pd.isna(selected["activity_id"]):
+    table_col.info("No activity on this day.")
+else:
+    # La riga dell'attivita' da `latest` e non da `rows`: li' le colonne con le
+    # righe vuote hanno perso i loro tipi (gli id diventano float).
+    activity = latest[latest["activity_id"] == selected["activity_id"]].iloc[0]
+    card_height = show_activity_detail(activity, card_container=table_col)
 
-selected = rows.iloc[selected_rows[0]]
-if pd.isna(selected["activity_id"]):
-    st.info("No activity on this day.")
-    st.stop()
-
-# La riga dell'attivita' da `latest` e non da `rows`: li' le colonne con le
-# righe vuote hanno perso i loro tipi (gli id diventano float).
-show_activity_detail(latest[latest["activity_id"] == selected["activity_id"]].iloc[0])
+# Il report del giorno a destra, alto quanto tabella e scheda insieme (con lo
+# spazio fra le due), cosi' le due colonne finiscono alla stessa altezza.
+# C'e' anche per un giorno senza attivita': il riposo e' proprio il giorno in
+# cui serve.
+if selected is not None:
+    with report_col:
+        show_report(
+            DAILY_REPORT_DIR / f"{selected['day']:%Y-%m-%d}.md",
+            TABLE_HEIGHT_PX + (_COLUMN_GAP_PX + card_height if card_height else 0),
+            "day_report",
+            missing_text="No daily report for this day.",
+        )

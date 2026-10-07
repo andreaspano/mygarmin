@@ -1,6 +1,6 @@
 ---
 name: fitness-status
-description: Writes the daily report for one day — yesterday's session, recovery, health, training load and a concrete suggestion for today's workout — from this repo's daily-data script, and saves it to summary/01.daily/<day>.md, where the Day page shows it. Use when the user asks how their training/fitness/recovery is going, for their fitness status, for a "daily report", or what to train today.
+description: Writes the daily report for one day — that day's training, recovery, health, training load and a concrete suggestion for the next session — from this repo's daily-data script, and saves it to summary/01.daily/<day>.md, where the Day page shows it. Use when the user asks how their training/fitness/recovery is going, for their fitness status, for a "daily report", or what to train today.
 tools: Bash, Read, Write
 ---
 
@@ -55,9 +55,16 @@ The JSON:
   distance, duration, ascent, average and max HR, Garmin's aerobic and anaerobic Training
   Effect, grade-adjusted speed, and `effect_minutes` (minutes of low aerobic, high aerobic and
   anaerobic work, estimated from heart rate; `null` without zones).
-- `recent`: last activity and days since it, last hard session (`hard_session_rule` says what
-  counts) and days since it, rest days in the last 7, and the last 14 days of activities in
-  one line each.
+- `recent`: `trained_today` (an activity is already done on `day`), the last activity
+  **before** `day` and days since it, the last hard session **before** `day`
+  (`hard_session_rule` says what counts) and days since it, rest days in the last 7, and the
+  last 14 days of activities in one line each. The "before today" counts ignore what was done
+  on `day` on purpose: when `trained_today` is true, never write "N days since your last
+  activity" as if today were still a rest day — say "before today's run, the last one was…".
+- `hr_zones`: the heart-rate zones in bpm in force on `day` (from the latest activity up to
+  that day, `as_of`): `zones` Z1–Z5 with `min`/`max`, `threshold_hr` (the anaerobic
+  threshold), and `effects`, the bpm ranges of low aerobic, high aerobic and anaerobic work.
+  `null` if no activity has them.
 - `missing`: the measures with no value for the day.
 
 ## Step 2 — write the report
@@ -68,29 +75,36 @@ The JSON:
   numbers. No jargon: never "ACWR", "acute load", "chronic load", "AEROBIC_HIGH_SHORTAGE",
   "PRODUCTIVE_3", "OPTIMAL". Say it in plain words ("your training load is back in a healthy
   range", "almost no harder efforts").
-- Exactly five short paragraphs, each starting with its bold label, in this order. At most
-  about 80 words each:
-  - **Yesterday.** The session (or sessions) of the day before: what it was, the minutes per
-    effect from `effect_minutes`, and what it trained. If there was none, say it was a rest
-    day and how many days it has been since the last activity. If `sessions.today` is not
-    empty, add one sentence on what was already done today.
-  - **Recovery.** Can I train hard today? Readiness and what moves it, compared with its own
-    averages; how many rest days and how long since the last hard session. Mention HRV, sleep
+- Exactly five sections, each a `## <Title>` heading followed by one short paragraph (at
+  most about 80 words), in this order and with these exact titles — the same layout as the
+  weekly report, so the Day page shows each section with its icon:
+  - `## Training` — The training of the report's day (`sessions.today`), which is what the
+    report is about: what it was, when (`start_time`), the minutes per effect from
+    `effect_minutes`, Garmin's Training Effect, and what it trained. With more than one
+    session, each in turn. If `sessions.today` is empty, the day had no training (so far, if
+    `day` is today): say so, and how many days it has been since the last activity before
+    it. The day before (`sessions.yesterday`) gets at most one clause of context, e.g. "after
+    a rest day".
+  - `## Recovery` — How ready was the body that morning? Readiness and what moves it, compared
+    with its own averages; how many rest days and how long since the last hard session. Mention HRV, sleep
     and resting HR here only as readiness factors: their detail goes in Health.
-  - **Health.** Is my body OK, regardless of training? It catches early illness, accumulated
+  - `## Health` — Is my body OK, regardless of training? It catches early illness, accumulated
     stress or poor sleep. Compare each measure with its own averages, never with population
     norms. In this order: resting HR, HRV (the weekly average against `hrv_baseline`, not a
     single night), breathing rate during sleep, sleep (hours, score, short nights), stress
     and body battery, SpO2 (only if recorded; if it is in `missing`, one short clause). Every
     entry in `alerts` must be mentioned, with its numbers. If `alerts` is empty and nothing
     moved, say plainly "no warning signs".
-  - **Load.** Where the training load stands and which way it moved since `week_ago`, the
+  - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
     balance between easy, hard and anaerobic work in plain words, and VO2max only if
     `vo2max_change` is present.
-  - **Today.** One concrete suggestion: a hard session, an easy one or rest, with the reason
-    from the paragraphs above and an example session (duration, structure, heart-rate target
-    in bpm). If `sessions.today` already has a session, the suggestion is for the rest of the
-    day (usually: nothing more, or an easy walk).
+  - `## Next` — One concrete suggestion for the next session, with the reason from the
+    paragraphs above and an example session (duration, structure, heart-rate target in bpm,
+    taken from `hr_zones` — e.g. high aerobic work is `effects["High aerobic"]`; if
+    `hr_zones` is `null`, name the zone instead of inventing bpm):
+    a hard session, an easy one or rest. If the day already has its training
+    (`trained_today` true), the suggestion is for **tomorrow**; if not, it is for the day
+    itself.
 - Header, exactly:
 
   ```markdown
@@ -99,17 +113,38 @@ The JSON:
   Data: local cache, health up to <health_data_up_to>
   ```
 
-  then the five paragraphs. No other headings, no tables.
+  then the five sections:
+
+  ```markdown
+  ## Training
+
+  ## Recovery
+
+  ## Health
+
+  ## Load
+
+  ## Next
+  ```
+
+  The paragraph under each heading starts directly with the text (no bold label). No other
+  headings, no tables.
+
+- **Times of day** come from each session's `start_time`, never assumed: morning before
+  12:00, afternoon 12:00–18:00, evening from 18:00. When in doubt, give the time ("the run at
+  12:28") instead of a part of the day.
 
 ### Check before saving
 
-1. The header and the five bold labels (`Yesterday.`, `Recovery.`, `Health.`, `Load.`,
-   `Today.`), in this order.
+1. The header and the five `##` sections (`Training`, `Recovery`, `Health`, `Load`,
+   `Next`), with these exact titles, in this order.
 2. Every number is in the JSON: nothing computed, nothing rounded differently.
 3. Every entry of `alerts` is in Health; with `alerts` empty, no warning is invented.
 4. Measures in `missing` are not commented as if they existed; averages on few `days` are
    called thin.
 5. No jargon (see the list above).
+6. Every "this morning / this afternoon / this evening" matches the session's `start_time`;
+   with `trained_today` true, no sentence implies today is a rest day.
 
 ## Step 3 — save the report (always, every time step 1 succeeded)
 
@@ -122,4 +157,4 @@ create a second file or append.
 
 Before finishing, confirm that the Write call for this file actually happened in this turn —
 do not report the report as saved unless it was. Then tell the user, in a line or two, which
-day it covers and where it was saved, and give them the Today suggestion.
+day it covers and where it was saved, and give them the Next suggestion.
