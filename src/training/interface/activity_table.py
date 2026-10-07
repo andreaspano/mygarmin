@@ -4,6 +4,7 @@ La pagina Activities e quella Week mostrano lo stesso elenco (stesse colonne,
 stessi formati, stesse icone): tenerlo qui evita che le due copie divergano."""
 
 import base64
+import datetime as dt
 from pathlib import Path
 
 import pandas as pd
@@ -28,9 +29,14 @@ _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image
 # chi legge non dice niente, lo sport, che lo dice gia' l'icona, e la
 # velocita' equivalente, che ora si legge nel grafico della scheda (todo 28).
 # Restano tutte nei dati, come le metriche spostate.
+#
+# Data e ora stanno in due colonne (todo 30): la Day ha una riga anche per i
+# giorni senza attivita', e li' "7 Oct 2026, 00:00" sembrerebbe un'uscita a
+# mezzanotte. Entrambe si ricavano da `start_time` in `activity_table()`.
 ACTIVITY_COLUMNS = [
     "icon",
-    "start_time",
+    "day",
+    "time",
     "activity_name",
     "total_distance_km",
     "total_time_min",
@@ -38,7 +44,8 @@ ACTIVITY_COLUMNS = [
 ]
 ACTIVITY_COLUMN_CONFIG = {
     "icon": st.column_config.ImageColumn("", width=50),
-    "start_time": st.column_config.DatetimeColumn("Date", format="D MMM YYYY, HH:mm", width=160),
+    "day": st.column_config.DateColumn("Date", format="ddd D MMM YYYY", width=120),
+    "time": st.column_config.TextColumn("Time", width=60),
     "activity_name": st.column_config.TextColumn("Name", width=185),
     # Intestazioni corte, la sola unita': e' una tabella che si scorre con gli
     # occhi riga per riga, e "km", "Min", "Bpm" si leggono al volo. Il nome
@@ -104,9 +111,34 @@ def activity_table(activities: pd.DataFrame, **kwargs):
     e' selezionabile o solo da leggere."""
     if "icon" not in activities.columns:
         activities = with_icons(activities)
+    activities = activities.copy()
+    # Le righe dei giorni vuoti portano gia' il loro `day` (vedi
+    # `with_empty_days`); le altre lo prendono dall'inizio dell'attivita'.
+    if "day" not in activities.columns:
+        activities["day"] = activities["start_time"].dt.date
+    activities["time"] = activities["start_time"].dt.strftime("%H:%M")
+    # Un giorno vuoto non ha icona: None, non NaN, che la colonna immagine
+    # proverebbe a mostrare.
+    activities["icon"] = activities["icon"].where(activities["icon"].notna(), None)
     return st.dataframe(
         activities[ACTIVITY_COLUMNS],
         column_config=ACTIVITY_COLUMN_CONFIG,
         hide_index=True,
         **kwargs,
+    )
+
+
+def with_empty_days(activities: pd.DataFrame, start: dt.date, end: dt.date) -> pd.DataFrame:
+    """Le attivita' piu' una riga vuota per ogni giorno fra `start` e `end`
+    (compresi) che non ne ha nessuna, dalla piu' recente (todo 30).
+
+    Le righe vuote hanno solo `day`: niente icona, nome, numeri. Un giorno con
+    due attivita' resta su due righe. Le righe vuote esistono solo qui, per la
+    tabella della Day: i dati non cambiano."""
+    rows = activities.assign(day=activities["start_time"].dt.date)
+    taken = set(rows["day"])
+    empty = pd.DataFrame({"day": [day for day in pd.date_range(start, end, freq="D").date if day not in taken]})
+    combined = pd.concat([rows, empty], ignore_index=True) if not empty.empty else rows
+    return combined.sort_values(["day", "start_time"], ascending=False, na_position="last").reset_index(
+        drop=True
     )

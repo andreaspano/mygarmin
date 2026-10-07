@@ -51,6 +51,7 @@ def date_range(
     period: str = "weeks",
     key: str = "date_range",
     default_preset: str | None = None,
+    latest: dt.date | None = None,
 ) -> tuple[dt.date, dt.date]:
     """Le due caselle a calendario "From" / "To", con l'intervallo scelto.
 
@@ -78,11 +79,18 @@ def date_range(
     stesso gruppo: la Recovery vuole aprirsi su "4 weeks" dove la Week si apre
     su "12 weeks", perche' i suoi valori sono giornalieri e tre mesi di punti
     non si leggono. Senza, vale la scorciatoia di partenza del gruppo, quindi
-    le pagine che non lo passano non cambiano."""
+    le pagine che non lo passano non cambiano.
+
+    `latest` alza il massimo dei calendari (e la partenza di "To") fino a quella
+    data, se viene dopo l'ultima attivita': la Day ci passa oggi, perche' i
+    giorni di riposo piu' recenti hanno una riga anche loro (todo 30). Senza,
+    il massimo resta l'ultima attivita'."""
     where = container if container is not None else st
 
     min_date = activities["start_time"].min().date()
     max_date = activities["start_time"].max().date()
+    if latest is not None:
+        max_date = max(max_date, latest)
 
     if not presets:
         start_date = where.date_input(
