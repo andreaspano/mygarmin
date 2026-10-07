@@ -2,6 +2,8 @@
 
 import datetime as dt
 
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
@@ -10,6 +12,16 @@ from training.interface.activity_detail import show_activity_detail
 from training.interface.activity_table import activity_table, sport_label, with_empty_days
 from training.interface.data import load_activities
 from training.interface.filters import date_range
+from training.interface.report_view import show_report
+
+# Il report giornaliero (agente `fitness-status`, todo 31): uno per giorno,
+# con il nome esatto del giorno. Altri file nella cartella (es.
+# `2026-10-01_since-2026-08-01.md`) non si mostrano.
+DAILY_REPORT_DIR = Path("summary/01.daily")
+# Tabella e report accanto hanno la stessa altezza fissa: dieci righe da 35px
+# piu' l'intestazione, come la tabella dei periodi nella Week. Oltre, la
+# tabella e il report scorrono dentro il loro riquadro.
+TABLE_HEIGHT_PX = 35 * 11 + 3
 
 
 st.title("My activities")
@@ -54,8 +66,10 @@ rows = with_empty_days(latest, start_date, end_date)
 
 # Larga quanto il riquadro della scheda sotto (`activity_detail`, prima di
 # due colonne 3:2): con sei colonne, a tutta pagina meta' tabella era vuota.
-table_col, _ = st.columns([3, 2])
-table_col.caption("Click a row to see the details.")
+# Nella colonna di destra il report giornaliero del giorno scelto (todo 31),
+# come il report settimanale accanto alla tabella della Week.
+st.caption("Click a row to see the details.")
+table_col, report_col = st.columns([3, 2])
 
 # La tabella e' ordinata dalla piu' recente: alla prima apertura (e a ogni
 # cambio di filtro, che cambia le righe e quindi la key) e' gia' selezionata
@@ -74,9 +88,22 @@ with table_col:
         on_select="rerun",
         selection_mode="single-row",
         key=table_key,
+        height=TABLE_HEIGHT_PX,
     )
 
 selected_rows = event.selection.rows
+
+# Il report c'e' anche per un giorno senza attivita': il riposo e' proprio il
+# giorno in cui serve.
+if selected_rows:
+    with report_col:
+        show_report(
+            DAILY_REPORT_DIR / f"{rows.iloc[selected_rows[0]]['day']:%Y-%m-%d}.md",
+            TABLE_HEIGHT_PX,
+            "day_report",
+            missing_text="No daily report for this day.",
+        )
+
 if not selected_rows:
     # Senza nessuna attivita' nell'intervallo non c'e' niente da scegliere: lo
     # si dice, invece di chiedere di selezionare una riga.
