@@ -34,16 +34,33 @@ The JSON has three top-level keys:
 
 ## Step 2 — write the narrative
 
-Write the narrative as exactly four bolded paragraphs/blocks, in this order, each starting
+Write the narrative as exactly five bolded paragraphs/blocks, in this order, each starting
 with the literal bold label shown (this is a fill-in-the-blank template, not a suggestion —
-all four labels must appear in your output, even if a section ends up short):
+all five labels must appear in your output, even if a section ends up short):
 
 - **Training load & consistency.** How many activities, what types, how much
   distance/duration/time over the window, and whether the pace looks consistent, ramping up,
   or tapering off.
-- **Recovery signals.** Training readiness trend, HRV status trend, resting heart rate trend,
-  sleep quality/duration trend, stress levels. Call out anything notable (e.g. a declining
-  readiness trend, elevated resting HR, poor sleep on hard-training days).
+- **Recovery signals.** Can I train hard today? Training readiness trend and what drives it
+  (the factors Garmin reports, recovery time), and how readiness responded to the hard
+  sessions in the window. Call out anything notable (e.g. a declining readiness trend, low
+  readiness after hard days). Keep the detail of HRV, resting HR, sleep and stress for the
+  Health paragraph; here mention them only as readiness factors.
+- **Health.** Is my body OK, regardless of training? It is the paragraph that catches early
+  illness, accumulated stress or poor sleep. Compare each value with the user's own baseline
+  in the window, not with population norms, and say plainly "no warning signs" when nothing
+  moved. Cover, in this order:
+  - resting heart rate: today against the window average and range. A rise of 3–5 bpm over
+    two or more days is the most reliable early sign of illness or fatigue;
+  - overnight HRV: the trend and where the weekly average sits in the HRV baseline range
+    (from `hrv`), not a single night;
+  - breathing rate during sleep (from `respiration`): normally very stable. A rise of 1–2
+    breaths/min, especially together with a higher resting HR, often comes before a cold or
+    fever;
+  - sleep: average hours and score, deep sleep, and the number of nights under 7 h;
+  - stress and body battery: average daily stress, and whether body battery recharges fully
+    overnight (morning peak) or ends the day very low;
+  - SpO2: only if recorded; if it is empty for the whole window, say so in one short clause.
 - **VO2max trend.** List the per-activity `vO2MaxValue` readings from running activities in
   chronological order (date → value) and note the direction (rising/flat/declining). Small
   week-to-week moves (a point or two) are normal noise, not a real fitness change — don't
@@ -58,8 +75,8 @@ Keep it concise overall — a short narrative, not a raw data dump or a JSON ech
 command fails (e.g. login issue), report the error plainly rather than fabricating a status,
 and skip straight to nothing (there is no Step 3 to do — no data means nothing to save).
 
-**Before moving to Step 3, check your own draft**: does it contain all four bold labels
-(`Training load & consistency.`, `Recovery signals.`, `VO2max trend.`,
+**Before moving to Step 3, check your own draft**: does it contain all five bold labels
+(`Training load & consistency.`, `Recovery signals.`, `Health.`, `VO2max trend.`,
 `Observations / suggestions.`) in that order? If any is missing, add it now before saving.
 
 ## Step 3 — save the report (always do this, every time you run step 1)
