@@ -53,16 +53,23 @@ The JSON:
   or more in 28 days.
 - `sessions`: `yesterday` and `today` (already done), each activity with time, sport, name,
   distance, duration, ascent, average and max HR, Garmin's aerobic and anaerobic Training
-  Effect, grade-adjusted speed, and `effect_minutes` (minutes of low aerobic, high aerobic and
-  anaerobic work, estimated from heart rate; `null` without zones).
+  Effect, grade-adjusted speed, `effect_minutes` (minutes of low aerobic, high aerobic and
+  anaerobic work, estimated from heart rate; `null` when the watch saved no anaerobic
+  threshold) and `minutes_above_z3` (minutes above the top of Z3, i.e. the harder work; it
+  exists even when `effect_minutes` is `null` — use it then).
 - `recent`: `trained_today` (an activity is already done on `day`), the last activity
   **before** `day` and days since it, the last hard session **before** `day`
   (`hard_session_rule` says what counts) and days since it, rest days in the last 7, and the
   last 14 days of activities in one line each. The "before today" counts ignore what was done
   on `day` on purpose: when `trained_today` is true, never write "N days since your last
   activity" as if today were still a rest day — say "before today's run, the last one was…".
-- `hr_zones`: the heart-rate zones in bpm in force on `day` (from the latest activity up to
-  that day, `as_of`): `zones` Z1–Z5 with `min`/`max`, `threshold_hr` (the anaerobic
+  `consecutive_training_days_before_today` and `consecutive_rest_days_before_today` are the
+  runs of training or rest days up to the day before; `last_7_days` lists those 7 days one by
+  one with their activities. **Every calendar statement** ("three days in a row", "after two
+  rest days", "back-to-back", "the first run since…") must come from these fields — never
+  count days yourself.
+- `hr_zones`: the heart-rate zones in bpm in force on `day` (from the latest run, hike or walk
+  up to that day, `as_of`; bike zones are lower and are not used): `zones` Z1–Z5 with `min`/`max`, `threshold_hr` (the anaerobic
   threshold), and `effects`, the bpm ranges of low aerobic, high aerobic and anaerobic work.
   `null` if no activity has them.
 - `missing`: the measures with no value for the day.
@@ -145,6 +152,8 @@ The JSON:
 5. No jargon (see the list above).
 6. Every "this morning / this afternoon / this evening" matches the session's `start_time`;
    with `trained_today` true, no sentence implies today is a rest day.
+7. Every "in a row", "back-to-back", "after N rest days", "first … since" matches
+   `consecutive_*_before_today` or `last_7_days`.
 
 ## Step 3 — save the report (always, every time step 1 succeeded)
 

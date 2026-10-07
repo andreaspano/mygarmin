@@ -28,7 +28,8 @@ from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities, load_activity_records
 from training.interface.health import _day_paths, _dig, _read_json
 from training.interface.health_db import load_health_db
-from training.interface.run_chart import EFFECTS, effects, has_effects
+from training.interface.grade import EQUIV_SPEED_SPORTS
+from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects
 from training.interface.weekly_data import WEEKDAYS, _mean, _value
 
 # Le misure della mattina, con la riga di `health_daily` da cui si leggono:
@@ -72,7 +73,7 @@ SHORT_NIGHT_HOURS = 7
 SHORT_NIGHTS_ALERT = 3  # notti corte negli ultimi 7 giorni
 # Una seduta e' impegnativa con almeno 10 minuti sopra il tetto di Z3 (alto
 # aerobico piu' anaerobico, vedi `run_chart.effects`).
-HARD_SESSION_MIN = 10
+HARD_SESSION_MIN = 10  # contati con `_minutes_above_z3`, anche senza soglia
 VO2MAX_CHANGE = 0.5
 RECENT_DAYS = 14
 BASELINE_SHORT = 7
@@ -130,7 +131,9 @@ def _hrv_baseline(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any] | None
 def _sleep_last_7(health: pd.DataFrame, day: date) -> dict[str, Any]:
     """Le ore di sonno delle ultime 7 notti (quella che porta a D compresa)."""
     nights = health.reindex(pd.date_range(day - timedelta(days=6), day, freq="D"))["sleep_hours"]
-    hours = {d.date().isoformat(): _value(v, 1) for d, v in nights.items()}
+    # Due decimali e non uno: una notte da 6,98 h e' corta, e a un decimale si
+    # leggerebbe "7.0" fra le notti sotto le 7 ore.
+    hours = {d.date().isoformat(): _value(v, 2) for d, v in nights.items()}
     known = nights.dropna()
     return {
         "hours": hours,
@@ -241,6 +244,22 @@ def _effect_minutes(activity: pd.Series, data_dir: Path) -> dict[str, float] | N
     return {name: _value(seconds[name] / 60, 1) for name in EFFECTS}
 
 
+def _minutes_above_z3(activity: pd.Series, data_dir: Path) -> float | None:
+    """I minuti con i battiti sopra il tetto di Z3 (alto aerobico piu'
+    anaerobico). Servono solo i tetti delle zone, non la soglia: molti file
+    (tutto agosto 2026, le uscite in bici) la salvano a zero o non ce
+    l'hanno, e senza questo conto non si troverebbe nessuna seduta
+    impegnativa. `None` senza zone o senza battiti."""
+    bounds, _ = _zones(activity)
+    if not bounds:
+        return None
+    records = load_activity_records(int(activity["activity_id"]), data_dir)
+    if records.empty or records["heart_rate"].isna().all():
+        return None
+    above = records["heart_rate"].astype(float) > bounds[2]
+    return _value(float(durations_s(records)[above].sum()) / 60, 1)
+
+
 def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
     start = activity["start_time"]
     return {
@@ -258,18 +277,26 @@ def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
         "anaerobic_te": _value(activity["anaerobic_te"], 1),
         "grade_adjusted_speed_kmh": _value(activity["equiv_speed_kmh"], 1),
         "effect_minutes": _effect_minutes(activity, data_dir),
+        "minutes_above_z3": _minutes_above_z3(activity, data_dir),
     }
 
 
 def _hr_zones(activities: pd.DataFrame, day: date) -> dict[str, Any] | None:
     """Le zone cardiache in bpm in vigore il giorno `day`: quelle dell'ultima
-    attivita' fino a quel giorno che le ha salvate (l'orologio le scrive nel
+    attivita' a piedi fino a quel giorno che le ha salvate (l'orologio le scrive nel
     FIT e le aggiorna da solo: il 07/10/2026 il tetto di Z3 e' passato da 141 a
     142). Servono al report per dare i bersagli in bpm. `None` se nessuna
     attivita' le ha."""
     known = activities[
         (activities["start_time"].dt.date <= day) & activities["hr_zone_bounds"].notna()
     ].sort_values("start_time")
+    # Le zone di un'attivita' a piedi: quelle della bici sono piu' basse e
+    # senza soglia, e i bersagli di una corsa presi da li' venivano bassi
+    # (il 24/09/2026 Z4 a 138-154 invece di 143-155). Le altre solo se non ce
+    # n'e' nessuna a piedi.
+    on_foot = known[known["sport"].isin(EQUIV_SPEED_SPORTS)]
+    if not on_foot.empty:
+        known = on_foot
     if known.empty:
         return None
     activity = known.iloc[-1]
@@ -322,13 +349,37 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
     last_hard = None
     window = before[before["start_time"].dt.date >= day - timedelta(days=BASELINE_LONG)]
     for _, activity in window.iloc[::-1].iterrows():
-        minutes = _effect_minutes(activity, data_dir)
-        if minutes and minutes[EFFECTS[1]] + minutes[EFFECTS[2]] >= HARD_SESSION_MIN:
+        minutes = _minutes_above_z3(activity, data_dir)
+        if minutes is not None and minutes >= HARD_SESSION_MIN:
             last_hard = activity["start_time"].date()
             break
 
     week = {day - timedelta(days=k) for k in range(1, 8)}
     active = set(dates[dates.isin(week)])
+
+    # I fatti di calendario li conta lo script, non il modello: quanti giorni
+    # di fila ci si e' allenati (o riposati) fino al giorno prima di D, e i 7
+    # giorni prima di D uno per uno. Senza, il modello scriveva "quattro giorni
+    # di fila" contando da solo, e sbagliava.
+    trained = set(dates)
+    streak, rest_streak = 0, 0
+    while day - timedelta(days=streak + 1) in trained:
+        streak += 1
+    while day - timedelta(days=rest_streak + 1) not in trained and rest_streak < BASELINE_LONG:
+        rest_streak += 1
+    last_7_days = []
+    for k in range(7, 0, -1):
+        d = day - timedelta(days=k)
+        on_day = activities[dates == d].sort_values("start_time")
+        last_7_days.append(
+            {
+                "date": d.isoformat(),
+                "weekday": WEEKDAYS[d.weekday()],
+                "activities": [
+                    f"{a['sport']} {_value(a['total_distance_km'], 1)} km" for _, a in on_day.iterrows()
+                ],
+            }
+        )
     listed = activities[(dates >= day - timedelta(days=RECENT_DAYS - 1)) & (dates <= day)].sort_values("start_time")
     return {
         "trained_today": bool((dates == day).any()),
@@ -339,6 +390,9 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
         "hard_session_rule": f"{HARD_SESSION_MIN}+ minutes above the top of Z3, "
         f"looked for in the last {BASELINE_LONG} days",
         "rest_days_last_7": len(week - active),
+        "consecutive_training_days_before_today": streak,
+        "consecutive_rest_days_before_today": rest_streak if streak == 0 else 0,
+        "last_7_days": last_7_days,
         "activities_last_14_days": [
             {
                 "date": a["start_time"].date().isoformat(),
