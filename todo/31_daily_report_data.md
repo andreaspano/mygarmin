@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Report giornaliero: i numeri da uno script, il testo dall'agente
