@@ -45,7 +45,10 @@ if latest.empty:
     st.info("No activity matches the selected filters.")
     st.stop()
 
-st.caption("Click a row to see the details.")
+# Larga quanto il riquadro della scheda sotto (`activity_detail`, prima di
+# due colonne 3:2): con sei colonne, a tutta pagina meta' tabella era vuota.
+table_col, _ = st.columns([3, 2])
+table_col.caption("Click a row to see the details.")
 
 # La tabella e' ordinata dalla piu' recente: alla prima apertura (e a ogni
 # cambio di filtro, che cambia le righe e quindi la key) la prima riga e' gia'
@@ -54,12 +57,13 @@ table_key = f"activities_{'-'.join(sports)}_{start_date}_{end_date}"
 if table_key not in st.session_state:
     st.session_state[table_key] = {"selection": {"rows": [0], "columns": []}}
 
-event = activity_table(
-    latest,
-    on_select="rerun",
-    selection_mode="single-row",
-    key=table_key,
-)
+with table_col:
+    event = activity_table(
+        latest,
+        on_select="rerun",
+        selection_mode="single-row",
+        key=table_key,
+    )
 
 selected_rows = event.selection.rows
 if not selected_rows:

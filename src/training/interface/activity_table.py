@@ -20,29 +20,26 @@ SPORT_ICON_FILES = {
 _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
 # Le tre grandezze che dicono "che uscita e' stata" (quanto lunga, quanto e'
-# durata, quanto saliva) piu' la velocita' equivalente in piano, che serve a
-# confrontare le uscite fra loro riga per riga, al netto del dislivello (todo
-# 26, scelta di Andrea). Velocita' media, battito e VO2max stanno nella scheda
-# di dettaglio sotto la tabella (`activity_detail`), che si apre sulla riga
-# selezionata: erano sei numeri per riga da leggere di sfuggita. Il sotto-tipo (`sub_sport`: "Road", "Generic", ...) non ha una
-# colonna: diceva poco. Resta nei dati, come le metriche spostate.
+# durata, quanto saliva), dopo icona, data e nome. Velocita' media, battito e
+# VO2max stanno nella scheda di dettaglio sotto la tabella (`activity_detail`),
+# che si apre sulla riga selezionata: erano sei numeri per riga da leggere di
+# sfuggita. Il sotto-tipo (`sub_sport`: "Road", "Generic", ...) non ha una
+# colonna: diceva poco. Tolte anche (todo 29, scelta di Andrea) l'ID, che a
+# chi legge non dice niente, lo sport, che lo dice gia' l'icona, e la
+# velocita' equivalente, che ora si legge nel grafico della scheda (todo 28).
+# Restano tutte nei dati, come le metriche spostate.
 ACTIVITY_COLUMNS = [
     "icon",
-    "activity_id",
     "start_time",
     "activity_name",
-    "sport",
     "total_distance_km",
     "total_time_min",
     "total_ascent_m",
-    "equiv_speed_kmh",
 ]
 ACTIVITY_COLUMN_CONFIG = {
     "icon": st.column_config.ImageColumn("", width=50),
-    "activity_id": st.column_config.NumberColumn("ID", format="%d", width=100, alignment="right"),
     "start_time": st.column_config.DatetimeColumn("Date", format="D MMM YYYY, HH:mm", width=160),
     "activity_name": st.column_config.TextColumn("Name", width=185),
-    "sport": st.column_config.TextColumn("Sport", width=85),
     # Intestazioni corte, la sola unita': e' una tabella che si scorre con gli
     # occhi riga per riga, e "km", "Min", "Bpm" si leggono al volo. Il nome
     # della grandezza sta nel `help`, per chi passa sopra l'intestazione.
@@ -54,14 +51,6 @@ ACTIVITY_COLUMN_CONFIG = {
     ),
     "total_ascent_m": st.column_config.NumberColumn(
         "D+", format="%.0f", width=60, alignment="right", help="Elevation gain, in metres."
-    ),
-    "equiv_speed_kmh": st.column_config.NumberColumn(
-        "Eq km/h",
-        format="%.1f",
-        width=75,
-        alignment="right",
-        help="Grade-adjusted speed: the flat-ground speed with the same energy cost "
-        "(Minetti 2002), over moving time. Running, hiking and walking only.",
     ),
 }
 
@@ -115,10 +104,6 @@ def activity_table(activities: pd.DataFrame, **kwargs):
     e' selezionabile o solo da leggere."""
     if "icon" not in activities.columns:
         activities = with_icons(activities)
-    # Solo per la vista: `activities` resta con le chiavi, che e' su quelle che
-    # filtrano e raggruppano le pagine.
-    activities = activities.copy()
-    activities["sport"] = activities["sport"].map(sport_label)
     return st.dataframe(
         activities[ACTIVITY_COLUMNS],
         column_config=ACTIVITY_COLUMN_CONFIG,

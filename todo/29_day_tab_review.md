@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Pagina Day: tabella delle attivita' piu' stretta
