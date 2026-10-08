@@ -10,6 +10,7 @@ partenza, in minuti, pause comprese.
 I parametri vengono da un grafico messo a punto fuori dal progetto sulla
 corsa del 03/10/2026, e i valori attesi su quella corsa sono nel todo 28."""
 
+import json
 import math
 import warnings
 
@@ -155,6 +156,15 @@ def zone_bands(records: pd.DataFrame, bounds: list[int]) -> pd.DataFrame:
         for a, b, z in runs:
             bands.append([t[a] / 60, (t[b] + 1) / 60, z, float(np.nanmean(hr[a : b + 1]))])
     return pd.DataFrame(bands, columns=columns)
+
+
+def zone_settings(activity) -> tuple[list[int] | None, int | None]:
+    """I tetti di Z1-Z4 e la soglia anaerobica salvati dal FIT, o None (file
+    vecchi senza il messaggio delle zone). `activity` e' una riga di
+    `list_activities`: nel database i tetti sono testo JSON."""
+    bounds = json.loads(activity.hr_zone_bounds) if isinstance(activity.hr_zone_bounds, str) else None
+    threshold = int(activity.threshold_hr) if pd.notna(activity.threshold_hr) else None
+    return bounds, threshold
 
 
 def has_effects(bounds: list[int] | None, threshold_hr: int | None) -> bool:

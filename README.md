@@ -12,3 +12,18 @@ manca, se manca una chiave, se ce n'e' una sconosciuta o un valore e' del tipo
 sbagliato, il programma si ferma all'avvio con un `ConfigError` che elenca
 tutti i problemi insieme. Il file si cerca sempre nella radice del repo,
 qualunque sia la cartella da cui si lancia il comando.
+
+## API
+
+Un'API in sola lettura (FastAPI) espone i dati della pagina Day: attivita',
+dettaglio, dati e specifica Vega-Lite del grafico, traccia, i fatti del
+giorno e il report giornaliero. Si lancia con:
+
+```bash
+make api
+```
+
+Ascolta solo su `http://127.0.0.1:8000`: non c'e' ancora il login, e sono
+dati di salute. La documentazione interattiva e' su
+`http://127.0.0.1:8000/docs`, lo schema OpenAPI su `/openapi.json`. Solo
+`GET`: niente download da Garmin e niente scrittura di report.

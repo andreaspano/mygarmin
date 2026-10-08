@@ -1,4 +1,4 @@
-.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface activity_reports weekly_data daily_data
+.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface api activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -37,6 +37,11 @@ fitness_status:
 
 interface:
 	uv run streamlit run src/training/interface/app.py
+
+# L'API in sola lettura, solo su 127.0.0.1 (niente login). Documentazione su
+# http://127.0.0.1:8000/docs
+api:
+	uv run uvicorn training.api.app:app --host 127.0.0.1 --port 8000 --reload
 
 activity_reports:
 	uv run training-activity-reports

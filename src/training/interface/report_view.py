@@ -9,6 +9,7 @@ from pathlib import Path
 import streamlit as st
 
 from training.interface.activity_table import ICONS_DIR
+from training.interface.report_text import parse_report
 
 # Un'icona per sezione del report, dalla cartella delle icone degli sport. La
 # sezione si riconosce dal nome nel titolo ("1. Training" -> training.png),
@@ -32,13 +33,6 @@ REPORT_SECTION_ICONS = {
 # dentro un testo, non aprono una scheda.
 REPORT_ICON_PX = 28
 
-# Le righe del file che ripetono quello che la pagina dice gia': il titolo
-# ("# ...") e le righe di intestazione del settimanale ("Week: ...") e del
-# giornaliero ("Window: ..." nei report vecchi, "Data: ..." nei nuovi). Il
-# periodo e' la riga spuntata nella tabella accanto.
-_HEADER_PREFIXES = ("# ", "Week: ", "Window: ", "Data: ")
-
-
 def _report_icon_path(title: str) -> Path | None:
     words = title.lower()
     for name, filename in REPORT_SECTION_ICONS.items():
@@ -58,22 +52,9 @@ def show_report(path: Path, height: int, key: str, missing_text: str | None = No
             st.caption(missing_text)
         return
 
-    lines = [
-        line
-        for line in path.read_text(encoding="utf-8").splitlines()
-        if not line.startswith(_HEADER_PREFIXES)
-    ]
-
     # Le sezioni ("## 1. Training", ...) una per una: ognuna ha la sua riga di
-    # titolo con l'icona accanto, come le schede per sport. Il testo prima della
-    # prima sezione, se c'e', sta in una sezione senza titolo: e' tutto il
-    # testo dei report giornalieri vecchi, che avevano paragrafi in grassetto.
-    sections: list[tuple[str | None, list[str]]] = [(None, [])]
-    for line in lines:
-        if line.startswith("## "):
-            sections.append((line[3:].strip(), []))
-        else:
-            sections[-1][1].append(line)
+    # titolo con l'icona accanto, come le schede per sport.
+    sections = parse_report(path)
 
     # Uno sfondo grigio chiaro, senza bordo, per staccare il testo dalla tabella
     # accanto. E' l'unica eccezione voluta (da Andrea) alla regola "niente CSS"
@@ -88,7 +69,7 @@ def show_report(path: Path, height: int, key: str, missing_text: str | None = No
         " border-radius: 0.5rem; padding: 1rem 1.25rem; }</style>"
     )
     with st.container(height=height, border=False, key=key):
-        for title, text in sections:
+        for title, body in sections:
             if title:
                 head = st.container(horizontal=True, vertical_alignment="center")
                 icon_path = _report_icon_path(title)
@@ -98,6 +79,5 @@ def show_report(path: Path, height: int, key: str, missing_text: str | None = No
                 # margine sopra che, accanto all'icona, la lascerebbe piu' in basso
                 # del testo.
                 head.markdown(f"**{title}**")
-            body = "\n".join(text).strip()
             if body:
                 st.markdown(body)
