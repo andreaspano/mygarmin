@@ -17,6 +17,7 @@ SPORT_ICON_FILES = {
     "cycling": "cycling.png",
     "hiking": "trekking.png",
     "cross_country_skiing": "backcountry_ski.png",
+    "rock_climbing": "climbing.png",
 }
 _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
