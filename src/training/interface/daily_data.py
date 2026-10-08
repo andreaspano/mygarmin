@@ -29,7 +29,7 @@ from training.interface.db import list_activities, load_activity_records
 from training.interface.health import _day_paths, _dig, _read_json
 from training.interface.health_db import load_health_db
 from training.interface.grade import EQUIV_SPEED_SPORTS
-from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects
+from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
 from training.interface.weekly_data import WEEKDAYS, _mean, _value
 
 # Le misure della mattina, con la riga di `health_daily` da cui si leggono:
@@ -225,16 +225,10 @@ def _vo2max_change(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
     return {"now": _value(now, 1), "days_ago_28": _value(then, 1), "change": _value(now - then, 1)}
 
 
-def _zones(activity: pd.Series) -> tuple[list[int] | None, int | None]:
-    bounds = json.loads(activity["hr_zone_bounds"]) if isinstance(activity["hr_zone_bounds"], str) else None
-    threshold = int(activity["threshold_hr"]) if pd.notna(activity["threshold_hr"]) else None
-    return bounds, threshold
-
-
 def _effect_minutes(activity: pd.Series, data_dir: Path) -> dict[str, float] | None:
     """I minuti per effetto stimato (`run_chart.effects`), o `None` senza zone,
     soglia o battiti."""
-    bounds, threshold = _zones(activity)
+    bounds, threshold = zone_settings(activity)
     if not has_effects(bounds, threshold):
         return None
     records = load_activity_records(int(activity["activity_id"]), data_dir)
@@ -250,7 +244,7 @@ def _minutes_above_z3(activity: pd.Series, data_dir: Path) -> float | None:
     (tutto agosto 2026, le uscite in bici) la salvano a zero o non ce
     l'hanno, e senza questo conto non si troverebbe nessuna seduta
     impegnativa. `None` senza zone o senza battiti."""
-    bounds, _ = _zones(activity)
+    bounds, _ = zone_settings(activity)
     if not bounds:
         return None
     records = load_activity_records(int(activity["activity_id"]), data_dir)
@@ -300,7 +294,7 @@ def _hr_zones(activities: pd.DataFrame, day: date) -> dict[str, Any] | None:
     if known.empty:
         return None
     activity = known.iloc[-1]
-    bounds, threshold = _zones(activity)
+    bounds, threshold = zone_settings(activity)
     if not bounds:
         return None
     z1, z2, z3, z4 = bounds

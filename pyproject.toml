@@ -8,11 +8,14 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "altair>=6.2.2",
+    "fastapi>=0.143.0",
     "fitparse>=1.2.0",
     "garminconnect",
     "pandas>=3.0.5",
     "pyyaml>=6.0",
     "streamlit>=1.63.0",
+    "uvicorn>=0.52.4",
 ]
 
 [project.scripts]
@@ -29,5 +32,6 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "ipython>=9.17.1",
 ]

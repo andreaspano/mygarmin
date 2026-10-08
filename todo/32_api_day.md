@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # API di sola lettura (FastAPI) per la pagina Day
@@ -217,3 +217,16 @@ il `TestClient` di FastAPI sui dati locali, senza lanciare
 11. `make api` in background: `curl -s
     "http://127.0.0.1:8000/api/activities?start=2026-10-01&end=2026-10-07"`
     risponde. Poi si ferma il server.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_32'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. Le dipendenze nuove (`fastapi`, `uvicorn`,
+`altair`, `httpx`) restano installate nel `.venv` finche' non si rilancia
+`uv sync`, che le toglie: sono innocue.
+
+Dopo il revert, rifare il merge di `todo_32` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

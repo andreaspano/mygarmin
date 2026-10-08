@@ -4,8 +4,6 @@ traccia.
 Sta qui e non nella pagina Activities perche' la stessa scheda si apre anche
 dalla pagina Week, cliccando una riga della tabella delle attivita'."""
 
-import json
-
 import altair as alt
 import pandas as pd
 import streamlit as st
@@ -13,7 +11,7 @@ import streamlit as st
 from training.garmin.config import DATA_DIR
 from training.interface.activity_table import sport_icon_path, sport_label
 from training.interface.db import load_activity_records
-from training.interface.run_chart import EFFECTS, effects, has_effects, run_analysis_chart
+from training.interface.run_chart import EFFECTS, effects, has_effects, run_analysis_chart, zone_settings
 
 alt.data_transformers.disable_max_rows()
 
@@ -31,19 +29,11 @@ def _records(activity_id: int) -> pd.DataFrame:
     return load_activity_records(activity_id, DATA_DIR)
 
 
-def _zone_settings(activity) -> tuple[list[int] | None, int | None]:
-    """I tetti di Z1-Z4 e la soglia anaerobica salvati dal FIT, o None (file
-    vecchi senza il messaggio delle zone)."""
-    bounds = json.loads(activity.hr_zone_bounds) if isinstance(activity.hr_zone_bounds, str) else None
-    threshold = int(activity.threshold_hr) if pd.notna(activity.threshold_hr) else None
-    return bounds, threshold
-
-
 def _effect_rows(activity, records: pd.DataFrame) -> list[list[tuple[str, str, str]]]:
     """Le righe della scheda con gli effetti: i minuti per effetto, stimati
     sui battiti, e i due Training Effect di Garmin, come (etichetta, valore,
     aiuto). Quello che manca non si mostra, e una riga vuota sparisce."""
-    bounds, threshold = _zone_settings(activity)
+    bounds, threshold = zone_settings(activity)
     estimated, garmin = [], []
     if has_effects(bounds, threshold) and records["heart_rate"].notna().any():
         seconds = effects(records, bounds, threshold)
@@ -81,7 +71,7 @@ def _show_analysis(activity, records: pd.DataFrame) -> None:
     """Il grafico a tre fasce (todo 28), che ha preso il posto dei sei
     grafici di prima (FC, velocita', quota, velocita' contro FC e i due
     istogrammi). Il riepilogo degli effetti sta nella scheda, sopra."""
-    bounds, threshold = _zone_settings(activity)
+    bounds, threshold = zone_settings(activity)
 
     # Il tema decide i colori: la velocita' e' nel colore del testo, e il viola
     # delle zone si schiarisce sul fondo scuro.
