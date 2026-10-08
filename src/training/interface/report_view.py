@@ -9,37 +9,17 @@ from pathlib import Path
 import streamlit as st
 
 from training.interface.activity_table import ICONS_DIR
-from training.interface.report_text import parse_report
+from training.interface.report_text import parse_report, section_icon
 
-# Un'icona per sezione del report, dalla cartella delle icone degli sport. La
-# sezione si riconosce dal nome nel titolo ("1. Training" -> training.png),
-# non dal numero: un report con le sezioni in un altro ordine le trova lo
-# stesso, e una sezione senza icona resta col solo titolo.
-#
-# Il report giornaliero ha le stesse sezioni con titolo del settimanale:
-# "Training" e "Recovery" usano le stesse icone, "Load" prende quella del
-# trend (e' l'andamento del carico), "Health" (una croce) e "Next" (una
-# freccia) hanno la loro, disegnate nello stesso stile: cerchio pieno e tratto
-# bianco arrotondato.
-REPORT_SECTION_ICONS = {
-    "training": "training.png",
-    "recovery": "recovery.png",
-    "trend": "trend.png",
-    "load": "trend.png",
-    "health": "health.png",
-    "next": "next.png",
-}
 # Piu' piccole delle icone delle schede (40px): qui accompagnano un titolo
 # dentro un testo, non aprono una scheda.
 REPORT_ICON_PX = 28
 
+
 def _report_icon_path(title: str) -> Path | None:
-    words = title.lower()
-    for name, filename in REPORT_SECTION_ICONS.items():
-        path = ICONS_DIR / filename
-        if name in words and path.exists():
-            return path
-    return None
+    filename = section_icon(title)
+    path = ICONS_DIR / filename if filename else None
+    return path if path and path.exists() else None
 
 
 def show_report(path: Path, height: int, key: str, missing_text: str | None = None) -> None:

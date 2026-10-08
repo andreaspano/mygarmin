@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # La pagina Day in React
@@ -199,3 +199,17 @@ Non c'e' ancora una suite di test (passo 2 del piano). Con l'API accesa
    Week e la Month si disegnano senza eccezioni e la Day mostra ancora
    icone, scheda e report.
 7. Tutti i server avviati per la verifica si fermano alla fine.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_33'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno nei dati. Restano su disco, fuori da git,
+`frontend/node_modules/`, `frontend/dist/` e `frontend/tsconfig.tsbuildinfo`
+(ignorati da `.gitignore`, ma dopo il revert il `.gitignore` non li ignora
+piu'): si cancellano a mano con la cartella `frontend/`.
+
+Dopo il revert, rifare il merge di `todo_33` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
