@@ -6,11 +6,40 @@ sezioni come dati."""
 
 from pathlib import Path
 
+# Un'icona per sezione del report, dalla cartella delle icone degli sport
+# (`icons/`). La sezione si riconosce dal nome nel titolo ("1. Training" ->
+# training.png), non dal numero: un report con le sezioni in un altro ordine le trova lo
+# stesso, e una sezione senza icona resta col solo titolo.
+#
+# Il report giornaliero ha le stesse sezioni con titolo del settimanale:
+# "Training" e "Recovery" usano le stesse icone, "Load" prende quella del
+# trend (e' l'andamento del carico), "Health" (una croce) e "Next" (una
+# freccia) hanno la loro, disegnate nello stesso stile: cerchio pieno e tratto
+# bianco arrotondato.
+REPORT_SECTION_ICONS = {
+    "training": "training.png",
+    "recovery": "recovery.png",
+    "trend": "trend.png",
+    "load": "trend.png",
+    "health": "health.png",
+    "next": "next.png",
+}
+
 # Le righe del file che ripetono quello che la pagina dice gia': il titolo
 # ("# ...") e le righe di intestazione del settimanale ("Week: ...") e del
 # giornaliero ("Window: ..." nei report vecchi, "Data: ..." nei nuovi). Il
 # periodo e' la riga spuntata nella tabella accanto.
 _HEADER_PREFIXES = ("# ", "Week: ", "Window: ", "Data: ")
+
+
+def section_icon(title: str) -> str | None:
+    """Il file dell'icona della sezione dal suo titolo, o None. Il file puo'
+    mancare nella cartella: lo controlla chi lo mostra."""
+    words = title.lower()
+    for name, filename in REPORT_SECTION_ICONS.items():
+        if name in words:
+            return filename
+    return None
 
 
 def parse_report(path: Path) -> list[tuple[str | None, str]]:

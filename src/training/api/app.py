@@ -13,9 +13,10 @@ from typing import Annotated, Any, Literal
 import numpy as np
 import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi.staticfiles import StaticFiles
 
 from training.api.cache import load_activities
-from training.api.context import UserContext, get_user_context
+from training.api.context import ICONS_DIR, UserContext, get_user_context
 from training.api.models import (
     Activity,
     ActivityDetail,
@@ -26,11 +27,13 @@ from training.api.models import (
     Report,
     ReportSection,
     Route,
+    Sport,
+    SportList,
     ZoneBand,
 )
 from training.interface.daily_data import build_daily_data
 from training.interface.db import _clean, load_activity_records
-from training.interface.report_text import parse_report
+from training.interface.report_text import parse_report, section_icon
 from training.interface.run_chart import (
     EFFECTS,
     bins,
@@ -41,6 +44,7 @@ from training.interface.run_chart import (
     zone_bands,
     zone_settings,
 )
+from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, sport_label
 
 # I giorni prima di `end` quando `start` non c'e': quattro settimane, `end`
 # compreso.
@@ -53,6 +57,10 @@ app = FastAPI(
 )
 
 Context = Annotated[UserContext, Depends(get_user_context)]
+
+# Le icone degli sport e delle sezioni dei report, in sola lettura: le
+# risposte danno solo il nome del file, e il frontend lo chiede qui.
+app.mount("/icons", StaticFiles(directory=ICONS_DIR), name="icons")
 
 
 def _records_dicts(frame: pd.DataFrame, columns: list[str]) -> list[dict[str, Any]]:
@@ -94,6 +102,19 @@ def get_activities(
         selected = selected[selected["sport"].isin(sport)]
     selected = selected.sort_values("start_time", ascending=False)
     return [Activity(**_activity_fields(row)) for _, row in selected.iterrows()]
+
+
+@app.get("/api/sports", response_model=SportList, summary="List sports")
+def get_sports(ctx: Context) -> SportList:
+    """The sports found in the activities, sorted by key, with their label and icon."""
+    activities = load_activities(ctx.data_dir)
+    return SportList(
+        sports=[
+            Sport(sport=sport, label=sport_label(sport), icon=SPORT_ICON_FILES.get(sport))
+            for sport in sorted(activities["sport"].dropna().unique())
+        ],
+        rest_icon=REST_ICON_FILE,
+    )
 
 
 @app.get("/api/activities/{activity_id}", response_model=ActivityDetail, summary="Activity detail")
@@ -190,4 +211,8 @@ def get_daily_report(day: date, ctx: Context) -> Report:
     path = ctx.summary_dir / "01.daily" / f"{day.isoformat()}.md"
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
-    return Report(day=day, sections=[ReportSection(title=t, body=b) for t, b in parse_report(path)])
+    sections = [
+        ReportSection(title=title, body=body, icon=section_icon(title) if title else None)
+        for title, body in parse_report(path)
+    ]
+    return Report(day=day, sections=sections)

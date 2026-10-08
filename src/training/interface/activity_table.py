@@ -10,15 +10,12 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+# Etichette e file delle icone stanno in `sports.py`, senza Streamlit, perche'
+# li usa anche l'API (todo 33). `sport_label` si importa ancora da qui nelle
+# pagine.
+from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, sport_label
+
 ICONS_DIR = Path("icons")
-SPORT_ICON_FILES = {
-    "walking": "walking.png",
-    "running": "running.png",
-    "cycling": "cycling.png",
-    "hiking": "trekking.png",
-    "cross_country_skiing": "backcountry_ski.png",
-    "rock_climbing": "climbing.png",
-}
 _ICON_MIME_TYPES = {".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
 
 # Le tre grandezze che dicono "che uscita e' stata" (quanto lunga, quanto e'
@@ -75,11 +72,7 @@ def sport_icons() -> dict:
     return icons
 
 
-# L'icona dei giorni di riposo nella tabella della Day (righe vuote, todo 30):
-# grigia, per restare indietro rispetto ai colori degli sport.
-REST_ICON_FILE = "rest.png"
-
-
+# L'icona dei giorni di riposo nella tabella della Day (righe vuote, todo 30).
 @st.cache_data
 def rest_icon() -> str | None:
     """L'icona del riposo come data URI, come quelle degli sport, o None se il
@@ -89,19 +82,6 @@ def rest_icon() -> str | None:
         return None
     mime = _ICON_MIME_TYPES.get(path.suffix.lower(), "application/octet-stream")
     return f"data:{mime};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
-
-
-def sport_label(value: str | None) -> str:
-    """Il nome di uno sport (o di un sotto-tipo) come si legge a schermo.
-
-    Nei dati gli sport sono chiavi: `cross_country_skiing`. A schermo diventano
-    "Cross country skiing", con la stessa regola che `profile.py` applica ai
-    suoi valori (`CAPITALIZE_KEYS`): iniziale maiuscola e basta. Passa di qui
-    ogni etichetta, cosi' lo stesso sport si legge uguale nelle tabelle, nelle
-    schede, nei grafici e nei filtri."""
-    if not value:
-        return "?"
-    return value.replace("_", " ").capitalize()
 
 
 def sport_icon_path(sport: str | None) -> Path | None:

@@ -15,6 +15,8 @@ from training.garmin.config import DATA_DIR
 # Streamlit usano invece `Path("summary/...")` relativo.
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SUMMARY_DIR = REPO_ROOT / "summary"
+# Le icone sono del repo, non dell'utente: uguali per tutti.
+ICONS_DIR = REPO_ROOT / "icons"
 
 
 @dataclass(frozen=True)

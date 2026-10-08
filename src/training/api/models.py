@@ -101,6 +101,7 @@ class Route(BaseModel):
 class ReportSection(BaseModel):
     title: str | None = Field(description="Null for the text before the first section.")
     body: str = Field(description="Markdown.")
+    icon: str | None = Field(description="Icon file name, served under /icons. Null when the section has none.")
 
 
 class Report(BaseModel):
@@ -108,3 +109,18 @@ class Report(BaseModel):
 
     day: date
     sections: list[ReportSection]
+
+
+class Sport(BaseModel):
+    """A sport found in the activities."""
+
+    sport: str = Field(description="The key used in `Activity.sport`.")
+    label: str = Field(description="The name to show.")
+    icon: str | None = Field(description="Icon file name, served under /icons.")
+
+
+class SportList(BaseModel):
+    """The sports found in the activities, and the icon for rest days."""
+
+    sports: list[Sport]
+    rest_icon: str = Field(description="Icon file name for days without activities, served under /icons.")

@@ -1,4 +1,4 @@
-.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface api activity_reports weekly_data daily_data
+.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -42,6 +42,16 @@ interface:
 # http://127.0.0.1:8000/docs
 api:
 	uv run uvicorn training.api.app:app --host 127.0.0.1 --port 8000 --reload
+
+# La pagina Day in React (todo 33), su http://127.0.0.1:5173. Chiede i dati
+# all'API: prima make api. La prima volta: cd frontend && npm ci
+frontend:
+	cd frontend && npm run dev
+
+# Rigenera i tipi TypeScript (frontend/src/api/schema.ts) dall'OpenAPI, dopo
+# ogni cambio ai modelli dell'API. Con l'API accesa (make api).
+frontend_types:
+	cd frontend && npm run gen:api
 
 activity_reports:
 	uv run training-activity-reports
