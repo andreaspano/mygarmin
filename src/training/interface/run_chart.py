@@ -40,27 +40,32 @@ EFFECTS = ("Low aerobic", "High aerobic", "Anaerobic")
 # hanno un solo colore a intensita' crescente perche' verde e rosso sono gia'
 # della pendenza; la velocita' reale e' nel colore del testo, perche' sul
 # viola il blu si staccava poco.
+#
+# Todo 34: la discesa e' un grigio caldo e non piu' rosa, che resta solo
+# all'anaerobico; il basso aerobico e' un colore pieno (non il viola a meta'
+# trasparenza, che sul fondo delle zone alte spariva) e il fondo delle zone e'
+# piu' leggero, cosi' le barre si staccano anche nelle ripetute in Z4.
 _PALETTES = {
     "light": {
         "speed": "#0b0b0b",
         "equiv": "#eb6834",
         "up": "#008300",
-        "down": "#e34948",
+        "down": "#a8a29e",
         "zone": "rgb(74,58,167)",
-        "zone_half": "rgba(74,58,167,0.5)",
+        "low_aerobic": "rgb(170,162,222)",
         "anaerobic": "#e87ba4",
-        "zone_opacity": [0.03, 0.10, 0.22, 0.40, 0.56],
+        "zone_opacity": [0.02, 0.06, 0.11, 0.18, 0.26],
         "muted": "#6b7280",
     },
     "dark": {
         "speed": "#f0efec",
         "equiv": "#d95926",
         "up": "#199e70",
-        "down": "#e66767",
+        "down": "#8f8983",
         "zone": "rgb(144,133,233)",
-        "zone_half": "rgba(144,133,233,0.5)",
+        "low_aerobic": "rgb(92,85,158)",
         "anaerobic": "#d55181",
-        "zone_opacity": [0.04, 0.13, 0.26, 0.44, 0.60],
+        "zone_opacity": [0.03, 0.07, 0.12, 0.18, 0.24],
         "muted": "#9ca3af",
     },
 }
@@ -368,7 +373,7 @@ def run_analysis_chart(
                 title="Effect (estimated)",
                 scale=alt.Scale(
                     domain=list(EFFECTS),
-                    range=[palette["zone_half"], palette["zone"], palette["anaerobic"]],
+                    range=[palette["low_aerobic"], palette["zone"], palette["anaerobic"]],
                 ),
                 legend=alt.Legend(orient="bottom", title=None),
             )

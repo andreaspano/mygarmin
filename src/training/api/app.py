@@ -22,6 +22,7 @@ from training.api.models import (
     ActivityDetail,
     ChartBin,
     ChartData,
+    DailyData,
     EffectSeconds,
     Pause,
     Report,
@@ -196,13 +197,17 @@ def get_activity_route(
     return Route(points=[(float(lat), float(lon)) for lat, lon in points])
 
 
-@app.get("/api/daily/{day}", summary="Daily data")
-def get_daily(day: date, ctx: Context) -> dict[str, Any]:
+@app.get("/api/daily/{day}", response_model=DailyData, summary="Daily data")
+def get_daily(day: date, ctx: Context) -> DailyData:
     """Everything known about one day (training, recovery, health, load), as built for the
-    daily report. Not yet typed field by field: the shape is still changing."""
+    daily report."""
     if day > date.today():
         raise HTTPException(status_code=422, detail=f"{day} is in the future.")
-    return build_daily_data(day, ctx.data_dir)
+    data = build_daily_data(day, ctx.data_dir)
+    # Il sonno della mattina in minuti, per scriverlo "8h04": `sleep_hours`
+    # e' arrotondato a 0.1 h (6 minuti), le ore notte per notte a 0.01.
+    hours = data["sleep_last_7"]["hours"].get(day.isoformat())
+    return DailyData(**data, sleep_minutes=round(hours * 60) if hours is not None else None)
 
 
 @app.get("/api/reports/daily/{day}", response_model=Report, summary="Daily report")

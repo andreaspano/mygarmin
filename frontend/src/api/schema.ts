@@ -137,7 +137,7 @@ export interface paths {
         /**
          * Daily data
          * @description Everything known about one day (training, recovery, health, load), as built for the
-         *     daily report. Not yet typed field by field: the shape is still changing.
+         *     daily report.
          */
         get: operations["get_daily_api_daily__day__get"];
         put?: never;
@@ -303,6 +303,18 @@ export interface components {
             effect_seconds: components["schemas"]["EffectSeconds"] | null;
         };
         /**
+         * Alert
+         * @description A warning sign, with its own numbers in extra fields.
+         */
+        Alert: {
+            /** Kind */
+            kind: string;
+            /** Detail */
+            detail: string;
+        } & {
+            [key: string]: unknown;
+        };
+        /**
          * ChartBin
          * @description One 30-second interval of the activity chart. Times in minutes from the start.
          */
@@ -350,6 +362,60 @@ export interface components {
             threshold_hr: number | null;
         };
         /**
+         * DailyData
+         * @description Everything known about one day, as built for the daily report.
+         */
+        DailyData: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Weekday */
+            weekday: string;
+            /** Health Data Up To */
+            health_data_up_to: string | null;
+            morning: components["schemas"]["Morning"];
+            /**
+             * Sleep Minutes
+             * @description Last night's sleep in whole minutes (sleep_hours is rounded to 0.1 h).
+             */
+            sleep_minutes: number | null;
+            sleep_last_7: components["schemas"]["SleepLast7"];
+            /**
+             * Alerts
+             * @description Empty when there are no warning signs.
+             */
+            alerts: components["schemas"]["Alert"][];
+            load: components["schemas"]["Load"];
+            /** Sessions */
+            sessions: {
+                [key: string]: unknown;
+            };
+            recent: components["schemas"]["Recent"];
+            /** Hr Zones */
+            hr_zones: {
+                [key: string]: unknown;
+            } | null;
+            /** Missing */
+            missing: string[];
+        };
+        /** DayActivities */
+        DayActivities: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Weekday */
+            weekday: string;
+            /**
+             * Activities
+             * @description One line per activity, e.g. "running 8.1 km".
+             */
+            activities: string[];
+        };
+        /**
          * EffectSeconds
          * @description Seconds spent in each training effect, estimated from heart rate.
          */
@@ -366,6 +432,120 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** Load */
+        Load: {
+            now: components["schemas"]["LoadNow"] | null;
+            /** @description Null when the health files have no targets. */
+            targets: components["schemas"]["LoadTargets"] | null;
+            week_ago: components["schemas"]["LoadNow"] | null;
+            /** @description Only when VO2max moved by 0.5 or more in 28 days. */
+            vo2max_change: components["schemas"]["Vo2maxChange"] | null;
+        };
+        /**
+         * LoadNow
+         * @description Garmin's training load as of one day.
+         */
+        LoadNow: {
+            /**
+             * As Of
+             * Format: date
+             */
+            as_of: string;
+            /** Load Acute */
+            load_acute: number | null;
+            /** Load Chronic */
+            load_chronic: number | null;
+            /** Acwr */
+            acwr: number | null;
+            /** Acwr Status */
+            acwr_status: string | null;
+            /** Training Status */
+            training_status: number | null;
+            /** Training Status Phrase */
+            training_status_phrase: string | null;
+            /**
+             * Load Aerobic Low
+             * @description Monthly load, low aerobic.
+             */
+            load_aerobic_low: number | null;
+            /**
+             * Load Aerobic High
+             * @description Monthly load, high aerobic.
+             */
+            load_aerobic_high: number | null;
+            /**
+             * Load Anaerobic
+             * @description Monthly load, anaerobic.
+             */
+            load_anaerobic: number | null;
+            /** Load Balance Phrase */
+            load_balance_phrase: string | null;
+        };
+        /**
+         * LoadTargets
+         * @description Garmin's target ranges for the monthly load of each effect.
+         */
+        LoadTargets: {
+            load_aerobic_low: components["schemas"]["TargetRange"];
+            load_aerobic_high: components["schemas"]["TargetRange"];
+            load_anaerobic: components["schemas"]["TargetRange"];
+        };
+        /**
+         * Mean
+         * @description An average over a window, with the number of days it is made of.
+         */
+        Mean: {
+            /**
+             * Mean
+             * @description Null when no day in the window has a value.
+             */
+            mean: number | null;
+            /** Days */
+            days: number;
+        };
+        /**
+         * Measure
+         * @description One morning measure, with its 7- and 28-day averages.
+         */
+        Measure: {
+            /** Value */
+            value: number | null;
+            /**
+             * Date
+             * Format: date
+             * @description The day the value is read from.
+             */
+            date: string;
+            avg_7d: components["schemas"]["Mean"];
+            avg_28d: components["schemas"]["Mean"];
+            /** Delta Vs 28D */
+            delta_vs_28d: number | null;
+        };
+        /**
+         * Morning
+         * @description Recovery and health measures of the morning. Stress and the body battery low are the
+         *     day before's; everything else is the night/morning of the day.
+         */
+        Morning: {
+            readiness: components["schemas"]["Measure"];
+            resting_hr: components["schemas"]["Measure"];
+            hrv_last_night: components["schemas"]["Measure"];
+            hrv_weekly_avg: components["schemas"]["Measure"];
+            resp_sleep: components["schemas"]["Measure"];
+            sleep_hours: components["schemas"]["Measure"];
+            sleep_score: components["schemas"]["Measure"];
+            stress_avg_yesterday: components["schemas"]["Measure"];
+            body_battery_morning: components["schemas"]["Measure"];
+            body_battery_low_yesterday: components["schemas"]["Measure"];
+            spo2_avg: components["schemas"]["Measure"];
+            /**
+             * Hrv Status
+             * @description Garmin's word for the HRV status.
+             */
+            hrv_status: string | null;
+            /** @description Garmin's balanced HRV range, in ms. */
+            hrv_baseline: components["schemas"]["Range"] | null;
+        };
         /**
          * Pause
          * @description A pause in the recording. Times in minutes from the start.
@@ -375,6 +555,59 @@ export interface components {
             start: number;
             /** End */
             end: number;
+        };
+        /** Range */
+        Range: {
+            /** Low */
+            low: number;
+            /** High */
+            high: number;
+        };
+        /**
+         * Recent
+         * @description The days before the day. Counts ignore what was done on the day itself.
+         */
+        Recent: {
+            /** Trained Today */
+            trained_today: boolean;
+            /** Last Activity Before Today */
+            last_activity_before_today: string | null;
+            /** Days Since Last Activity Before Today */
+            days_since_last_activity_before_today: number | null;
+            /** Last Hard Session Before Today */
+            last_hard_session_before_today: string | null;
+            /** Days Since Last Hard Session Before Today */
+            days_since_last_hard_session_before_today: number | null;
+            /** Hard Session Rule */
+            hard_session_rule: string;
+            /** Rest Days Last 7 */
+            rest_days_last_7: number;
+            /** Consecutive Training Days Before Today */
+            consecutive_training_days_before_today: number;
+            /** Consecutive Rest Days Before Today */
+            consecutive_rest_days_before_today: number;
+            /** Last 7 Days */
+            last_7_days: components["schemas"]["DayActivities"][];
+            /** Activities Last 14 Days */
+            activities_last_14_days: components["schemas"]["RecentActivity"][];
+        };
+        /** RecentActivity */
+        RecentActivity: {
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Sport */
+            sport: string | null;
+            /** Distance Km */
+            distance_km: number | null;
+            /** Duration Min */
+            duration_min: number | null;
+            /** Aerobic Te */
+            aerobic_te: number | null;
+            /** Anaerobic Te */
+            anaerobic_te: number | null;
         };
         /**
          * Report
@@ -421,6 +654,23 @@ export interface components {
                 number
             ][];
         };
+        /** SleepLast7 */
+        SleepLast7: {
+            /**
+             * Hours
+             * @description Hours of sleep, night by night.
+             */
+            hours: {
+                [key: string]: number | null;
+            };
+            /**
+             * Short Nights
+             * @description Nights under 7 h.
+             */
+            short_nights: number;
+            /** Nights Measured */
+            nights_measured: number;
+        };
         /**
          * Sport
          * @description A sport found in the activities.
@@ -455,6 +705,13 @@ export interface components {
              */
             rest_icon: string;
         };
+        /** TargetRange */
+        TargetRange: {
+            /** Min */
+            min: number;
+            /** Max */
+            max: number;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -467,6 +724,15 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** Vo2maxChange */
+        Vo2maxChange: {
+            /** Now */
+            now: number;
+            /** Days Ago 28 */
+            days_ago_28: number;
+            /** Change */
+            change: number;
         };
         /**
          * ZoneBand
@@ -701,9 +967,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
+                    "application/json": components["schemas"]["DailyData"];
                 };
             };
             /** @description Validation Error */

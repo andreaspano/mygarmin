@@ -6,6 +6,8 @@ import type { components } from "./schema";
 type Schemas = components["schemas"];
 export type Activity = Schemas["Activity"];
 export type ActivityDetail = Schemas["ActivityDetail"];
+export type DailyData = Schemas["DailyData"];
+export type Measure = Schemas["Measure"];
 export type Report = Schemas["Report"];
 export type ReportSection = Schemas["ReportSection"];
 export type Route = Schemas["Route"];
@@ -60,6 +62,8 @@ export const api = {
     getOrNull<VegaSpec>(`/api/activities/${id}/chart/vega?theme=${theme}`, signal),
 
   route: (id: number, signal?: AbortSignal) => getJson<Route>(`/api/activities/${id}/route`, signal),
+
+  daily: (day: string, signal?: AbortSignal) => getJson<DailyData>(`/api/daily/${day}`, signal),
 
   dailyReport: (day: string, signal?: AbortSignal) => getOrNull<Report>(`/api/reports/daily/${day}`, signal),
 };

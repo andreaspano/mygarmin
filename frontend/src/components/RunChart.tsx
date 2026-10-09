@@ -24,6 +24,9 @@ function themeConfig(theme: ColorScheme) {
     legend: { labelColor: c.text, titleColor: c.text },
     title: { color: c.text },
     view: { stroke: c.grid },
+    // Assi e titoli dentro la larghezza del riquadro, non in piu': senza,
+    // l'SVG sporgeva di una cinquantina di pixel a destra della scheda.
+    autosize: { type: "fit-x" as const, contains: "padding" as const },
   };
 }
 

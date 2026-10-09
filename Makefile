@@ -43,7 +43,7 @@ interface:
 api:
 	uv run uvicorn training.api.app:app --host 127.0.0.1 --port 8000 --reload
 
-# La pagina Day in React (todo 33), su http://127.0.0.1:5173. Chiede i dati
+# La pagina Day in React (todo 33 e 34), su http://127.0.0.1:5173. Chiede i dati
 # all'API: prima make api. La prima volta: cd frontend && npm ci
 frontend:
 	cd frontend && npm run dev

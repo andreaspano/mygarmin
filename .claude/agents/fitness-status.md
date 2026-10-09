@@ -49,13 +49,17 @@ The JSON:
   no warning signs.
 - `load`: `now` (Garmin's load as of `as_of`: acute and chronic load, their ratio `acwr` and
   its status, training status, load balance and Garmin's phrase) and `week_ago` (the same 7
-  days earlier, for the direction). `vo2max_change` is present only if VO2max moved by 0.5
-  or more in 28 days.
+  days earlier, for the direction). `targets`: Garmin's target range (`min`/`max`) for each of
+  the three monthly loads, or `null`; a load below its `min` is a shortage, above its `max`
+  more than needed. `vo2max_change` is present only if VO2max moved by 0.5 or more in 28
+  days.
 - `sessions`: `yesterday` and `today` (already done), each activity with time, sport, name,
   distance, duration, ascent, average and max HR, Garmin's aerobic and anaerobic Training
   Effect, grade-adjusted speed, `effect_minutes` (minutes of low aerobic, high aerobic and
-  anaerobic work, estimated from heart rate; `null` when the watch saved no anaerobic
-  threshold) and `minutes_above_z3` (minutes above the top of Z3, i.e. the harder work; it
+  anaerobic work, estimated from heart rate; when the watch saved no anaerobic threshold, as
+  on the bike, activities from August 2026 borrow the threshold of the latest run, so the
+  split of a ride leans to low aerobic; `null` only when there are no zones at all, as in
+  older files) and `minutes_above_z3` (minutes above the top of Z3, i.e. the harder work; it
   exists even when `effect_minutes` is `null` — use it then).
 - `recent`: `trained_today` (an activity is already done on `day`), the last activity
   **before** `day` and days since it, the last hard session **before** `day`
@@ -83,7 +87,7 @@ The JSON:
   "PRODUCTIVE_3", "OPTIMAL". Say it in plain words ("your training load is back in a healthy
   range", "almost no harder efforts").
 - Exactly five sections, each a `## <Title>` heading followed by one short paragraph (at
-  most about 80 words), in this order and with these exact titles — the same layout as the
+  most about 80 words; `Next` has its own layout, below), in this order and with these exact titles — the same layout as the
   weekly report, so the Day page shows each section with its icon:
   - `## Training` — The training of the report's day (`sessions.today`), which is what the
     report is about: what it was, when (`start_time`), the minutes per effect from
@@ -112,6 +116,29 @@ The JSON:
     a hard session, an easy one or rest. If the day already has its training
     (`trained_today` true), the suggestion is for **tomorrow**; if not, it is for the day
     itself.
+
+    `Next` is laid out in three parts, because the Day page shows them apart (a title, the
+    reason, and the steps of the session as chips):
+    1. a title alone on the first line, in bold, a few words naming the session
+       (`**High aerobic run**`, `**Easy ride**`, `**Rest day**`);
+    2. a blank line, then one short paragraph with the reason (at most about 50 words);
+    3. a blank line, then the steps of the example session as a bullet list, one step per
+       bullet, each at most about 6 words (`- 15 min easy under 142 bpm`). For a rest day,
+       one or two bullets (`- No training`, `- Walk if you like`).
+
+    ```markdown
+    ## Next
+
+    **High aerobic run**
+
+    Tomorrow, run at tempo: you recovered well and you are short on harder aerobic work.
+
+    - 15 min easy under 142 bpm
+    - 3 × 8 min at 143–154 bpm
+    - 3 min easy jog between efforts
+    - 10 min easy to cool down
+    - Never above 155 bpm
+    ```
 - Header, exactly:
 
   ```markdown
@@ -134,8 +161,8 @@ The JSON:
   ## Next
   ```
 
-  The paragraph under each heading starts directly with the text (no bold label). No other
-  headings, no tables.
+  The paragraph under each heading starts directly with the text (no bold label), except
+  the title line of `Next`. No other headings, no tables.
 
 - **Times of day** come from each session's `start_time`, never assumed: morning before
   12:00, afternoon 12:00–18:00, evening from 18:00. When in doubt, give the time ("the run at
@@ -154,6 +181,7 @@ The JSON:
    with `trained_today` true, no sentence implies today is a rest day.
 7. Every "in a row", "back-to-back", "after N rest days", "first … since" matches
    `consecutive_*_before_today` or `last_7_days`.
+8. `Next` has its bold title line, the reason paragraph and the bullet list of steps.
 
 ## Step 3 — save the report (always, every time step 1 succeeded)
 

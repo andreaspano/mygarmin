@@ -1,4 +1,4 @@
-// Date e numeri come li scrive la pagina Day di Streamlit.
+// Date e numeri della pagina Day.
 //
 // I giorni restano stringhe "YYYY-MM-DD": `new Date("2026-10-07")` li legge
 // in UTC, e intorno alla mezzanotte il giorno cambierebbe. Per i conti sui
@@ -41,12 +41,6 @@ export function daysBetween(start: string, end: string): string[] {
   return days;
 }
 
-/** "Wed 7 Oct 2026", come la colonna Date della tabella. */
-export function dayLabel(day: string): string {
-  const [y, m, d] = parts(day);
-  return `${WEEKDAYS[new Date(utc(day)).getUTCDay()]} ${d} ${MONTHS[m - 1]} ${y}`;
-}
-
 /** Il giorno di un orario dell'API. */
 export function dayOf(timestamp: string): string {
   return timestamp.slice(0, 10);
@@ -55,12 +49,6 @@ export function dayOf(timestamp: string): string {
 /** "12:28". */
 export function timeOf(timestamp: string): string {
   return timestamp.slice(11, 16);
-}
-
-/** "07 Oct 2026, 12:28", come il titolo della scheda. */
-export function dateTimeLabel(timestamp: string): string {
-  const [y, m, d] = parts(dayOf(timestamp));
-  return `${String(d).padStart(2, "0")} ${MONTHS[m - 1]} ${y}, ${timeOf(timestamp)}`;
 }
 
 /** L'arrotondamento di `round` di Python: a meta' strada, al pari. La
@@ -74,15 +62,57 @@ export function roundHalfEven(value: number): number {
   return floor % 2 === 0 ? floor : floor + 1;
 }
 
-/** Minuti in "hh:mm" (114 -> "01:54"), o "-". */
-export function hm(minutes: number | null | undefined): string {
-  if (minutes == null || Number.isNaN(minutes)) return "-";
-  const total = roundHalfEven(minutes);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
-}
-
 /** Un numero con `digits` decimali, o "-" se manca. */
 export function fixed(value: number | null | undefined, digits: number, suffix = ""): string {
   return value == null ? "-" : `${value.toFixed(digits)}${suffix}`;
+}
+
+const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const MONTHS_LONG = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
+/** Il giorno della settimana, 0 = domenica. */
+function weekdayIndex(day: string): number {
+  return new Date(utc(day)).getUTCDay();
+}
+
+/** "Wednesday 7 October", con l'anno se non e' quello di oggi. */
+export function longDayLabel(day: string): string {
+  const [y, m, d] = parts(day);
+  const year = y === parts(today())[0] ? "" : ` ${y}`;
+  return `${WEEKDAYS_LONG[weekdayIndex(day)]} ${d} ${MONTHS_LONG[m - 1]}${year}`;
+}
+
+/** "Wed". */
+export function weekdayShort(day: string): string {
+  return WEEKDAYS[weekdayIndex(day)];
+}
+
+/** Il numero del giorno nel mese. */
+export function dayNumber(day: string): number {
+  return parts(day)[2];
+}
+
+/** "25 Sep". */
+export function shortDayLabel(day: string): string {
+  const [, m, d] = parts(day);
+  return `${d} ${MONTHS[m - 1]}`;
+}
+
+/** Una durata in minuti: "46 min" sotto l'ora, "2h52" sopra. */
+export function durationLabel(minutes: number | null | undefined): string {
+  if (minutes == null || Number.isNaN(minutes)) return "-";
+  const total = roundHalfEven(minutes);
+  if (total < 60) return `${total} min`;
+  return `${Math.floor(total / 60)}h${String(total % 60).padStart(2, "0")}`;
+}
+
+/** I minuti di un effetto: interi, ma sotto il minuto con un decimale
+ * ("0.5 min"), perche' "0 min" direbbe che non c'e' niente. */
+export function effectMinutesLabel(seconds: number): string {
+  const minutes = seconds / 60;
+  if (minutes > 0 && minutes < 1) return `${minutes.toFixed(1)} min`;
+  return `${roundHalfEven(minutes)} min`;
 }

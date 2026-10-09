@@ -26,7 +26,7 @@ import pandas as pd
 
 from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities, load_activity_records
-from training.interface.health import _day_paths, _dig, _read_json
+from training.interface.health import _day_paths, _dig, _primary_entry, _read_json
 from training.interface.health_db import load_health_db
 from training.interface.grade import EQUIV_SPEED_SPORTS
 from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
@@ -208,6 +208,35 @@ def _load_on(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
     as_of = known.index[-1]
     row = health.loc[as_of]
     return {"as_of": as_of.date().isoformat(), **{m: _value(row[m], 2) for m in LOAD_METRICS}}
+
+
+# Le fasce obiettivo del carico mensile per zona, come le chiama Garmin nel
+# JSON del training status. `health_daily` non le tiene: si leggono dal file
+# del giorno, come la fascia dell'HRV.
+LOAD_TARGET_FIELDS = {
+    "load_aerobic_low": "monthlyLoadAerobicLow",
+    "load_aerobic_high": "monthlyLoadAerobicHigh",
+    "load_anaerobic": "monthlyLoadAnaerobic",
+}
+
+
+def _load_targets(as_of: str, data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
+    """Le fasce obiettivo (`min`, `max`) del carico per zona nel giorno
+    `as_of`, quello del carico di `_load_on`. `None` se il file non c'e', non
+    e' di quel giorno o non ha le fasce."""
+    path = _day_paths(Path(data_dir) / "health", as_of)["training_status"]
+    entry = _primary_entry(
+        _dig(_read_json(path), "mostRecentTrainingLoadBalance", "metricsTrainingLoadBalanceDTOMap")
+    )
+    if entry is None or entry.get("calendarDate") != as_of:
+        return None
+    targets = {
+        name: {"min": entry.get(f"{field}TargetMin"), "max": entry.get(f"{field}TargetMax")}
+        for name, field in LOAD_TARGET_FIELDS.items()
+    }
+    if any(t["min"] is None or t["max"] is None for t in targets.values()):
+        return None
+    return targets
 
 
 def _vo2max_change(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
@@ -421,6 +450,7 @@ def build_daily_data(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any]:
         "alerts": _alerts(health, day, morning, sleep),
         "load": {
             "now": load_now,
+            "targets": _load_targets(load_now["as_of"], data_dir) if load_now else None,
             "week_ago": load_week_ago,
             "vo2max_change": _vo2max_change(health, day),
         },
