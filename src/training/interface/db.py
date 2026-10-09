@@ -274,6 +274,44 @@ def _parse_and_store(
     return True
 
 
+# Il profilo Bici dell'orologio calcola le zone sulla FC massima e non salva
+# la soglia anaerobica, e senza soglia la scheda non stima gli effetti
+# (`run_chart.has_effects`). Alle attivita' che hanno le zone ma non la soglia
+# (o l'hanno a zero, come le escursioni e alcune corse) si da' quella
+# dell'ultima corsa prima di loro che ne ha una vera. Se prima non ce n'e'
+# (l'orologio salva soglie vere solo dall'11/09/2026), quella della prima corsa
+# dopo. Solo da questa data in poi, per scelta di Andrea: lo storico piu'
+# vecchio resta com'e' nel FIT.
+THRESHOLD_FALLBACK_FROM = "2026-08-01"
+
+
+def _fill_missing_thresholds(conn: sqlite3.Connection) -> None:
+    """La soglia dell'ultima corsa precedente (o, in mancanza, della prima
+    successiva) alle attivita' senza soglia o con soglia zero, da
+    THRESHOLD_FALLBACK_FROM in poi. Gira dopo ogni rebuild e sync, cosi' vale
+    anche per i file nuovi e per gli sport riclassificati."""
+    conn.execute(
+        """
+        UPDATE activities SET threshold_hr = COALESCE(
+            (
+                SELECT run.threshold_hr FROM activities AS run
+                WHERE run.sport = 'running' AND run.threshold_hr > 0
+                  AND run.start_time < activities.start_time
+                ORDER BY run.start_time DESC LIMIT 1
+            ),
+            (
+                SELECT run.threshold_hr FROM activities AS run
+                WHERE run.sport = 'running' AND run.threshold_hr > 0
+                  AND run.start_time > activities.start_time
+                ORDER BY run.start_time LIMIT 1
+            )
+        )
+        WHERE (threshold_hr IS NULL OR threshold_hr = 0) AND hr_zone_bounds IS NOT NULL AND start_time >= ?
+        """,
+        (THRESHOLD_FALLBACK_FROM,),
+    )
+
+
 def rebuild(data_dir: Path = DATA_DIR) -> int:
     """Drop and repopulate the cache from every .fit file in data_dir.
     Used after a parsing-logic change (LOGIC_VERSION bump) or on first run."""
@@ -291,6 +329,7 @@ def rebuild(data_dir: Path = DATA_DIR) -> int:
         count = sum(
             _parse_and_store(conn, p, names, types, parsed_at) for p in list_activity_files(data_dir)
         )
+        _fill_missing_thresholds(conn)
         conn.execute(
             "INSERT INTO schema_meta (key, value) VALUES ('logic_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -348,6 +387,7 @@ def sync(data_dir: Path = DATA_DIR) -> int:
                 if type_key and type_key not in GARMIN_TYPE_TO_SPORT
             ],
         )
+        _fill_missing_thresholds(conn)
         conn.commit()
         return added
     finally:

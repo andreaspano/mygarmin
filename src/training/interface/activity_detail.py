@@ -37,8 +37,10 @@ def _effect_rows(activity, records: pd.DataFrame) -> list[list[tuple[str, str, s
     estimated, garmin = [], []
     if has_effects(bounds, threshold) and records["heart_rate"].notna().any():
         seconds = effects(records, bounds, threshold)
-        # Le soglie nell'aiuto sono quelle di questa attivita', lette dal FIT:
-        # cambiano nel tempo, e il numero dice piu' del nome della zona.
+        # Le soglie nell'aiuto sono quelle di questa attivita', lette dal FIT
+        # (la soglia, se manca, e' quella dell'ultima corsa: vedi
+        # `db.THRESHOLD_FALLBACK_FROM`): cambiano nel tempo, e il numero dice
+        # piu' del nome della zona.
         z3_top = bounds[2]
         ranges = (
             f"heart rate at or below the top of Z3 ({z3_top} bpm)",
