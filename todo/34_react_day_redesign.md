@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # La pagina Day in React, nuovo impianto
