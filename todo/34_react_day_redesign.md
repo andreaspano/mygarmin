@@ -194,5 +194,9 @@ git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_34'$" --form
 ```
 
 Effetti fuori dal repo: i report giornalieri scritti dopo il merge hanno la
-sezione Next nel formato nuovo; restano leggibili anche dalla Day di prima
-(sono paragrafi ed elenchi).
+sezione Next nel formato nuovo (gia' `summary/01.daily/2026-10-09.md`,
+riscritto per la verifica 4); restano leggibili anche dalla Day di prima
+(sono paragrafi ed elenchi). Nessun cambio a `activities.db`.
+
+Dopo il revert, rifare il merge di `todo_34` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
