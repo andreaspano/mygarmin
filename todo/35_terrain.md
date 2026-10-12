@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il terreno delle attivita' a piedi
@@ -150,9 +150,10 @@ Con l'API accesa e i dati locali:
 git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_35'$" --format=%H -1)
 ```
 
-Effetti fuori dal repo: `data_dir/activity_terrain.json`, se Andrea ha
-corretto qualche terreno. Dopo il revert nessuno lo legge: si puo' lasciare
-o cancellare. Nessun cambio a `activities.db`.
+Effetti fuori dal repo: `activity_terrain.json` nella cartella dati, se
+Andrea ha corretto qualche terreno dopo il merge (la verifica non lo lascia:
+il file di prova e' stato cancellato). Dopo il revert nessuno lo legge: e'
+innocuo, si puo' lasciare o cancellare. Nessun cambio a `activities.db`.
 
 Dopo il revert, rifare il merge di `todo_35` non riporta le modifiche (git le
 considera gia' unite): per riaverle serve il revert del revert.

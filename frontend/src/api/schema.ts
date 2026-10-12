@@ -64,6 +64,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activities/{activity_id}/terrain": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the terrain
+         * @description Set the terrain of an on-foot activity, or clear it with `null` to go back to the guess.
+         *
+         *     422 for activities without a terrain (sports other than running, walking and hiking,
+         *     and treadmill runs).
+         */
+        put: operations["put_activity_terrain_api_activities__activity_id__terrain_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activities/{activity_id}/chart": {
         parameters: {
             query?: never;
@@ -230,6 +253,16 @@ export interface components {
              * @description Garmin's anaerobic Training Effect, 0-5.
              */
             anaerobic_te: number | null;
+            /**
+             * Terrain
+             * @description Terrain of on-foot activities: the user's choice, or else a guess. Null for other sports.
+             */
+            terrain: ("track" | "road" | "gravel" | "trail" | "mountain") | null;
+            /**
+             * Terrain Source
+             * @description Whether `terrain` is a guess or set by the user. Null when there is no terrain.
+             */
+            terrain_source: ("guess" | "user") | null;
         };
         /**
          * ActivityDetail
@@ -289,6 +322,16 @@ export interface components {
              * @description Garmin's anaerobic Training Effect, 0-5.
              */
             anaerobic_te: number | null;
+            /**
+             * Terrain
+             * @description Terrain of on-foot activities: the user's choice, or else a guess. Null for other sports.
+             */
+            terrain: ("track" | "road" | "gravel" | "trail" | "mountain") | null;
+            /**
+             * Terrain Source
+             * @description Whether `terrain` is a guess or set by the user. Null when there is no terrain.
+             */
+            terrain_source: ("guess" | "user") | null;
             /**
              * Hr Zone Bounds
              * @description Upper limits of zones Z1-Z4, in bpm.
@@ -712,6 +755,17 @@ export interface components {
             /** Max */
             max: number;
         };
+        /**
+         * TerrainUpdate
+         * @description The terrain chosen by the user for one activity.
+         */
+        TerrainUpdate: {
+            /**
+             * Terrain
+             * @description Null clears the choice and goes back to the guess.
+             */
+            terrain: ("track" | "road" | "gravel" | "trail" | "mountain") | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -837,6 +891,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ActivityDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_activity_terrain_api_activities__activity_id__terrain_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TerrainUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
                 };
             };
             /** @description Validation Error */

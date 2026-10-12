@@ -25,6 +25,17 @@ def _hm(minutes: float) -> str:
     return f"{minutes // 60:02d}:{minutes % 60:02d}"
 
 
+def _terrain_label(activity) -> str:
+    """Il terreno in coda al titolo della scheda, es. " · Terrain: Trail
+    (guessed)", per le attivita' a piedi (todo 35); niente per le altre. Qui si
+    legge soltanto: si cambia dalla Day in React."""
+    terrain = getattr(activity, "terrain", None)
+    if not isinstance(terrain, str):
+        return ""
+    guessed = " (guessed)" if getattr(activity, "terrain_source", None) == "guess" else ""
+    return f" · Terrain: {terrain.capitalize()}{guessed}"
+
+
 def _records(activity_id: int) -> pd.DataFrame:
     return load_activity_records(activity_id, DATA_DIR)
 
@@ -124,6 +135,7 @@ def show_activity_detail(activity, card_container=None) -> int:
             head.image(icon_path, width=40)
         head.markdown(
             f"**{sport_label(activity.sport)}** — {activity.start_time:%d %b %Y, %H:%M}"
+            + _terrain_label(activity)
         )
 
         # Prima riga le tre grandezze che sono anche colonne di tabella, nello

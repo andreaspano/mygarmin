@@ -15,7 +15,7 @@ qualunque sia la cartella da cui si lancia il comando.
 
 ## API
 
-Un'API in sola lettura (FastAPI) espone i dati della pagina Day: attivita',
+Un'API (FastAPI) espone i dati della pagina Day: attivita',
 dettaglio, dati e specifica Vega-Lite del grafico, traccia, i fatti del
 giorno e il report giornaliero. Si lancia con:
 
@@ -25,8 +25,19 @@ make api
 
 Ascolta solo su `http://127.0.0.1:8000`: non c'e' ancora il login, e sono
 dati di salute. La documentazione interattiva e' su
-`http://127.0.0.1:8000/docs`, lo schema OpenAPI su `/openapi.json`. Solo
-`GET`: niente download da Garmin e niente scrittura di report.
+`http://127.0.0.1:8000/docs`, lo schema OpenAPI su `/openapi.json`. Tutto
+`GET`, niente download da Garmin e niente scrittura di report, tranne una
+`PUT`: il terreno di un'attivita' a piedi (todo 35).
+
+### Il terreno delle attivita' a piedi
+
+Corse, camminate ed escursioni hanno un terreno: `track`, `road`, `gravel`,
+`trail` o `mountain`. L'API lo stima dal tipo dell'attivita' e dalla salita
+per km (`src/training/interface/terrain.py`; strada quando i dati non
+decidono, sterrato mai), e lo si corregge dalla scheda Training della Day in
+React. Le correzioni stanno in `activity_terrain.json` nella cartella dati,
+accanto a `activity_names.json`: `activities.db` non le contiene, e un
+rebuild non le perde. Streamlit mostra il terreno ma non lo cambia.
 
 ### La pagina Day in React
 

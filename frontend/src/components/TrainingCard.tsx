@@ -2,10 +2,11 @@
 // di linguette (icona e ora) sceglie quella da mostrare. La scheda: titolo,
 // metriche, la barra dei minuti per effetto, a destra il commento (la sezione
 // Training del report) e i due Training Effect; sotto il grafico a tre fasce
-// e, a richiesta, la mappa. Giorno senza attivita': "Rest day".
+// e, a richiesta, la mappa. Giorno senza attivita': "Rest day". Per le
+// attivita' a piedi il terreno (todo 35), stimato dall'API e correggibile.
 import { useEffect, useState } from "react";
 
-import { api, iconUrl, type Activity, type ActivityDetail, type DailyData } from "../api/client";
+import { api, iconUrl, type Activity, type ActivityDetail, type DailyData, type Terrain } from "../api/client";
 import { durationLabel, effectMinutesLabel, fixed, timeOf } from "../format";
 import { markdown } from "../markdown";
 import type { ColorScheme } from "../useColorScheme";
@@ -22,6 +23,18 @@ const TE_HELP = {
 const EFFECT_HELP =
   "Estimated from heart rate: low aerobic up to the top of Z3, high aerobic up to the anaerobic " +
   "threshold, anaerobic above it. Garmin computes its own Training Effect, and the file only keeps the session totals.";
+
+const TERRAINS: { value: Terrain; label: string }[] = [
+  { value: "track", label: "Track" },
+  { value: "road", label: "Road" },
+  { value: "gravel", label: "Gravel" },
+  { value: "trail", label: "Trail" },
+  { value: "mountain", label: "Mountain" },
+];
+
+const TERRAIN_HELP =
+  "The ground the activity was on. Guessed from the activity type and the climb per km " +
+  "(road when the data cannot tell): pick a value to correct it, Auto to go back to the guess.";
 
 type Sport = { label: (sport: string | null | undefined) => string; icon: (sport: string | null | undefined) => string | null };
 
@@ -97,6 +110,53 @@ function TrainingEffect({ label, value, help, tone }: { label: string; value: nu
   );
 }
 
+/** Il terreno: "Auto" quando vale la stima, altrimenti la scelta di Andrea.
+ * Dopo il salvataggio l'attivita' si rilegge dall'API (`onSaved`). */
+function TerrainPicker({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (activity.terrain == null) return null;
+  const guess = activity.terrain_source === "guess" ? activity.terrain : null;
+  const label = (t: string) => TERRAINS.find((x) => x.value === t)?.label ?? t;
+
+  async function change(value: string) {
+    setSaving(true);
+    setFailed(false);
+    try {
+      await api.setTerrain(activity.activity_id, value === "auto" ? null : (value as Terrain));
+      await onSaved();
+    } catch (error) {
+      console.error(error);
+      setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="terrain" title={TERRAIN_HELP}>
+      <label className="stat-label" htmlFor={`terrain-${activity.activity_id}`}>
+        Terrain
+      </label>
+      <select
+        id={`terrain-${activity.activity_id}`}
+        className="btn"
+        value={activity.terrain_source === "user" ? activity.terrain : "auto"}
+        disabled={saving}
+        onChange={(e) => void change(e.target.value)}
+      >
+        <option value="auto">{guess ? `Auto (guess: ${label(guess)})` : "Auto (guess)"}</option>
+        {TERRAINS.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+      </select>
+      {failed && <div className="muted">Could not save the terrain.</div>}
+    </div>
+  );
+}
+
 function ActivityView({
   activity,
   data,
@@ -129,6 +189,9 @@ function ActivityView({
       .catch((e: unknown) => !isAbort(e) && console.error(e));
     return () => controller.abort();
   }, [id]);
+
+  // Dopo la PUT del terreno: l'attivita' con il valore nuovo, dall'API.
+  const reload = async () => setDetail(await api.activity(id));
 
   const icon = sport.icon(activity.sport);
   const after = first ? context(data) : null;
@@ -179,6 +242,7 @@ function ActivityView({
         </div>
         <aside className="training-side">
           {comment && <div className="prose">{markdown(comment)}</div>}
+          {detail && <TerrainPicker activity={detail} onSaved={reload} />}
           {(a.aerobic_te != null || a.anaerobic_te != null) && (
             <div className="te-box">
               <div className="stat-label">Garmin Training Effect, 0 to 5</div>
