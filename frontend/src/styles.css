@@ -656,6 +656,14 @@ h2 {
 .te-bar .fill {
   height: 100%;
 }
+.terrain {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.terrain select {
+  align-self: flex-start;
+}
 .link-btn {
   align-self: flex-start;
   background: none;

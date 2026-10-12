@@ -36,3 +36,11 @@ def load_activities(data_dir: Path) -> pd.DataFrame:
             cached = (time.monotonic(), list_activities(key))
             _cache[key] = cached
     return cached[1].copy()
+
+
+def invalidate(data_dir: Path) -> None:
+    """Dimentica le attivita' di una cartella dati: la prossima richiesta le
+    rilegge. Dopo una scrittura (il terreno, todo 35), cosi' la modifica si
+    vede subito e non dopo un minuto."""
+    with _lock:
+        _cache.pop(Path(data_dir), None)

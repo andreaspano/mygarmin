@@ -1,4 +1,5 @@
-"""L'API di sola lettura per la pagina Day (todo 32).
+"""L'API della pagina Day (todo 32). Tutto in sola lettura (`GET`), tranne il
+terreno di un'attivita' a piedi (`PUT`, todo 35).
 
 Lancio: `make api` (solo su 127.0.0.1: non c'e' ancora il login, e sono dati
 di salute). La documentazione interattiva e' su `/docs`.
@@ -15,7 +16,7 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
-from training.api.cache import load_activities
+from training.api.cache import invalidate, load_activities
 from training.api.context import ICONS_DIR, UserContext, get_user_context
 from training.api.models import (
     Activity,
@@ -30,6 +31,7 @@ from training.api.models import (
     Route,
     Sport,
     SportList,
+    TerrainUpdate,
     ZoneBand,
 )
 from training.interface.daily_data import build_daily_data
@@ -46,6 +48,7 @@ from training.interface.run_chart import (
     zone_settings,
 )
 from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, sport_label
+from training.interface.terrain import save_terrain_override
 
 # I giorni prima di `end` quando `start` non c'e': quattro settimane, `end`
 # compreso.
@@ -53,7 +56,10 @@ DEFAULT_WINDOW_DAYS = 27
 
 app = FastAPI(
     title="Training API",
-    description="Read-only access to activities, charts, daily data and daily reports.",
+    description=(
+        "Read-only access to activities, charts, daily data and daily reports. "
+        "The only write is the terrain of an on-foot activity."
+    ),
     version="0.1.0",
 )
 
@@ -139,6 +145,20 @@ def get_activity(activity_id: int, ctx: Context) -> ActivityDetail:
         threshold_hr=threshold,
         effect_seconds=effect_seconds,
     )
+
+
+@app.put("/api/activities/{activity_id}/terrain", response_model=Activity, summary="Set the terrain")
+def put_activity_terrain(activity_id: int, update: TerrainUpdate, ctx: Context) -> Activity:
+    """Set the terrain of an on-foot activity, or clear it with `null` to go back to the guess.
+
+    422 for activities without a terrain (sports other than running, walking and hiking,
+    and treadmill runs)."""
+    row = _activity_row(activity_id, ctx)
+    if _clean(row["terrain_source"]) is None:
+        raise HTTPException(status_code=422, detail=f"Activity {activity_id} has no terrain.")
+    save_terrain_override(ctx.data_dir, activity_id, update.terrain)
+    invalidate(ctx.data_dir)
+    return Activity(**_activity_fields(_activity_row(activity_id, ctx)))
 
 
 @app.get("/api/activities/{activity_id}/chart", response_model=ChartData, summary="Activity chart data")

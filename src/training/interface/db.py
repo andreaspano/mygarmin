@@ -39,6 +39,7 @@ from training.interface.fit import (
 )
 from training.interface.fit import load_activity_records as _parse_fit_records
 from training.interface.grade import EQUIV_SPEED_SPORTS, equivalent_speed_kmh, equivalent_speed_series
+from training.interface.terrain import guess_terrain, has_terrain, load_terrain_overrides
 
 DB_FILENAME = "activities.db"
 
@@ -404,7 +405,34 @@ def list_activities(data_dir: Path = DATA_DIR) -> pd.DataFrame:
         conn.close()
     if not df.empty:
         df["start_time"] = pd.to_datetime(df["start_time"])
+    _add_terrain(df, data_dir)
     return df
+
+
+def _add_terrain(df: pd.DataFrame, data_dir: Path) -> None:
+    """Le colonne `terrain` e `terrain_source` (todo 35): la correzione di
+    Andrea se c'e', altrimenti la stima di `terrain.guess_terrain`. Non stanno
+    nel database: si calcolano qui a ogni lettura, e le correzioni vengono da
+    `activity_terrain.json`, che sopravvive a rebuild()."""
+    types = load_activity_types(data_dir)
+    overrides = load_terrain_overrides(data_dir)
+    terrains, sources = [], []
+    for row in df.itertuples(index=False):
+        key = str(row.activity_id)
+        garmin_type = types.get(key)
+        if not has_terrain(row.sport, row.sub_sport, garmin_type):
+            terrains.append(None)
+            sources.append(None)
+        elif key in overrides:
+            terrains.append(overrides[key])
+            sources.append("user")
+        else:
+            terrains.append(
+                guess_terrain(row.sport, row.sub_sport, garmin_type, row.total_distance_km, row.total_ascent_m)
+            )
+            sources.append("guess")
+    df["terrain"] = pd.Series(terrains, index=df.index, dtype=object)
+    df["terrain_source"] = pd.Series(sources, index=df.index, dtype=object)
 
 
 def load_activity_records(activity_id: int, data_dir: Path = DATA_DIR) -> pd.DataFrame:

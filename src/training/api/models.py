@@ -9,9 +9,12 @@ chi costruisce il modello (`app.py`). Gli interi con buchi (`avg_heart_rate`)
 arrivano da pandas come float, e qui sono `int | None`."""
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+
+# I terreni di `interface/terrain.TERRAINS`, nello stesso ordine.
+Terrain = Literal["track", "road", "gravel", "trail", "mountain"]
 
 
 class Activity(BaseModel):
@@ -34,6 +37,18 @@ class Activity(BaseModel):
     vo2max: float | None
     aerobic_te: float | None = Field(description="Garmin's aerobic Training Effect, 0-5.")
     anaerobic_te: float | None = Field(description="Garmin's anaerobic Training Effect, 0-5.")
+    terrain: Terrain | None = Field(
+        description="Terrain of on-foot activities: the user's choice, or else a guess. Null for other sports."
+    )
+    terrain_source: Literal["guess", "user"] | None = Field(
+        description="Whether `terrain` is a guess or set by the user. Null when there is no terrain."
+    )
+
+
+class TerrainUpdate(BaseModel):
+    """The terrain chosen by the user for one activity."""
+
+    terrain: Terrain | None = Field(description="Null clears the choice and goes back to the guess.")
 
 
 class EffectSeconds(BaseModel):
