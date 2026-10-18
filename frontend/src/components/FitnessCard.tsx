@@ -9,6 +9,10 @@ import type { DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
 import { CardHead, num, Stat } from "./Stat";
 
+// Il report non ha una sezione Fitness, quindi l'icona non viene dalle sue
+// sezioni come per le altre card: e' fissa, in `icons/` con le altre.
+const FITNESS_ICON = "fitness.png";
+
 /** "6:00", dai secondi al km dell'API. */
 function paceLabel(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -33,7 +37,7 @@ export function FitnessCard({ data }: { data: DailyData }) {
   const threshold = data.fitness.threshold_hr;
   return (
     <section className="card" aria-label="Fitness">
-      <CardHead icon={null} title="Fitness" />
+      <CardHead icon={FITNESS_ICON} title="Fitness" />
       <div className="stats two">
         <Stat
           label="VO2max"

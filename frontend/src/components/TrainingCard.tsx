@@ -310,6 +310,10 @@ function ActivityView({
             />
           </div>
           {detail && <EffectsBar detail={detail} />}
+          {/* Il grafico nella colonna di sinistra e non sotto le due: la colonna
+              di destra (commento, menu, Training Effect) e' molto piu' alta
+              dei numeri, e sotto di loro restava un buco bianco. */}
+          <RunChart activityId={id} theme={theme} />
         </div>
         <aside className="training-side">
           {comment && <div className="prose">{markdown(comment)}</div>}
@@ -329,7 +333,6 @@ function ActivityView({
           )}
         </aside>
       </div>
-      <RunChart activityId={id} theme={theme} />
       {showMap && points.length > 0 && <RouteMap activityId={id} points={points} />}
     </>
   );

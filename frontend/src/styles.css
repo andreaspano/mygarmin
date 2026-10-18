@@ -340,7 +340,7 @@ h2 {
 .card h2 {
   font-size: 1.35rem;
 }
-/* Recovery, Health, Fitness e Load (todo 37): due colonne uguali, una sotto
+/* Health, Load, Recovery e Fitness (todo 37): due colonne uguali, una sotto
    i 900 px. Le card non si allungano per pareggiare la riga. */
 .cards-grid {
   display: grid;

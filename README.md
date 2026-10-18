@@ -80,11 +80,10 @@ report giornaliero non legge nessuna delle tre.
 `frontend/` e' la nuova interfaccia (React, TypeScript, Vite): per ora la
 sola pagina Day, che chiede i dati all'API. Mostra un giorno alla volta
 (todo 34): la striscia della settimana, la seduta suggerita, i segnali
-d'allarme, una griglia 2x2 con Recovery, Health, Fitness e Load (todo 37) e
-l'allenamento con grafico e mappa. Fitness ha VO2max, endurance score, hill
-score e soglia del lattato (todo 38), e non ha testo: il report non ha una
-sezione Fitness. Il
-giorno sta nell'URL (`?day=2026-10-07`). I testi vengono dal report
+d'allarme, una griglia 2x2 con Health e Load sopra, Recovery e Fitness sotto
+(todo 37), e l'allenamento con grafico e mappa. Fitness ha VO2max, endurance
+score, hill score e soglia del lattato (todo 38), e non ha testo: il report
+non ha una sezione Fitness. Il giorno sta nell'URL (`?day=2026-10-07`). I testi vengono dal report
 giornaliero, i passi della seduta dalla sezione Next. Streamlit resta com'e'. Per
 lanciarla servono l'API e Node.js:
 

@@ -1,8 +1,9 @@
 // La pagina Day (todo 34), sul mockup `todo/assets/34_day_mockup.jpeg`: un
 // giorno alla volta. Intestazione con la striscia della settimana, il
-// riquadro "Next", i segnali d'allarme, la griglia 2x2 di Recovery, Health,
-// Fitness e Load (todo 37), poi "Training" con grafico e mappa. I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi
-// dalle sezioni del report giornaliero.
+// riquadro "Next", i segnali d'allarme, la griglia 2x2 (todo 37): Health e
+// Load sopra, Recovery e Fitness sotto, poi "Training" con grafico e mappa.
+// I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi dalle
+// sezioni del report giornaliero.
 //
 // Il giorno sta nell'URL (`?day=2026-10-07`): un giorno si apre da un link e
 // il tasto indietro torna a quello prima. Senza router: `URLSearchParams` e
@@ -155,10 +156,10 @@ export function DayPage() {
           <>
             <Alerts alerts={data.alerts} />
             <div className="cards-grid">
-              <RecoveryCard data={data} text={sectionBody(report, "Recovery")} icon={sectionIcon(report, "Recovery")} />
               <HealthCard data={data} text={sectionBody(report, "Health")} icon={sectionIcon(report, "Health")} />
-              <FitnessCard data={data} />
               <LoadCard data={data} text={sectionBody(report, "Load")} icon={sectionIcon(report, "Load")} />
+              <RecoveryCard data={data} text={sectionBody(report, "Recovery")} icon={sectionIcon(report, "Recovery")} />
+              <FitnessCard data={data} />
             </div>
           </>
         ) : (
