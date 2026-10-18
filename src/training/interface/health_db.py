@@ -33,8 +33,12 @@ from training.interface.health import (
 # Da cambiare quando cambia il parsing della salute in `health.py`:
 # `sync_health()` lo confronta con quello in `schema_meta` (chiave
 # `health_logic_version`, separata da `logic_version` dei FIT) e, se sono
-# diversi, svuota `health_daily` e la riempie di nuovo.
-HEALTH_LOGIC_VERSION = "1"
+# diversi, butta `health_daily` e la rifa' dai JSON.
+#
+# "2": colonne `endurance_score`, `endurance_level` e `hill_score` (todo
+# 38). La tabella si ricrea (DROP, non DELETE): `CREATE TABLE IF NOT EXISTS`
+# non aggiunge colonne a una tabella che c'e' gia'.
+HEALTH_LOGIC_VERSION = "2"
 
 _VERSION_KEY = "health_logic_version"
 
@@ -85,14 +89,15 @@ def sync_health(data_dir: Path = DATA_DIR) -> int:
     piu' nuovo della riga: `export_daily_health(..., force_dates={today})`
     riscrive i file di oggi a ogni giro, e una riga messa in cache una volta
     per giorno resterebbe vecchia. Se `HEALTH_LOGIC_VERSION` non coincide con
-    quella salvata, prima si svuota la tabella."""
+    quella salvata, prima si ricrea la tabella vuota, con le colonne di oggi."""
     data_dir = Path(data_dir)
     health_dir = data_dir / "health"
     conn = _connect(data_dir)
     try:
         row = conn.execute("SELECT value FROM schema_meta WHERE key=?", (_VERSION_KEY,)).fetchone()
         if row is None or row[0] != HEALTH_LOGIC_VERSION:
-            conn.execute("DELETE FROM health_daily")
+            conn.execute("DROP TABLE IF EXISTS health_daily")
+            conn.executescript(_HEALTH_SCHEMA)
             conn.execute(
                 "INSERT INTO schema_meta (key, value) VALUES (?, ?) "
                 "ON CONFLICT(key) DO UPDATE SET value=excluded.value",

@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Endurance score, hill score e soglia del lattato
@@ -125,3 +125,44 @@ Prese con Andrea il 2026-10-18:
    giorno recente, "–" dove manca. Screenshot nel report finale.
 8. La cartella dati vera non ha cartelle `endurance_score`, `hill_score` o
    `lactate_threshold`; tutti i server avviati si fermano.
+
+## Decisione sulla soglia del lattato (2026-10-18)
+
+Sui due giorni di prova `get_lactate_threshold(latest=False, ...)` ha risposto
+con liste vuote: Garmin scrive la soglia solo nel giorno in cui ne rileva una
+nuova. Il todo e' andato in `failed` con tre opzioni, e Andrea ha scelto la 2:
+una sola chiamata `get_lactate_threshold(latest=True)`, che ha risposto
+`heartRate` 154, `speed` 0.277777, `calendarDate` 2026-10-16.
+
+Quindi, al posto di quanto scritto sopra:
+
+- **niente endpoint giornaliero** `lactate_threshold`: chiesto giorno per
+  giorno non dice niente, e nel backfill sarebbero circa 660 chiamate a
+  vuoto;
+- **un file unico**, `health/lactate_threshold_latest.json`, riscritto da
+  `update_activity` (`export_lactate_threshold`, dentro
+  `refresh_recent_health`); il backfill non lo tocca, perche' l'ultima soglia
+  scritta nei giorni passati sarebbe falsa;
+- **la velocita' e' in decimi di m/s**: 0.277777 -> 2.78 m/s -> 10.0 km/h ->
+  6:00/km, l'unica lettura plausibile accanto alle corse di Andrea. Da
+  confermare contro Garmin Connect;
+- **nella card** la soglia del lattato si vede dal giorno in cui e' stata
+  rilevata in poi; prima resta la frequenza di soglia del FIT (todo 37).
+  Non c'e' storico: si conosce solo l'ultima.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_38'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: le cartelle `health/endurance_score/` e
+`health/hill_score/` e il file `health/lactate_threshold_latest.json` nella
+cartella dati, scritti dai prossimi `make update_activity` e `make
+backfill_health`: il codice vecchio non li legge, sono innocui. In
+`activities.db` la tabella `health_daily` resta con le tre colonne in piu' e
+`health_logic_version` 2: al primo accesso il codice vecchio (versione 1) la
+svuota e la riempie di nuovo, e le colonne in piu' restano a NULL, innocue.
+
+Dopo il revert, rifare il merge di `todo_38` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

@@ -18,17 +18,33 @@ from .activities import download_activities_between
 from .auth import init_api
 from .client import safe_call
 from .config import DATA_DIR, FITNESS_STATUS_WINDOW_DAYS
-from .health import DAILY_ENDPOINTS, export_daily_health
+from .health import export_daily_health
+
+
+# Gli endpoint che legge il report: i nove di prima del todo 38. Endurance,
+# hill score e soglia del lattato sono solo per la Day in React, e l'input
+# dell'agente del report non cambia.
+REPORT_ENDPOINTS = (
+    "stats",
+    "sleep",
+    "stress",
+    "hrv",
+    "spo2",
+    "respiration",
+    "resting_heart_rate",
+    "training_readiness",
+    "training_status",
+)
 
 
 def _load_cached_health(data_dir: Path, start_date: date, end_date: date) -> dict[str, dict[str, Any]]:
     health_dir = data_dir / "health"
-    result: dict[str, dict[str, Any]] = {name: {} for name in DAILY_ENDPOINTS}
+    result: dict[str, dict[str, Any]] = {name: {} for name in REPORT_ENDPOINTS}
 
     d = start_date
     while d <= end_date:
         date_str = d.strftime("%Y-%m-%d")
-        for name in DAILY_ENDPOINTS:
+        for name in REPORT_ENDPOINTS:
             path = health_dir / name / f"{date_str}.json"
             if path.exists():
                 with open(path, encoding="utf-8") as f:

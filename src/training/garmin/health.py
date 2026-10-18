@@ -22,7 +22,18 @@ DAILY_ENDPOINTS = {
     "resting_heart_rate": lambda api, d: api.get_rhr_day(d),
     "training_readiness": lambda api, d: api.get_training_readiness(d),
     "training_status": lambda api, d: api.get_training_status(d),
+    # La card Fitness della Day in React (todo 38): rispondono con il
+    # dizionario del giorno, `{}` prima che l'orologio li calcolasse.
+    "endurance_score": lambda api, d: api.get_endurance_score(d),
+    "hill_score": lambda api, d: api.get_hill_score(d),
 }
+
+# La soglia del lattato della corsa (todo 38) non e' un endpoint giornaliero:
+# chiesta per un giorno, Garmin risponde con liste vuote tranne il giorno in
+# cui ne ha rilevata una nuova. Si tiene solo l'ultima (`latest=True`), in un
+# file unico riscritto a ogni `update_activity`. Il backfill non la scarica:
+# l'ultima soglia di oggi scritta nei file dei giorni passati sarebbe falsa.
+LACTATE_THRESHOLD_FILE = "lactate_threshold_latest.json"
 
 
 def export_daily_health(
@@ -68,6 +79,18 @@ def export_daily_health(
         d += timedelta(days=1)
 
 
+def export_lactate_threshold(api: Garmin, out_dir: Path) -> None:
+    """Scarica l'ultima soglia del lattato in `health/LACTATE_THRESHOLD_FILE`,
+    sopra quella di prima. Se Garmin non risponde il file vecchio resta."""
+    data = safe_call(lambda: api.get_lactate_threshold(latest=True))
+    if data is None:
+        return
+    health_dir = out_dir / "health"
+    health_dir.mkdir(parents=True, exist_ok=True)
+    with open(health_dir / LACTATE_THRESHOLD_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+
+
 def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
     """Rinfresca le metriche degli ultimi giorni, riscaricando sempre oggi.
 
@@ -75,7 +98,7 @@ def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
     attivita' e non la salute. I giorni gia' su disco vengono saltati tranne
     oggi, che cambia nel corso della giornata (la readiness dopo un
     allenamento, il body battery che si consuma): stessa scelta che fa
-    `build_fitness_status`."""
+    `build_fitness_status`. In piu' riscarica l'ultima soglia del lattato."""
     today = date.today()
     export_daily_health(
         api,
@@ -84,6 +107,7 @@ def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
         today,
         force_dates={today},
     )
+    export_lactate_threshold(api, Path(data_dir))
 
 
 def backfill_health(data_dir: Path = DATA_DIR) -> None:
@@ -91,7 +115,7 @@ def backfill_health(data_dir: Path = DATA_DIR) -> None:
     (`user/config.yaml`) a oggi.
 
     E' un comando a parte (`make backfill_health`) e non un pezzo di
-    `update_activity` per via di quanto costa: ogni giorno sono 9 chiamate, e
+    `update_activity` per via di quanto costa: ogni giorno sono 11 chiamate, e
     con la pausa fra una e l'altra un anno di storico richiede 30-45 minuti. Si
     puo' interrompere con Ctrl+C e rilanciare: i giorni gia' scaricati vengono
     saltati."""

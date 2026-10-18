@@ -52,14 +52,26 @@ Training della Day in React; le correzioni stanno in `activity_run_type.json`
 nella cartella dati, accanto a `activity_terrain.json`, e un rebuild non le
 perde. Report e Streamlit non lo mostrano.
 
+### Endurance score, hill score e soglia del lattato
+
+Endurance e hill score si scaricano ogni giorno con il resto della salute
+(`health/endurance_score/` e `health/hill_score/`); per lo storico, dopo il
+primo aggiornamento, `make backfill_health` scarica solo i file che mancano.
+La soglia del lattato no: Garmin la da' solo il giorno in cui ne rileva una
+nuova, quindi `make update_activity` tiene l'ultima in un file unico,
+`health/lactate_threshold_latest.json`. La card Fitness la mostra dal giorno
+in cui e' stata rilevata; prima, la frequenza di soglia salvata nei FIT. Il
+report giornaliero non legge nessuna delle tre.
+
 ### La pagina Day in React
 
 `frontend/` e' la nuova interfaccia (React, TypeScript, Vite): per ora la
 sola pagina Day, che chiede i dati all'API. Mostra un giorno alla volta
 (todo 34): la striscia della settimana, la seduta suggerita, i segnali
 d'allarme, una griglia 2x2 con Recovery, Health, Fitness e Load (todo 37) e
-l'allenamento con grafico e mappa. Fitness ha il VO2max e la frequenza di
-soglia, e non ha testo: il report non ha una sezione Fitness. Il
+l'allenamento con grafico e mappa. Fitness ha VO2max, endurance score, hill
+score e soglia del lattato (todo 38), e non ha testo: il report non ha una
+sezione Fitness. Il
 giorno sta nell'URL (`?day=2026-10-07`). I testi vengono dal report
 giornaliero, i passi della seduta dalla sezione Next. Streamlit resta com'e'. Per
 lanciarla servono l'API e Node.js:

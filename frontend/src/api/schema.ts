@@ -513,14 +513,46 @@ export interface components {
             /** Anaerobic S */
             anaerobic_s: number;
         };
+        /** EnduranceNow */
+        EnduranceNow: {
+            /** Now */
+            now: number;
+            /**
+             * As Of
+             * Format: date
+             * @description The day of the health file it is read from.
+             */
+            as_of: string;
+            /**
+             * Days Ago 28
+             * @description Null when there is no value 28 days before.
+             */
+            days_ago_28: number | null;
+            /**
+             * Change
+             * @description Null when there is no value 28 days before.
+             */
+            change: number | null;
+            /**
+             * Level
+             * @description Garmin's level for the score (Recreational, Intermediate, Trained, Well-trained, Expert, Superior, Elite), from the limits in the same answer.
+             */
+            level: string | null;
+        };
         /**
          * Fitness
-         * @description What the athlete can do, changing slowly over weeks (the Fitness card, todo 37).
+         * @description What the athlete can do, changing slowly over weeks (the Fitness card, todos 37 and 38).
          *     Only in the API: the daily report's JSON does not have it.
          */
         Fitness: {
             /** @description Null when there is no VO2max up to the day. */
             vo2max: components["schemas"]["Vo2maxNow"] | null;
+            /** @description Garmin's endurance score. Null when there is none up to the day. */
+            endurance: components["schemas"]["EnduranceNow"] | null;
+            /** @description Garmin's hill score. Null when there is none up to the day. */
+            hill: components["schemas"]["ScoreNow"] | null;
+            /** @description Null before the day it was detected, or when it has not been downloaded. */
+            lactate_threshold: components["schemas"]["LactateThreshold"] | null;
             /** @description Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold. */
             threshold_hr: components["schemas"]["ThresholdHr"] | null;
         };
@@ -528,6 +560,31 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LactateThreshold
+         * @description Garmin's latest running lactate threshold. Only the latest one is known, so it is shown
+         *     from the day it was detected on.
+         */
+        LactateThreshold: {
+            /**
+             * Heart Rate
+             * @description In bpm.
+             */
+            heart_rate: number | null;
+            /** Speed Kmh */
+            speed_kmh: number | null;
+            /**
+             * Pace S Per Km
+             * @description Seconds per km, from the speed.
+             */
+            pace_s_per_km: number | null;
+            /**
+             * As Of
+             * Format: date
+             * @description The day Garmin detected it.
+             */
+            as_of: string;
         };
         /** Load */
         Load: {
@@ -761,6 +818,30 @@ export interface components {
              * @description Null clears the choice and goes back to the guess.
              */
             run_type: ("race" | "intervals" | "long" | "tempo" | "easy") | null;
+        };
+        /**
+         * ScoreNow
+         * @description The latest Garmin score up to the day (endurance or hill), shown even when it did not move.
+         */
+        ScoreNow: {
+            /** Now */
+            now: number;
+            /**
+             * As Of
+             * Format: date
+             * @description The day of the health file it is read from.
+             */
+            as_of: string;
+            /**
+             * Days Ago 28
+             * @description Null when there is no value 28 days before.
+             */
+            days_ago_28: number | null;
+            /**
+             * Change
+             * @description Null when there is no value 28 days before.
+             */
+            change: number | null;
         };
         /** SleepLast7 */
         SleepLast7: {

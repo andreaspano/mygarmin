@@ -274,6 +274,22 @@ class Vo2maxNow(BaseModel):
     change: float | None = Field(description="Null when there is no value 28 days before.")
 
 
+class ScoreNow(BaseModel):
+    """The latest Garmin score up to the day (endurance or hill), shown even when it did not move."""
+
+    now: int
+    as_of: date = Field(description="The day of the health file it is read from.")
+    days_ago_28: int | None = Field(description="Null when there is no value 28 days before.")
+    change: int | None = Field(description="Null when there is no value 28 days before.")
+
+
+class EnduranceNow(ScoreNow):
+    level: str | None = Field(
+        description="Garmin's level for the score (Recreational, Intermediate, Trained, Well-trained, "
+        "Expert, Superior, Elite), from the limits in the same answer."
+    )
+
+
 class ThresholdHr(BaseModel):
     """The threshold heart rate saved by the watch in the latest on-foot activity with zones."""
 
@@ -281,11 +297,26 @@ class ThresholdHr(BaseModel):
     as_of: date = Field(description="The day of the activity it is read from.")
 
 
+class LactateThreshold(BaseModel):
+    """Garmin's latest running lactate threshold. Only the latest one is known, so it is shown
+    from the day it was detected on."""
+
+    heart_rate: int | None = Field(description="In bpm.")
+    speed_kmh: float | None
+    pace_s_per_km: int | None = Field(description="Seconds per km, from the speed.")
+    as_of: date = Field(description="The day Garmin detected it.")
+
+
 class Fitness(BaseModel):
-    """What the athlete can do, changing slowly over weeks (the Fitness card, todo 37).
+    """What the athlete can do, changing slowly over weeks (the Fitness card, todos 37 and 38).
     Only in the API: the daily report's JSON does not have it."""
 
     vo2max: Vo2maxNow | None = Field(description="Null when there is no VO2max up to the day.")
+    endurance: EnduranceNow | None = Field(description="Garmin's endurance score. Null when there is none up to the day.")
+    hill: ScoreNow | None = Field(description="Garmin's hill score. Null when there is none up to the day.")
+    lactate_threshold: LactateThreshold | None = Field(
+        description="Null before the day it was detected, or when it has not been downloaded."
+    )
     threshold_hr: ThresholdHr | None = Field(
         description="Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold."
     )
