@@ -1,7 +1,7 @@
 // La pagina Day (todo 34), sul mockup `todo/assets/34_day_mockup.jpeg`: un
 // giorno alla volta. Intestazione con la striscia della settimana, il
-// riquadro "Next", "This morning" e "Load", poi "Training" con grafico e
-// mappa. I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi
+// riquadro "Next", i segnali d'allarme, la griglia 2x2 di Recovery, Health,
+// Fitness e Load (todo 37), poi "Training" con grafico e mappa. I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi
 // dalle sezioni del report giornaliero.
 //
 // Il giorno sta nell'URL (`?day=2026-10-07`): un giorno si apre da un link e
@@ -13,10 +13,13 @@ import { api, type Activity, type DailyData, type Report, type SportList } from 
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon } from "../markdown";
 import { useColorScheme } from "../useColorScheme";
+import { Alerts } from "./Alerts";
 import { DayHeader } from "./DayHeader";
+import { FitnessCard } from "./FitnessCard";
+import { HealthCard } from "./HealthCard";
 import { LoadCard } from "./LoadCard";
-import { MorningCard } from "./MorningCard";
 import { NextCard } from "./NextCard";
+import { RecoveryCard } from "./RecoveryCard";
 import { TopBar } from "./TopBar";
 import { TrainingCard } from "./TrainingCard";
 import { WeekStrip } from "./WeekStrip";
@@ -149,15 +152,15 @@ export function DayPage() {
         {error && <p className="warning">{error}</p>}
         <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
         {data ? (
-          <div className="cards-row">
-            <MorningCard
-              data={data}
-              recovery={sectionBody(report, "Recovery")}
-              health={sectionBody(report, "Health")}
-              icons={{ recovery: sectionIcon(report, "Recovery"), health: sectionIcon(report, "Health") }}
-            />
-            <LoadCard data={data} text={sectionBody(report, "Load")} icon={sectionIcon(report, "Load")} />
-          </div>
+          <>
+            <Alerts alerts={data.alerts} />
+            <div className="cards-grid">
+              <RecoveryCard data={data} text={sectionBody(report, "Recovery")} icon={sectionIcon(report, "Recovery")} />
+              <HealthCard data={data} text={sectionBody(report, "Health")} icon={sectionIcon(report, "Health")} />
+              <FitnessCard data={data} />
+              <LoadCard data={data} text={sectionBody(report, "Load")} icon={sectionIcon(report, "Load")} />
+            </div>
+          </>
         ) : (
           !error && <p className="caption">Loading…</p>
         )}

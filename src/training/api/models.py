@@ -265,6 +265,32 @@ class Load(BaseModel):
     vo2max_change: Vo2maxChange | None = Field(description="Only when VO2max moved by 0.5 or more in 28 days.")
 
 
+class Vo2maxNow(BaseModel):
+    """The latest VO2max up to the day, shown even when it did not move."""
+
+    now: float
+    as_of: date = Field(description="The day Garmin measured it.")
+    days_ago_28: float | None = Field(description="Null when there is no value 28 days before.")
+    change: float | None = Field(description="Null when there is no value 28 days before.")
+
+
+class ThresholdHr(BaseModel):
+    """The threshold heart rate saved by the watch in the latest on-foot activity with zones."""
+
+    value: int = Field(description="In bpm.")
+    as_of: date = Field(description="The day of the activity it is read from.")
+
+
+class Fitness(BaseModel):
+    """What the athlete can do, changing slowly over weeks (the Fitness card, todo 37).
+    Only in the API: the daily report's JSON does not have it."""
+
+    vo2max: Vo2maxNow | None = Field(description="Null when there is no VO2max up to the day.")
+    threshold_hr: ThresholdHr | None = Field(
+        description="Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold."
+    )
+
+
 class DayActivities(BaseModel):
     date: Date
     weekday: str
@@ -313,3 +339,4 @@ class DailyData(BaseModel):
     recent: Recent
     hr_zones: dict[str, Any] | None
     missing: list[str]
+    fitness: Fitness
