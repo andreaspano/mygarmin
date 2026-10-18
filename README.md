@@ -26,8 +26,9 @@ make api
 Ascolta solo su `http://127.0.0.1:8000`: non c'e' ancora il login, e sono
 dati di salute. La documentazione interattiva e' su
 `http://127.0.0.1:8000/docs`, lo schema OpenAPI su `/openapi.json`. Tutto
-`GET`, niente download da Garmin e niente scrittura di report, tranne una
-`PUT`: il terreno di un'attivita' a piedi (todo 35).
+`GET`, niente download da Garmin e niente scrittura di report, tranne due
+`PUT`: il terreno di un'attivita' a piedi (todo 35) e il tipo di una corsa
+(todo 36).
 
 ### Il terreno delle attivita' a piedi
 
@@ -38,6 +39,18 @@ decidono, sterrato mai), e lo si corregge dalla scheda Training della Day in
 React. Le correzioni stanno in `activity_terrain.json` nella cartella dati,
 accanto a `activity_names.json`: `activities.db` non le contiene, e un
 rebuild non le perde. Streamlit mostra il terreno ma non lo cambia.
+
+### Il tipo delle corse
+
+Le corse (tapis roulant compreso) hanno un tipo: `race`, `intervals`,
+`long`, `tempo` o `easy`. L'API lo stima dall'allenamento pianificato
+salvato nel FIT e dalla durata (`src/training/interface/run_type.py`):
+almeno due passi attivi sono ripetute, un solo passo attivo di almeno 10
+minuti e' un tempo, senza allenamento da 100 minuti in su e' una lunga,
+altrimenti facile. Gara non si stima mai. Lo si corregge dalla scheda
+Training della Day in React; le correzioni stanno in `activity_run_type.json`
+nella cartella dati, accanto a `activity_terrain.json`, e un rebuild non le
+perde. Report e Streamlit non lo mostrano.
 
 ### La pagina Day in React
 

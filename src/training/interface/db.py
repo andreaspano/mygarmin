@@ -39,6 +39,7 @@ from training.interface.fit import (
 )
 from training.interface.fit import load_activity_records as _parse_fit_records
 from training.interface.grade import EQUIV_SPEED_SPORTS, equivalent_speed_kmh, equivalent_speed_series
+from training.interface.run_type import guess_run_type, has_run_type, load_run_type_overrides
 from training.interface.terrain import guess_terrain, has_terrain, load_terrain_overrides
 
 DB_FILENAME = "activities.db"
@@ -110,7 +111,11 @@ def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | Non
 # `grade.slope_pct`), quindi `equiv_speed_kmh` cambia in entrambe le tabelle;
 # e colonne nuove in `activities` per il grafico della scheda (todo 28): i
 # Training Effect di Garmin, i tetti delle zone cardiache e la soglia.
-LOGIC_VERSION = "7"
+#
+# "8": colonne `workout_name`, `workout_active_steps` e
+# `workout_active_max_s`, l'allenamento pianificato letto dal FIT (vedi
+# `fit._workout`), per stimare il tipo delle corse (todo 36).
+LOGIC_VERSION = "8"
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS schema_meta (
@@ -138,6 +143,9 @@ CREATE TABLE IF NOT EXISTS activities (
     anaerobic_te      REAL,
     hr_zone_bounds    TEXT,
     threshold_hr      INTEGER,
+    workout_name      TEXT,
+    workout_active_steps INTEGER,
+    workout_active_max_s REAL,
     activity_name     TEXT,
     parsed_at         TEXT NOT NULL
 );
@@ -208,12 +216,14 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
             activity_id, path, sport, sub_sport, start_time, total_distance_km,
             total_time_min, avg_heart_rate, max_heart_rate, avg_speed_kmh,
             total_calories, total_ascent_m, total_descent_m, vo2max, equiv_speed_kmh,
-            aerobic_te, anaerobic_te, hr_zone_bounds, threshold_hr, activity_name, parsed_at
+            aerobic_te, anaerobic_te, hr_zone_bounds, threshold_hr,
+            workout_name, workout_active_steps, workout_active_max_s, activity_name, parsed_at
         ) VALUES (
             :activity_id, :path, :sport, :sub_sport, :start_time, :total_distance_km,
             :total_time_min, :avg_heart_rate, :max_heart_rate, :avg_speed_kmh,
             :total_calories, :total_ascent_m, :total_descent_m, :vo2max, :equiv_speed_kmh,
-            :aerobic_te, :anaerobic_te, :hr_zone_bounds, :threshold_hr, :activity_name, :parsed_at
+            :aerobic_te, :anaerobic_te, :hr_zone_bounds, :threshold_hr,
+            :workout_name, :workout_active_steps, :workout_active_max_s, :activity_name, :parsed_at
         )
         ON CONFLICT(activity_id) DO UPDATE SET
             path=excluded.path, sport=excluded.sport, sub_sport=excluded.sub_sport,
@@ -225,6 +235,8 @@ def _insert_activity(conn: sqlite3.Connection, summary: dict, name: str | None, 
             equiv_speed_kmh=excluded.equiv_speed_kmh,
             aerobic_te=excluded.aerobic_te, anaerobic_te=excluded.anaerobic_te,
             hr_zone_bounds=excluded.hr_zone_bounds, threshold_hr=excluded.threshold_hr,
+            workout_name=excluded.workout_name, workout_active_steps=excluded.workout_active_steps,
+            workout_active_max_s=excluded.workout_active_max_s,
             activity_name=excluded.activity_name,
             parsed_at=excluded.parsed_at
         """,
@@ -406,6 +418,7 @@ def list_activities(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     if not df.empty:
         df["start_time"] = pd.to_datetime(df["start_time"])
     _add_terrain(df, data_dir)
+    _add_run_type(df, data_dir)
     return df
 
 
@@ -433,6 +446,37 @@ def _add_terrain(df: pd.DataFrame, data_dir: Path) -> None:
             sources.append("guess")
     df["terrain"] = pd.Series(terrains, index=df.index, dtype=object)
     df["terrain_source"] = pd.Series(sources, index=df.index, dtype=object)
+
+
+def _add_run_type(df: pd.DataFrame, data_dir: Path) -> None:
+    """Le colonne `run_type` e `run_type_source` (todo 36), come
+    `_add_terrain`: la correzione di Andrea se c'e', altrimenti la stima di
+    `run_type.guess_run_type` dall'allenamento salvato e dalla durata. Le
+    correzioni vengono da `activity_run_type.json`, che sopravvive a
+    rebuild()."""
+    overrides = load_run_type_overrides(data_dir)
+    run_types, sources = [], []
+    for row in df.itertuples(index=False):
+        key = str(row.activity_id)
+        if not has_run_type(row.sport):
+            run_types.append(None)
+            sources.append(None)
+        elif key in overrides:
+            run_types.append(overrides[key])
+            sources.append("user")
+        else:
+            run_types.append(
+                guess_run_type(
+                    row.sport,
+                    row.total_time_min,
+                    row.workout_name,
+                    row.workout_active_steps,
+                    row.workout_active_max_s,
+                )
+            )
+            sources.append("guess")
+    df["run_type"] = pd.Series(run_types, index=df.index, dtype=object)
+    df["run_type_source"] = pd.Series(sources, index=df.index, dtype=object)
 
 
 def load_activity_records(activity_id: int, data_dir: Path = DATA_DIR) -> pd.DataFrame:

@@ -15,6 +15,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 # I terreni di `interface/terrain.TERRAINS`, nello stesso ordine.
 Terrain = Literal["track", "road", "gravel", "trail", "mountain"]
+# I tipi di corsa di `interface/run_type.RUN_TYPES`, nello stesso ordine.
+RunType = Literal["race", "intervals", "long", "tempo", "easy"]
 
 
 class Activity(BaseModel):
@@ -43,6 +45,19 @@ class Activity(BaseModel):
     terrain_source: Literal["guess", "user"] | None = Field(
         description="Whether `terrain` is a guess or set by the user. Null when there is no terrain."
     )
+    run_type: RunType | None = Field(
+        description="Type of a run (race, intervals, long, tempo, easy): the user's choice, or else a guess "
+        "from the planned workout and the duration. Null for sports other than running."
+    )
+    run_type_source: Literal["guess", "user"] | None = Field(
+        description="Whether `run_type` is a guess or set by the user. Null when there is no run type."
+    )
+
+
+class RunTypeUpdate(BaseModel):
+    """The run type chosen by the user for one run."""
+
+    run_type: RunType | None = Field(description="Null clears the choice and goes back to the guess.")
 
 
 class TerrainUpdate(BaseModel):

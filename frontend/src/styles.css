@@ -656,13 +656,22 @@ h2 {
 .te-bar .fill {
   height: 100%;
 }
-.terrain {
+/* I menu del terreno (todo 35) e del tipo di corsa (todo 36). */
+.picker {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.terrain select {
+.picker select {
   align-self: flex-start;
+}
+/* Il tipo di corsa accanto al titolo della scheda. */
+.run-type-tag {
+  margin-left: 10px;
+  font-size: 0.6em;
+  font-weight: 500;
+  color: var(--muted);
+  vertical-align: middle;
 }
 .link-btn {
   align-self: flex-start;
