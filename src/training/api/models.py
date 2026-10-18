@@ -142,6 +142,18 @@ class Report(BaseModel):
     sections: list[ReportSection]
 
 
+class RefreshStatus(BaseModel):
+    """The Refresh job of the Day page: download new data and rewrite a daily report."""
+
+    status: Literal["idle", "running", "done", "failed"] = Field(
+        description="idle until the first job since the API started."
+    )
+    day: date | None = Field(description="The day whose report the job rewrites.")
+    started: datetime | None
+    finished: datetime | None
+    message: str | None = Field(description="Why the job failed. Null otherwise.")
+
+
 class Sport(BaseModel):
     """A sport found in the activities."""
 

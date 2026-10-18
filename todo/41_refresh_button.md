@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Un tasto Refresh nella Day
@@ -113,3 +113,16 @@ Prese con Andrea il 2026-10-18:
 4. Nel browser, con l'API sul `claude` finto: il tasto, "Refreshing…", e alla
    fine il report nuovo nella pagina; nessun errore in console. Tutti i
    server avviati si fermano.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_41'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: i report giornalieri riscritti dal tasto in
+`summary/01.daily/` e i dati scaricati da `make update_activity` restano: sono
+gli stessi che si avrebbero chiedendoli a mano.
+
+Dopo il revert, rifare il merge di `todo_41` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

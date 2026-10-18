@@ -97,3 +97,12 @@ In sviluppo Vite passa `/api` e `/icons` all'API, quindi non serve CORS.
 I tipi delle risposte vengono dall'OpenAPI: dopo un cambio ai modelli
 dell'API, con l'API accesa, `make frontend_types` rigenera
 `frontend/src/api/schema.ts` (che non si modifica a mano).
+
+Il tasto **Refresh** nell'intestazione (todo 41) aggiorna i dati e riscrive il
+report del giorno mostrato: l'API lancia in background l'agente
+`fitness-status` con `claude -p` (il comando `claude` deve essere nel `PATH`
+di `make api`), che fa `make update_activity` e poi scrive il report. Ci
+vogliono qualche minuto, un lavoro alla volta; alla fine la pagina si
+ricarica. Il login a Garmin non si chiede mai dal tasto: con il token
+scaduto il report si scrive sui dati locali e lo dice, e il login si rifa'
+da terminale con `make update_activity`.

@@ -213,6 +213,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/daily/{day}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Refresh data and rewrite the daily report
+         * @description Download new data from Garmin and rewrite the daily report of `day`, in the
+         *     background (a few minutes). One job at a time: while one runs, this returns it and
+         *     starts nothing. Follow it with `GET /api/refresh`.
+         */
+        post: operations["post_daily_refresh_api_reports_daily__day__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refresh job status
+         * @description The state of the latest Refresh job.
+         */
+        get: operations["get_refresh_api_refresh_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -762,6 +804,32 @@ export interface components {
             aerobic_te: number | null;
             /** Anaerobic Te */
             anaerobic_te: number | null;
+        };
+        /**
+         * RefreshStatus
+         * @description The Refresh job of the Day page: download new data and rewrite a daily report.
+         */
+        RefreshStatus: {
+            /**
+             * Status
+             * @description idle until the first job since the API started.
+             * @enum {string}
+             */
+            status: "idle" | "running" | "done" | "failed";
+            /**
+             * Day
+             * @description The day whose report the job rewrites.
+             */
+            day: string | null;
+            /** Started */
+            started: string | null;
+            /** Finished */
+            finished: string | null;
+            /**
+             * Message
+             * @description Why the job failed. Null otherwise.
+             */
+            message: string | null;
         };
         /**
          * Report
@@ -1319,6 +1387,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_daily_refresh_api_reports_daily__day__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_refresh_api_refresh_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshStatus"];
                 };
             };
         };
