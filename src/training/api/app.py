@@ -19,7 +19,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
 from training.api import refresh
-from training.api.cache import invalidate, load_activities
+from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.models import (
     Activity,
@@ -42,7 +42,6 @@ from training.api.models import (
 from training.interface.daily_data import build_daily_data, fitness_on
 from training.interface.db import _clean, load_activity_records
 from training.interface.health import load_lactate_threshold
-from training.interface.health_db import load_health_db
 from training.interface.report_text import parse_report, section_icon
 from training.interface.run_chart import (
     EFFECTS,
@@ -245,14 +244,15 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     daily report."""
     if day > date.today():
         raise HTTPException(status_code=422, detail=f"{day} is in the future.")
-    data = build_daily_data(day, ctx.data_dir)
+    health = load_health(ctx.data_dir)
+    data = build_daily_data(day, ctx.data_dir, load_activities(ctx.data_dir), health)
     # Il sonno della mattina in minuti, per scriverlo "8h04": `sleep_hours`
     # e' arrotondato a 0.1 h (6 minuti), le ore notte per notte a 0.01.
     hours = data["sleep_last_7"]["hours"].get(day.isoformat())
     # La card Fitness (todo 37): solo qui e non in `build_daily_data`, perche'
     # il JSON del report giornaliero resti com'e'. La soglia e' quella di
     # `hr_zones`, ripetuta con un tipo.
-    fitness = fitness_on(load_health_db(ctx.data_dir), day)
+    fitness = fitness_on(health, day)
     zones = data["hr_zones"]
     if zones and zones.get("threshold_hr") is not None:
         fitness["threshold_hr"] = {"value": zones["threshold_hr"], "as_of": zones["as_of"]}

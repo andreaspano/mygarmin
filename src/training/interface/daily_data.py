@@ -474,10 +474,21 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
     }
 
 
-def build_daily_data(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any]:
-    """I fatti del giorno `day`, come dizionario pronto per il JSON."""
-    activities = list_activities(data_dir)
-    health = load_health_db(data_dir)
+def build_daily_data(
+    day: date,
+    data_dir: Path = DATA_DIR,
+    activities: pd.DataFrame | None = None,
+    health: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """I fatti del giorno `day`, come dizionario pronto per il JSON.
+
+    `activities` e `health` sono quelli di `list_activities` e
+    `load_health_db`: l'API li passa dalla sua cache, perche' rileggerli a
+    ogni richiesta costa un secondo; senza, si leggono qui."""
+    if activities is None:
+        activities = list_activities(data_dir)
+    if health is None:
+        health = load_health_db(data_dir)
 
     morning = _morning(health, day)
     sleep = _sleep_last_7(health, day)
