@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il tipo delle corse

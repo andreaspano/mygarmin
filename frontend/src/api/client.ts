@@ -14,6 +14,7 @@ export type Route = Schemas["Route"];
 export type Sport = Schemas["Sport"];
 export type SportList = Schemas["SportList"];
 export type Terrain = NonNullable<Activity["terrain"]>;
+export type RunType = NonNullable<Activity["run_type"]>;
 
 // La specifica Vega-Lite del grafico non ha un modello: e' quella di Altair.
 export type VegaSpec = Record<string, unknown>;
@@ -33,7 +34,8 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
-// L'unica scrittura dell'API (todo 35): il terreno di un'attivita' a piedi.
+// Le scritture dell'API: il terreno di un'attivita' a piedi (todo 35) e il
+// tipo di una corsa (todo 36).
 async function putJson<T>(url: string, body: unknown): Promise<T> {
   const response = await fetch(url, {
     method: "PUT",
@@ -73,6 +75,10 @@ export const api = {
   // `null` toglie la scelta di Andrea e torna alla stima.
   setTerrain: (id: number, terrain: Terrain | null) =>
     putJson<Activity>(`/api/activities/${id}/terrain`, { terrain }),
+
+  // `null` toglie la scelta di Andrea e torna alla stima.
+  setRunType: (id: number, run_type: RunType | null) =>
+    putJson<Activity>(`/api/activities/${id}/run_type`, { run_type }),
 
   chartVega: (id: number, theme: "light" | "dark", signal?: AbortSignal) =>
     getOrNull<VegaSpec>(`/api/activities/${id}/chart/vega?theme=${theme}`, signal),

@@ -144,6 +144,32 @@ def _avg_speed_kmh(values: dict) -> float | None:
     return speed * 3.6
 
 
+def _workout(fit: FitFile) -> dict:
+    """L'allenamento pianificato che l'orologio ha seguito (todo 36), dai
+    messaggi `workout` e `workout_step`: il nome, quanti passi sono `active`
+    e il piu' lungo di questi in secondi. Tutti None se l'attivita' non
+    seguiva un allenamento.
+
+    Vuole lo stesso `FitFile` gia' aperto per `session`, come `_vo2max`:
+    nessun parsing in piu'. Si contano solo i passi `active` scritti nel file:
+    sui file di Andrea (Rip_3x5, Rip_4x5) le ripetute sono passi distinti, non
+    un passo con un `repeat`."""
+    workout = next(fit.get_messages("workout"), None)
+    if workout is None:
+        return {"workout_name": None, "workout_active_steps": None, "workout_active_max_s": None}
+    durations = [
+        step.get_value("duration_time")
+        for step in fit.get_messages("workout_step")
+        if step.get_value("intensity") == "active"
+    ]
+    timed = [d for d in durations if isinstance(d, (int, float))]
+    return {
+        "workout_name": workout.get_value("wkt_name"),
+        "workout_active_steps": len(durations),
+        "workout_active_max_s": max(timed) if timed else None,
+    }
+
+
 def load_activity_summary(path: Path) -> dict:
     """Legge il messaggio 'session' del file FIT: una riga di riepilogo."""
     fit = FitFile(str(path))
@@ -171,6 +197,7 @@ def load_activity_summary(path: Path) -> dict:
         "anaerobic_te": values.get("total_anaerobic_training_effect"),
         "hr_zone_bounds": json.dumps(zone_tops) if zone_tops else None,
         "threshold_hr": threshold_hr,
+        **_workout(fit),
     }
 
 

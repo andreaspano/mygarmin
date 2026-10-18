@@ -1,5 +1,6 @@
 """L'API della pagina Day (todo 32). Tutto in sola lettura (`GET`), tranne il
-terreno di un'attivita' a piedi (`PUT`, todo 35).
+terreno di un'attivita' a piedi (`PUT`, todo 35) e il tipo di una corsa
+(`PUT`, todo 36).
 
 Lancio: `make api` (solo su 127.0.0.1: non c'e' ancora il login, e sono dati
 di salute). La documentazione interattiva e' su `/docs`.
@@ -29,6 +30,7 @@ from training.api.models import (
     Report,
     ReportSection,
     Route,
+    RunTypeUpdate,
     Sport,
     SportList,
     TerrainUpdate,
@@ -47,6 +49,7 @@ from training.interface.run_chart import (
     zone_bands,
     zone_settings,
 )
+from training.interface.run_type import save_run_type_override
 from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, sport_label
 from training.interface.terrain import save_terrain_override
 
@@ -58,7 +61,7 @@ app = FastAPI(
     title="Training API",
     description=(
         "Read-only access to activities, charts, daily data and daily reports. "
-        "The only write is the terrain of an on-foot activity."
+        "The only writes are the terrain of an on-foot activity and the type of a run."
     ),
     version="0.1.0",
 )
@@ -157,6 +160,19 @@ def put_activity_terrain(activity_id: int, update: TerrainUpdate, ctx: Context) 
     if _clean(row["terrain_source"]) is None:
         raise HTTPException(status_code=422, detail=f"Activity {activity_id} has no terrain.")
     save_terrain_override(ctx.data_dir, activity_id, update.terrain)
+    invalidate(ctx.data_dir)
+    return Activity(**_activity_fields(_activity_row(activity_id, ctx)))
+
+
+@app.put("/api/activities/{activity_id}/run_type", response_model=Activity, summary="Set the run type")
+def put_activity_run_type(activity_id: int, update: RunTypeUpdate, ctx: Context) -> Activity:
+    """Set the type of a run, or clear it with `null` to go back to the guess.
+
+    422 for activities that are not runs."""
+    row = _activity_row(activity_id, ctx)
+    if _clean(row["run_type_source"]) is None:
+        raise HTTPException(status_code=422, detail=f"Activity {activity_id} is not a run.")
+    save_run_type_override(ctx.data_dir, activity_id, update.run_type)
     invalidate(ctx.data_dir)
     return Activity(**_activity_fields(_activity_row(activity_id, ctx)))
 

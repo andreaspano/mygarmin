@@ -87,6 +87,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/activities/{activity_id}/run_type": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the run type
+         * @description Set the type of a run, or clear it with `null` to go back to the guess.
+         *
+         *     422 for activities that are not runs.
+         */
+        put: operations["put_activity_run_type_api_activities__activity_id__run_type_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/activities/{activity_id}/chart": {
         parameters: {
             query?: never;
@@ -263,6 +285,16 @@ export interface components {
              * @description Whether `terrain` is a guess or set by the user. Null when there is no terrain.
              */
             terrain_source: ("guess" | "user") | null;
+            /**
+             * Run Type
+             * @description Type of a run (race, intervals, long, tempo, easy): the user's choice, or else a guess from the planned workout and the duration. Null for sports other than running.
+             */
+            run_type: ("race" | "intervals" | "long" | "tempo" | "easy") | null;
+            /**
+             * Run Type Source
+             * @description Whether `run_type` is a guess or set by the user. Null when there is no run type.
+             */
+            run_type_source: ("guess" | "user") | null;
         };
         /**
          * ActivityDetail
@@ -332,6 +364,16 @@ export interface components {
              * @description Whether `terrain` is a guess or set by the user. Null when there is no terrain.
              */
             terrain_source: ("guess" | "user") | null;
+            /**
+             * Run Type
+             * @description Type of a run (race, intervals, long, tempo, easy): the user's choice, or else a guess from the planned workout and the duration. Null for sports other than running.
+             */
+            run_type: ("race" | "intervals" | "long" | "tempo" | "easy") | null;
+            /**
+             * Run Type Source
+             * @description Whether `run_type` is a guess or set by the user. Null when there is no run type.
+             */
+            run_type_source: ("guess" | "user") | null;
             /**
              * Hr Zone Bounds
              * @description Upper limits of zones Z1-Z4, in bpm.
@@ -697,6 +739,17 @@ export interface components {
                 number
             ][];
         };
+        /**
+         * RunTypeUpdate
+         * @description The run type chosen by the user for one run.
+         */
+        RunTypeUpdate: {
+            /**
+             * Run Type
+             * @description Null clears the choice and goes back to the guess.
+             */
+            run_type: ("race" | "intervals" | "long" | "tempo" | "easy") | null;
+        };
         /** SleepLast7 */
         SleepLast7: {
             /**
@@ -916,6 +969,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TerrainUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Activity"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    put_activity_run_type_api_activities__activity_id__run_type_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RunTypeUpdate"];
             };
         };
         responses: {

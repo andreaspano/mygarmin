@@ -3,10 +3,11 @@
 // metriche, la barra dei minuti per effetto, a destra il commento (la sezione
 // Training del report) e i due Training Effect; sotto il grafico a tre fasce
 // e, a richiesta, la mappa. Giorno senza attivita': "Rest day". Per le
-// attivita' a piedi il terreno (todo 35), stimato dall'API e correggibile.
+// attivita' a piedi il terreno (todo 35), per le corse il tipo (todo 36):
+// tutti e due stimati dall'API e correggibili.
 import { useEffect, useState } from "react";
 
-import { api, iconUrl, type Activity, type ActivityDetail, type DailyData, type Terrain } from "../api/client";
+import { api, iconUrl, type Activity, type ActivityDetail, type DailyData, type RunType, type Terrain } from "../api/client";
 import { durationLabel, effectMinutesLabel, fixed, timeOf } from "../format";
 import { markdown } from "../markdown";
 import type { ColorScheme } from "../useColorScheme";
@@ -35,6 +36,22 @@ const TERRAINS: { value: Terrain; label: string }[] = [
 const TERRAIN_HELP =
   "The ground the activity was on. Guessed from the activity type and the climb per km " +
   "(road when the data cannot tell): pick a value to correct it, Auto to go back to the guess.";
+
+const RUN_TYPES: { value: RunType; label: string }[] = [
+  { value: "race", label: "Race" },
+  { value: "intervals", label: "Intervals" },
+  { value: "long", label: "Long" },
+  { value: "tempo", label: "Tempo" },
+  { value: "easy", label: "Easy" },
+];
+
+const RUN_TYPE_HELP =
+  "The kind of run. Guessed from the planned workout on the watch and the duration " +
+  "(never race, never tempo without a workout): pick a value to correct it, Auto to go back to the guess.";
+
+function runTypeLabel(value: string): string {
+  return RUN_TYPES.find((x) => x.value === value)?.label ?? value;
+}
 
 type Sport = { label: (sport: string | null | undefined) => string; icon: (sport: string | null | undefined) => string | null };
 
@@ -134,7 +151,7 @@ function TerrainPicker({ activity, onSaved }: { activity: Activity; onSaved: () 
   }
 
   return (
-    <div className="terrain" title={TERRAIN_HELP}>
+    <div className="picker" title={TERRAIN_HELP}>
       <label className="stat-label" htmlFor={`terrain-${activity.activity_id}`}>
         Terrain
       </label>
@@ -153,6 +170,52 @@ function TerrainPicker({ activity, onSaved }: { activity: Activity; onSaved: () 
         ))}
       </select>
       {failed && <div className="muted">Could not save the terrain.</div>}
+    </div>
+  );
+}
+
+/** Il tipo della corsa, come `TerrainPicker`: "Auto" quando vale la stima,
+ * altrimenti la scelta di Andrea. La stima viene dall'API. */
+function RunTypePicker({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
+  const [saving, setSaving] = useState(false);
+  const [failed, setFailed] = useState(false);
+  if (activity.run_type == null) return null;
+  const guess = activity.run_type_source === "guess" ? activity.run_type : null;
+
+  async function change(value: string) {
+    setSaving(true);
+    setFailed(false);
+    try {
+      await api.setRunType(activity.activity_id, value === "auto" ? null : (value as RunType));
+      await onSaved();
+    } catch (error) {
+      console.error(error);
+      setFailed(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="picker" title={RUN_TYPE_HELP}>
+      <label className="stat-label" htmlFor={`run-type-${activity.activity_id}`}>
+        Run type
+      </label>
+      <select
+        id={`run-type-${activity.activity_id}`}
+        className="btn"
+        value={activity.run_type_source === "user" ? activity.run_type : "auto"}
+        disabled={saving}
+        onChange={(e) => void change(e.target.value)}
+      >
+        <option value="auto">{guess ? `Auto (guess: ${runTypeLabel(guess)})` : "Auto (guess)"}</option>
+        {RUN_TYPES.map((t) => (
+          <option key={t.value} value={t.value}>
+            {t.label}
+          </option>
+        ))}
+      </select>
+      {failed && <div className="muted">Could not save the run type.</div>}
     </div>
   );
 }
@@ -190,7 +253,7 @@ function ActivityView({
     return () => controller.abort();
   }, [id]);
 
-  // Dopo la PUT del terreno: l'attivita' con il valore nuovo, dall'API.
+  // Dopo la PUT del terreno o del tipo: l'attivita' con il valore nuovo, dall'API.
   const reload = async () => setDetail(await api.activity(id));
 
   const icon = sport.icon(activity.sport);
@@ -203,7 +266,15 @@ function ActivityView({
           <div className="training-head">
             {icon && <img src={iconUrl(icon)} alt="" width={44} height={44} />}
             <div>
-              <h2>{activity.activity_name ?? sport.label(activity.sport)}</h2>
+              <h2>
+                {activity.activity_name ?? sport.label(activity.sport)}
+                {a.run_type != null && (
+                  <span className="run-type-tag">
+                    {runTypeLabel(a.run_type)}
+                    {a.run_type_source === "guess" && " (guessed)"}
+                  </span>
+                )}
+              </h2>
               <div className="muted">
                 {sport.label(activity.sport)} · started {timeOf(activity.start_time)}
                 {after && ` · ${after}`}
@@ -242,6 +313,7 @@ function ActivityView({
         </div>
         <aside className="training-side">
           {comment && <div className="prose">{markdown(comment)}</div>}
+          {detail && <RunTypePicker activity={detail} onSaved={reload} />}
           {detail && <TerrainPicker activity={detail} onSaved={reload} />}
           {(a.aerobic_te != null || a.anaerobic_te != null) && (
             <div className="te-box">
