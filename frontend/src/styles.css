@@ -340,18 +340,20 @@ h2 {
 .card h2 {
   font-size: 1.35rem;
 }
-.cards-row {
+/* Recovery, Health, Fitness e Load (todo 37): due colonne uguali, una sotto
+   i 900 px. Le card non si allungano per pareggiare la riga. */
+.cards-grid {
   display: grid;
-  grid-template-columns: minmax(0, 2.6fr) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
 }
-.card-title-row {
+/* I segnali d'allarme sopra la griglia. */
+.alerts-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 14px;
 }
 .badge {
   border-radius: 999px;
@@ -369,7 +371,7 @@ h2 {
   color: var(--warn-text);
 }
 .alerts {
-  margin: 0 0 12px;
+  margin: 0;
   padding-left: 20px;
   color: var(--warn-text);
   font-size: 0.88rem;
@@ -383,11 +385,6 @@ h2 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   margin-bottom: 10px;
-}
-.morning-block + .morning-block {
-  border-top: 1px solid var(--border);
-  margin-top: 16px;
-  padding-top: 16px;
 }
 .prose {
   font-size: 0.9rem;
@@ -406,8 +403,8 @@ h2 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px 20px;
 }
-.stats.four {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.stats.two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 .stats.five {
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -530,11 +527,6 @@ h2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-}
-.vo2 {
-  margin-top: 14px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
 }
@@ -704,15 +696,12 @@ h2 {
 }
 
 @media (max-width: 900px) {
-  .cards-row,
+  .cards-grid,
   .training-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .next-card {
     flex-direction: column;
-  }
-  .stats.four {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .stats.five {
     grid-template-columns: repeat(3, minmax(0, 1fr));

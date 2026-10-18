@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # La Day in React: Recovery, Health, Fitness e Load in una griglia 2x2
@@ -122,3 +122,14 @@ Con l'API accesa sui dati locali:
    400 px di larghezza (una colonna, stesso ordine). Un giorno senza dati di
    salute non rompe la pagina. Screenshot nel report finale.
 5. Tutti i server avviati per la verifica si fermano.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_37'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno.
+
+Dopo il revert, rifare il merge di `todo_37` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

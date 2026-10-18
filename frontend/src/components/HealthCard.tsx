@@ -1,0 +1,70 @@
+// "Health" (todo 37, prima un blocco di "This morning"): frequenza a riposo,
+// HRV, respiro e stress da `/api/daily/{day}`, sotto la sezione Health del
+// report. Il frontend non fa conti: medie e fasce vengono dall'API.
+import type { DailyData } from "../api/client";
+import { markdown } from "../markdown";
+import { CardHead, num, Stat } from "./Stat";
+
+/** La fascia equilibrata dell'HRV e il valore della settimana, come nel
+ * mockup. La scala va un po' oltre la fascia, per vedere anche un valore
+ * fuori. */
+function HrvRange({ value, low, high }: { value: number | null; low: number; high: number }) {
+  const pad = (high - low) * 0.6;
+  const min = Math.min(low - pad, value ?? low);
+  const max = Math.max(high + pad, value ?? high);
+  const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+  return (
+    <div className="hrv-range" aria-hidden="true">
+      <div className="hrv-track">
+        <div className="hrv-band" style={{ left: at(low), width: `calc(${at(high)} - ${at(low)})` }} />
+        {value != null && <div className="hrv-marker" style={{ left: at(value) }} />}
+      </div>
+      <div className="hrv-ticks">
+        <span style={{ left: at(low) }}>{low}</span>
+        <span style={{ left: at(high) }}>{high}</span>
+      </div>
+    </div>
+  );
+}
+
+export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
+  const m = data.morning;
+  const baseline = m.hrv_baseline;
+  return (
+    <section className="card" aria-label="Health">
+      <CardHead icon={icon} title="Health" />
+      <div className="stats two">
+        <Stat
+          label="Resting heart rate"
+          value={num(m.resting_hr.value)}
+          unit="bpm"
+          sub={`28-day avg ${num(m.resting_hr.avg_28d.mean, 1)}`}
+        />
+        <Stat
+          label="HRV, weekly average"
+          value={num(m.hrv_weekly_avg.value)}
+          unit="ms"
+          sub={
+            <>
+              {baseline && <HrvRange value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
+              {baseline && `Balanced range ${baseline.low}–${baseline.high} · `}
+              28-day avg {num(m.hrv_weekly_avg.avg_28d.mean, 1)} · last night {num(m.hrv_last_night.value)} ms
+            </>
+          }
+        />
+        <Stat
+          label="Breathing in sleep"
+          value={num(m.resp_sleep.value, 1)}
+          unit="/min"
+          sub={`28-day avg ${num(m.resp_sleep.avg_28d.mean, 1)}`}
+        />
+        <Stat
+          label="Stress, yesterday"
+          value={num(m.stress_avg_yesterday.value)}
+          sub={`28-day avg ${num(m.stress_avg_yesterday.avg_28d.mean, 1)}`}
+        />
+      </div>
+      {text && <div className="prose">{markdown(text)}</div>}
+    </section>
+  );
+}

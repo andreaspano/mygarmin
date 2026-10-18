@@ -2,7 +2,8 @@
 // Garmin detto a parole (la prima frase del report era troppo lunga per un
 // titolo), il testo e' la sezione Load del report; il bilancio del lavoro come tre
 // barre, con la fascia obiettivo di Garmin quando i file di salute ce
-// l'hanno; riposi, ultima seduta dura e VO2max da `/api/daily/{day}`.
+// l'hanno; riposi e ultima seduta dura da `/api/daily/{day}`. Il VO2max e'
+// passato alla card Fitness (todo 37).
 import { iconUrl, type DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
 import { markdown } from "../markdown";
@@ -80,7 +81,6 @@ export function LoadCard({ data, text, icon }: { data: DailyData; text: string |
   const status = data.load.now?.acwr_status;
   const title = (status && STATUS_TITLES[status]) ?? "Load";
   const recent = data.recent;
-  const vo2 = data.load.vo2max_change;
   return (
     <section className="card load-card" aria-label="Load">
       <div className="block-head">
@@ -105,19 +105,6 @@ export function LoadCard({ data, text, icon }: { data: DailyData; text: string |
           )}
         </div>
       </div>
-      {vo2 && (
-        <div className="stat vo2">
-          <div className="stat-label">VO2max</div>
-          <div className="stat-value">
-            {vo2.now.toFixed(1)}
-            <span className={vo2.change >= 0 ? "delta up" : "delta down"}>
-              {vo2.change >= 0 ? "+" : ""}
-              {vo2.change.toFixed(1)} in 28 days
-            </span>
-          </div>
-          <div className="stat-sub">From {vo2.days_ago_28.toFixed(1)} four weeks ago</div>
-        </div>
-      )}
     </section>
   );
 }

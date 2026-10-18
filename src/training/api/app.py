@@ -36,8 +36,9 @@ from training.api.models import (
     TerrainUpdate,
     ZoneBand,
 )
-from training.interface.daily_data import build_daily_data
+from training.interface.daily_data import build_daily_data, fitness_on
 from training.interface.db import _clean, load_activity_records
+from training.interface.health_db import load_health_db
 from training.interface.report_text import parse_report, section_icon
 from training.interface.run_chart import (
     EFFECTS,
@@ -243,7 +244,18 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     # Il sonno della mattina in minuti, per scriverlo "8h04": `sleep_hours`
     # e' arrotondato a 0.1 h (6 minuti), le ore notte per notte a 0.01.
     hours = data["sleep_last_7"]["hours"].get(day.isoformat())
-    return DailyData(**data, sleep_minutes=round(hours * 60) if hours is not None else None)
+    # La card Fitness (todo 37): solo qui e non in `build_daily_data`, perche'
+    # il JSON del report giornaliero resti com'e'. La soglia e' quella di
+    # `hr_zones`, ripetuta con un tipo.
+    fitness = fitness_on(load_health_db(ctx.data_dir), day)
+    zones = data["hr_zones"]
+    if zones and zones.get("threshold_hr") is not None:
+        fitness["threshold_hr"] = {"value": zones["threshold_hr"], "as_of": zones["as_of"]}
+    else:
+        fitness["threshold_hr"] = None
+    return DailyData(
+        **data, sleep_minutes=round(hours * 60) if hours is not None else None, fitness=fitness
+    )
 
 
 @app.get("/api/reports/daily/{day}", response_model=Report, summary="Daily report")

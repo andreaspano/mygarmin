@@ -304,6 +304,31 @@ def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
     }
 
 
+def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
+    """La card Fitness della Day in React (todo 37): il VO2max piu' recente
+    fino a `day`, sempre, con la data in cui Garmin l'ha misurato e la
+    variazione in 28 giorni. Al contrario di `_vo2max_change` non c'e' soglia:
+    la card lo mostra anche quando non si e' mosso.
+
+    La usa solo `GET /api/daily/{day}`, non `build_daily_data`: il JSON del
+    report giornaliero non cambia."""
+    values = health.loc[: pd.Timestamp(day), "vo2max"].dropna()
+    if values.empty:
+        return {"vo2max": None}
+    now = float(values.iloc[-1])
+    measured = health.at[values.index[-1], "vo2max_date"]
+    before = health.loc[: pd.Timestamp(day - timedelta(days=BASELINE_LONG)), "vo2max"].dropna()
+    then = float(before.iloc[-1]) if not before.empty else None
+    return {
+        "vo2max": {
+            "now": _value(now, 1),
+            "as_of": measured if isinstance(measured, str) else values.index[-1].date().isoformat(),
+            "days_ago_28": _value(then, 1),
+            "change": _value(now - then, 1) if then is not None else None,
+        }
+    }
+
+
 def _hr_zones(activities: pd.DataFrame, day: date) -> dict[str, Any] | None:
     """Le zone cardiache in bpm in vigore il giorno `day`: quelle dell'ultima
     attivita' a piedi fino a quel giorno che le ha salvate (l'orologio le scrive nel

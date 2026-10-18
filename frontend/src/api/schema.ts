@@ -484,6 +484,7 @@ export interface components {
             } | null;
             /** Missing */
             missing: string[];
+            fitness: components["schemas"]["Fitness"];
         };
         /** DayActivities */
         DayActivities: {
@@ -511,6 +512,17 @@ export interface components {
             high_aerobic_s: number;
             /** Anaerobic S */
             anaerobic_s: number;
+        };
+        /**
+         * Fitness
+         * @description What the athlete can do, changing slowly over weeks (the Fitness card, todo 37).
+         *     Only in the API: the daily report's JSON does not have it.
+         */
+        Fitness: {
+            /** @description Null when there is no VO2max up to the day. */
+            vo2max: components["schemas"]["Vo2maxNow"] | null;
+            /** @description Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold. */
+            threshold_hr: components["schemas"]["ThresholdHr"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -819,6 +831,23 @@ export interface components {
              */
             terrain: ("track" | "road" | "gravel" | "trail" | "mountain") | null;
         };
+        /**
+         * ThresholdHr
+         * @description The threshold heart rate saved by the watch in the latest on-foot activity with zones.
+         */
+        ThresholdHr: {
+            /**
+             * Value
+             * @description In bpm.
+             */
+            value: number;
+            /**
+             * As Of
+             * Format: date
+             * @description The day of the activity it is read from.
+             */
+            as_of: string;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -840,6 +869,30 @@ export interface components {
             days_ago_28: number;
             /** Change */
             change: number;
+        };
+        /**
+         * Vo2maxNow
+         * @description The latest VO2max up to the day, shown even when it did not move.
+         */
+        Vo2maxNow: {
+            /** Now */
+            now: number;
+            /**
+             * As Of
+             * Format: date
+             * @description The day Garmin measured it.
+             */
+            as_of: string;
+            /**
+             * Days Ago 28
+             * @description Null when there is no value 28 days before.
+             */
+            days_ago_28: number | null;
+            /**
+             * Change
+             * @description Null when there is no value 28 days before.
+             */
+            change: number | null;
         };
         /**
          * ZoneBand
