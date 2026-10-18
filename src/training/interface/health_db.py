@@ -134,10 +134,10 @@ def sync_health(data_dir: Path = DATA_DIR) -> int:
 def load_health_db(data_dir: Path = DATA_DIR) -> pd.DataFrame:
     """Le metriche di salute da `health_daily`, dopo un `sync_health()`.
 
-    Stessa forma che `health.load_health()` ha sempre restituito: indice
-    `DatetimeIndex` di nome `day`, continuo dal primo all'ultimo giorno (i
-    buchi a `NaN`), colonne `COLUMNS`. DataFrame vuoto con le colonne giuste
-    se non c'e' niente."""
+    Indice `DatetimeIndex` di nome `day`, continuo dal primo all'ultimo
+    giorno: i giorni senza file ci sono comunque, con tutto a `NaN`, cosi'
+    l'asse del tempo non si accorcia sui buchi. Colonne `COLUMNS`. DataFrame
+    vuoto con le colonne giuste se non c'e' niente."""
     data_dir = Path(data_dir)
     sync_health(data_dir)
     conn = _connect(data_dir)

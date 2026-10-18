@@ -1,6 +1,5 @@
 """Report rule-based per singola attivita': un commento testuale derivato
-solo dai dati campionati (nessuna chiamata esterna/LLM). Usato sia
-dall'app Streamlit (mostrato nel dettaglio attivita') sia dallo script
+solo dai dati campionati (nessuna chiamata esterna/LLM). Lo usa lo script
 batch che scrive un file .md per attivita' in summary/00.activity/.
 """
 

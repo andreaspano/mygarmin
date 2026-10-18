@@ -505,7 +505,7 @@ def run_analysis_chart(
                     scale=alt.Scale(domain=[0, _ceil(data["slope_abs"].max())], nice=False),
                     # A sinistra come gli altri due pannelli: a destra, con il
                     # grafico largo quanto il contenitore, Vega-Lite non lascia
-                    # spazio all'asse e Streamlit lo tagliava (tacche, numeri e
+                    # spazio all'asse e la pagina lo tagliava (tacche, numeri e
                     # titolo spariti).
                     axis=alt.Axis(tickCount=3),
                 ),

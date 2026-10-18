@@ -9,8 +9,7 @@ si leggono e si buttano, e restano nei JSON per chi le vuole intere
 Le righe finiscono in SQLite, nella tabella `health_daily` dentro
 `activities.db` (vedi `health_db.py`), ma e' solo una cache derivata: la fonte
 restano i JSON, e la tabella si ricostruisce sempre da loro, rileggendo un
-giorno quando uno dei suoi file cambia. Qui sta il parsing, la' la cache; la
-cache di Streamlit sta in `data.py`, come per `load_activities()`.
+giorno quando uno dei suoi file cambia. Qui sta il parsing, la' la cache.
 
 I JSON di Garmin cambiano forma, e un giorno senza orologio al polso ha `null`
 al posto dei dizionari: succede davvero (dal 2026-09-01 al 2026-09-08 `sleep`
@@ -25,8 +24,6 @@ import json
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
-
-import pandas as pd
 
 from training.garmin.config import DATA_DIR
 from training.garmin.health import DAILY_ENDPOINTS, LACTATE_THRESHOLD_FILE
@@ -400,21 +397,3 @@ def available_days(data_dir: Path = DATA_DIR) -> list[date]:
                 # Un file che non si chiama come una data non e' un giorno.
                 continue
     return sorted(days)
-
-
-def load_health(data_dir: Path = DATA_DIR) -> pd.DataFrame:
-    """Le metriche di salute, una riga per giorno e una colonna per grandezza.
-
-    L'indice e' `day` (date), continuo dal primo all'ultimo giorno trovato: i
-    giorni senza file ci sono comunque, con tutto a `NaN`, cosi' l'asse del
-    tempo non si accorcia sui buchi e una linea che salta un giorno si vede.
-
-    DataFrame vuoto (con le colonne giuste) se non c'e' niente su disco.
-
-    Passa dalla tabella `health_daily` (vedi `health_db.load_health_db`), che
-    rilegge dai JSON solo i giorni nuovi o cambiati."""
-    # Import qui e non in cima: `health_db` importa questo modulo per il
-    # parsing, e un import in cima ai due file farebbe un giro circolare.
-    from training.interface.health_db import load_health_db
-
-    return load_health_db(data_dir)

@@ -108,10 +108,12 @@ order:
 - **Always**: the package still imports and the touched modules compile —
   `uv run python -c "import training"` plus an import of each module you
   changed (e.g. `uv run python -c "from training.interface import db"`).
-- **Streamlit UI** (`src/training/interface/**`): `uv run streamlit run
-  src/training/interface/app.py --server.headless true` in the background,
-  confirm it serves without exceptions, then stop it. Read the console for
-  tracebacks; do not leave the server running.
+- **React UI** (`frontend/**`, or API changes it shows): `cd frontend &&
+  npm run build` with no errors; then, with `make api` and `make frontend`
+  in the background, open the page in the browser (Claude in Chrome, or
+  headless Chrome if the extension is not connected) and check it renders
+  without console errors. After an API model change, `make frontend_types`
+  must leave `frontend/src/api/schema.ts` unchanged. Stop the servers.
 - **CLI entry points** (`training-fitness-status`, `training-activity-reports`):
   run the corresponding `make` target when it is read-only on local data.
 - **Never run, unless the todo file explicitly asks for it**:
