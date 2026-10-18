@@ -52,11 +52,23 @@ Training della Day in React; le correzioni stanno in `activity_run_type.json`
 nella cartella dati, accanto a `activity_terrain.json`, e un rebuild non le
 perde. Report e Streamlit non lo mostrano.
 
+### I file di salute di un giorno
+
+`make update_activity`, `make backfill_health` e `make backfill` scaricano un
+file per giorno e per endpoint in `health/`. Un file conta come completo solo
+se e' stato salvato dopo la fine del suo giorno: uno salvato durante il
+giorno non ha quello che Garmin aggiorna dopo (il VO2max e il carico dopo una
+corsa della sera, il body battery piu' basso, lo stress del giorno), e si
+riscarica al giro dopo (todo 39). Oggi si riscarica sempre; un giorno rimasto
+a meta' piu' vecchio della finestra di `update_activity` (3 giorni) si
+sistema con `make backfill_health`.
+
 ### Endurance score, hill score e soglia del lattato
 
 Endurance e hill score si scaricano ogni giorno con il resto della salute
 (`health/endurance_score/` e `health/hill_score/`); per lo storico, dopo il
-primo aggiornamento, `make backfill_health` scarica solo i file che mancano.
+primo aggiornamento, `make backfill_health` scarica solo i file che mancano
+o che non sono completi (vedi sotto).
 La soglia del lattato no: Garmin la da' solo il giorno in cui ne rileva una
 nuova, quindi `make update_activity` tiene l'ultima in un file unico,
 `health/lactate_threshold_latest.json`. La card Fitness la mostra dal giorno
