@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # I file di salute di un giorno si riscaricano finche' il giorno non e' finito
@@ -106,3 +106,17 @@ Prese con Andrea il 2026-10-18:
    prima (il codice di lettura non cambia).
 6. La cartella dati vera non e' stata toccata: nessun file con mtime di oggi
    creato dalla verifica.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_39'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: i file di salute riscaricati dai prossimi `make
+update_activity` e `make backfill_health` restano nella cartella dati: sono
+gli stessi file di prima, solo completi, e il codice vecchio li legge come
+gli altri.
+
+Dopo il revert, rifare il merge di `todo_39` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

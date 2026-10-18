@@ -2,7 +2,7 @@
 
 import json
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +36,20 @@ DAILY_ENDPOINTS = {
 LACTATE_THRESHOLD_FILE = "lactate_threshold_latest.json"
 
 
+def _is_complete(path: Path, day: date) -> bool:
+    """Il file del giorno `day` c'e' ed e' stato salvato dopo la fine di quel
+    giorno (mezzanotte del giorno dopo, ora locale come le date dei file).
+
+    Un file salvato durante il giorno e' una fotografia a meta' (todo 39): il
+    `training_status` del 2026-10-15, salvato alle 13:20, non aveva la corsa
+    delle 19:50, ne' il VO2max e il carico che Garmin ne ha ricavato."""
+    try:
+        saved = datetime.fromtimestamp(path.stat().st_mtime)
+    except OSError:
+        return False
+    return saved >= datetime.combine(day + timedelta(days=1), datetime.min.time())
+
+
 def export_daily_health(
     api: Garmin,
     out_dir: Path,
@@ -43,10 +57,12 @@ def export_daily_health(
     end_date: date,
     force_dates: Optional[set[date]] = None,
 ) -> None:
-    """Esporta le metriche giornaliere tra start_date e end_date, saltando i
-    giorni gia' presenti su disco. Le date in force_dates vengono invece
-    riscaricate e sovrascritte sempre (utile per il giorno corrente, i cui
-    valori possono cambiare nel corso della giornata)."""
+    """Esporta le metriche giornaliere tra start_date e end_date. Un file gia'
+    su disco si salta solo se e' completo (`_is_complete`: salvato dopo la
+    fine del suo giorno); se manca o e' stato salvato durante il giorno si
+    scarica di nuovo. Cosi' oggi si riscarica sempre, ieri si completa al
+    primo giro di oggi, e un giorno rimasto a meta' si sistema al primo
+    backfill. Le date in force_dates si riscaricano comunque."""
     force_dates = force_dates or set()
     health_dir = out_dir / "health"
     for name in DAILY_ENDPOINTS:
@@ -59,22 +75,27 @@ def export_daily_health(
 
     d = start_date
     day_count = 0
+    downloaded = 0
     while d <= end_date:
         date_str = d.strftime("%Y-%m-%d")
         day_count += 1
 
         for name, func in DAILY_ENDPOINTS.items():
             target = health_dir / name / f"{date_str}.json"
-            if target.exists() and d not in force_dates:
+            if _is_complete(target, d) and d not in force_dates:
                 continue
             data = safe_call(func, api, date_str)
             if data is not None:
                 with open(target, "w", encoding="utf-8") as f:
                     json.dump(data, f, ensure_ascii=False, indent=2, default=str)
+                downloaded += 1
             time.sleep(REQUEST_DELAY)
 
         if day_count % 30 == 0 or d == end_date:
-            print(f"  ...elaborati {day_count}/{total_days} giorni (ultimo: {date_str})")
+            print(
+                f"  ...elaborati {day_count}/{total_days} giorni (ultimo: {date_str}), "
+                f"{downloaded} file scaricati"
+            )
 
         d += timedelta(days=1)
 
@@ -92,13 +113,14 @@ def export_lactate_threshold(api: Garmin, out_dir: Path) -> None:
 
 
 def refresh_recent_health(api: Garmin, data_dir: Path = DATA_DIR) -> None:
-    """Rinfresca le metriche degli ultimi giorni, riscaricando sempre oggi.
+    """Rinfresca le metriche degli ultimi giorni: oggi sempre, e i giorni prima
+    i cui file non sono completi (vedi `export_daily_health`).
 
     La chiama `update_activity`, che senza di lei terrebbe aggiornate le
-    attivita' e non la salute. I giorni gia' su disco vengono saltati tranne
-    oggi, che cambia nel corso della giornata (la readiness dopo un
-    allenamento, il body battery che si consuma): stessa scelta che fa
-    `build_fitness_status`. In piu' riscarica l'ultima soglia del lattato."""
+    attivita' e non la salute. Oggi cambia nel corso della giornata (la
+    readiness dopo un allenamento, il body battery che si consuma); ieri, se
+    l'ultimo giro e' stato ieri di giorno, e' rimasto a meta' e si completa
+    adesso. In piu' riscarica l'ultima soglia del lattato."""
     today = date.today()
     export_daily_health(
         api,
@@ -117,7 +139,7 @@ def backfill_health(data_dir: Path = DATA_DIR) -> None:
     E' un comando a parte (`make backfill_health`) e non un pezzo di
     `update_activity` per via di quanto costa: ogni giorno sono 11 chiamate, e
     con la pausa fra una e l'altra un anno di storico richiede 30-45 minuti. Si
-    puo' interrompere con Ctrl+C e rilanciare: i giorni gia' scaricati vengono
-    saltati."""
+    puo' interrompere con Ctrl+C e rilanciare: i giorni gia' scaricati e
+    completi vengono saltati, quelli salvati a meta' giornata si riscaricano."""
     api = init_api()
     export_daily_health(api, Path(data_dir), HISTORY_START, date.today())

@@ -86,9 +86,10 @@ def sync_health(data_dir: Path = DATA_DIR) -> int:
     """Porta `health_daily` in pari con i JSON; torna quanti giorni ha riletto.
 
     Un giorno si rilegge solo se manca dalla tabella o se uno dei suoi file e'
-    piu' nuovo della riga: `export_daily_health(..., force_dates={today})`
-    riscrive i file di oggi a ogni giro, e una riga messa in cache una volta
-    per giorno resterebbe vecchia. Se `HEALTH_LOGIC_VERSION` non coincide con
+    piu' nuovo della riga: `export_daily_health` riscrive i file di un giorno
+    finche' non sono completi (oggi a ogni giro, e un giorno salvato a meta'
+    giornata al giro dopo, todo 39), e una riga messa in cache una volta per
+    giorno resterebbe vecchia. Se `HEALTH_LOGIC_VERSION` non coincide con
     quella salvata, prima si ricrea la tabella vuota, con le colonne di oggi."""
     data_dir = Path(data_dir)
     health_dir = data_dir / "health"
