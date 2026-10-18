@@ -1,8 +1,7 @@
 """Gli sport come si leggono a schermo: etichette e file delle icone.
 
-Senza Streamlit: le usano le pagine (`activity_table.py`) e l'API
-(`training.api`, todo 33), che cosi' hanno una fonte sola. Le icone stanno
-nella cartella `icons/` della radice del repo."""
+Le usa l'API (`training.api`, todo 33), e da li' la pagina in React. Le
+icone stanno nella cartella `icons/` della radice del repo."""
 
 # Le chiavi sono quelle di `activities.sport` (vedi `db.GARMIN_TYPE_TO_SPORT`).
 SPORT_ICON_FILES = {

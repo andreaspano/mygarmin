@@ -1,4 +1,4 @@
-.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status interface api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -34,9 +34,6 @@ backfill:
 
 fitness_status:
 	uv run training-fitness-status
-
-interface:
-	uv run streamlit run src/training/interface/app.py
 
 # L'API in sola lettura, solo su 127.0.0.1 (niente login). Documentazione su
 # http://127.0.0.1:8000/docs

@@ -11,9 +11,9 @@ Two entry points matter to callers: list_activities() and
 load_activity_records() — both call sync() first, so new .fit files are
 picked up automatically without a manual cache-clear or restart.
 
-The Streamlit pages do not call list_activities() directly: passano da
-data.load_activities(), che ci mette davanti una cache con un ttl breve per
-non rifare la scansione a ogni rerun.
+L'API non chiama list_activities() a ogni richiesta: passa da
+`api/cache.py`, che ci mette davanti una cache per non rifare la scansione
+ogni volta.
 
 Nello stesso file sta anche la tabella `health_daily`, ma non e' di questo
 modulo: la costruisce `health_db.py` dai JSON di salute, non dai FIT, con la

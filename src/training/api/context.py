@@ -11,8 +11,7 @@ from pathlib import Path
 from training.garmin.config import DATA_DIR
 
 # La radice del repo e non la cartella corrente, come `config.CONFIG_PATH`:
-# l'API non deve dipendere dalla cartella da cui si lancia. Le pagine
-# Streamlit usano invece `Path("summary/...")` relativo.
+# l'API non deve dipendere dalla cartella da cui si lancia.
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SUMMARY_DIR = REPO_ROOT / "summary"
 # Le icone sono del repo, non dell'utente: uguali per tutti.

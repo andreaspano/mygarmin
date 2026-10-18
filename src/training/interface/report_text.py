@@ -1,8 +1,6 @@
-"""La lettura di un report scritto (`summary/...`), senza Streamlit.
-
-E' la parte di `report_view.show_report` che legge il file: la usa la
-pagina per disegnare il riquadro e l'API (`training.api`) per rendere le
-sezioni come dati."""
+"""La lettura di un report scritto (`summary/...`): la usa l'API
+(`training.api`) per rendere le sezioni come dati, e da li' la pagina in
+React le mostra nei suoi riquadri."""
 
 from pathlib import Path
 

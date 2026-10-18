@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Via Streamlit
@@ -105,3 +105,15 @@ React, report):
 6. Nel browser (Claude in Chrome, o Chrome headless se l'estensione non
    c'e'): la Day del 2026-10-15 come prima, senza errori in console. Tutti i
    server avviati per la verifica si fermano.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_40'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. Dopo il revert serve un `uv sync` perche'
+la `.venv` riabbia streamlit.
+
+Dopo il revert, rifare il merge di `todo_40` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
