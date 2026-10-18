@@ -17,10 +17,10 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 5173,
-    // Dalle altre macchine della tailnet arriva con `tailscale serve`, che
-    // gira le richieste a 127.0.0.1:5173 col nome della macchina in *.ts.net:
-    // Vite rifiuta i nomi che non conosce.
-    allowedHosts: [".ts.net"],
+    // Dalle altre macchine della tailnet si arriva col nome della macchina,
+    // corto (`mutolo`, MagicDNS) o intero (*.ts.net): Vite rifiuta i nomi
+    // che non conosce. Su mutolo Vite ascolta sull'indirizzo Tailscale.
+    allowedHosts: [".ts.net", "mutolo"],
     proxy: {
       "/api": API,
       "/icons": API,
