@@ -3,14 +3,15 @@
 // riquadro "Next", i segnali d'allarme, la griglia 2x2 (todo 37): Health e
 // Load sopra, Recovery e Fitness sotto, poi "Training" con grafico e mappa.
 // I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi dalle
-// sezioni del report giornaliero.
+// sezioni del report giornaliero. Il tasto Refresh (todo 41) aggiorna i dati e
+// riscrive il report: alla fine la pagina li richiede.
 //
 // Il giorno sta nell'URL (`?day=2026-10-07`): un giorno si apre da un link e
 // il tasto indietro torna a quello prima. Senza router: `URLSearchParams` e
 // `history.pushState`.
 import { useEffect, useMemo, useState } from "react";
 
-import { api, type Activity, type DailyData, type Report, type SportList } from "../api/client";
+import { api, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon } from "../markdown";
 import { useColorScheme } from "../useColorScheme";
@@ -51,6 +52,9 @@ function isAbort(error: unknown): boolean {
 
 const API_DOWN = "Cannot reach the API. Is it running (make api)?";
 
+// Ogni quanto si chiede lo stato del Refresh mentre gira.
+const REFRESH_POLL_MS = 3000;
+
 export function DayPage() {
   const theme = useColorScheme();
   const now = today();
@@ -60,7 +64,23 @@ export function DayPage() {
   const [data, setData] = useState<DailyData | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState<RefreshStatus | null>(null);
+  // Sale a ogni Refresh finito bene: dati e report si richiedono.
+  const [reloads, setReloads] = useState(0);
+  // Un errore del Refresh si mostra solo se questa pagina l'ha visto girare,
+  // non per un lavoro fallito ore prima.
+  const [watched, setWatched] = useState(false);
   const [stripStart, stripEnd] = stripRange(day, now);
+
+  const startRefresh = () => {
+    api
+      .startRefresh(day)
+      .then((status) => {
+        setWatched(true);
+        setRefresh(status);
+      })
+      .catch(() => setError(API_DOWN));
+  };
 
   const changeDay = (next: string) => {
     if (next === day || next > now) return;
@@ -88,6 +108,33 @@ export function DayPage() {
   useEffect(() => {
     const controller = new AbortController();
     api
+      .refresh(controller.signal)
+      .then((status) => {
+        if (status.status === "running") setWatched(true);
+        setRefresh(status);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  const running = refresh?.status === "running";
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(() => {
+      api
+        .refresh()
+        .then((status) => {
+          setRefresh(status);
+          if (status.status === "done") setReloads((n) => n + 1);
+        })
+        .catch(() => undefined);
+    }, REFRESH_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    api
       .activities(stripStart, stripEnd, [], controller.signal)
       .then((list) => {
         setError(null);
@@ -95,7 +142,7 @@ export function DayPage() {
       })
       .catch((e: unknown) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, [stripStart, stripEnd]);
+  }, [stripStart, stripEnd, reloads]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -110,7 +157,7 @@ export function DayPage() {
       .then(setReport)
       .catch((e: unknown) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, [day]);
+  }, [day, reloads]);
 
   useEffect(() => {
     document.title = `Training · ${day}`;
@@ -138,7 +185,13 @@ export function DayPage() {
     <>
       <TopBar />
       <main className="page">
-        <DayHeader day={day} maxDay={now} onChange={changeDay}>
+        <DayHeader
+          day={day}
+          maxDay={now}
+          onChange={changeDay}
+          refreshing={running ? (refresh?.started ?? null) : null}
+          onRefresh={startRefresh}
+        >
           <WeekStrip
             start={stripStart}
             end={stripEnd}
@@ -151,6 +204,11 @@ export function DayPage() {
           />
         </DayHeader>
         {error && <p className="warning">{error}</p>}
+        {watched && refresh?.status === "failed" && (
+          <p className="warning multiline">
+            Refresh of {refresh.day} failed: {refresh.message}
+          </p>
+        )}
         <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
         {data ? (
           <>

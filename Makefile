@@ -35,7 +35,8 @@ backfill:
 fitness_status:
 	uv run training-fitness-status
 
-# L'API in sola lettura, solo su 127.0.0.1 (niente login). Documentazione su
+# L'API, solo su 127.0.0.1 (niente login): letture, piu' il terreno, il tipo di
+# corsa e il tasto Refresh (todo 41), che lancia `claude`. Documentazione su
 # http://127.0.0.1:8000/docs
 api:
 	uv run uvicorn training.api.app:app --host 127.0.0.1 --port 8000 --reload

@@ -1,6 +1,7 @@
 """L'API della pagina Day (todo 32). Tutto in sola lettura (`GET`), tranne il
-terreno di un'attivita' a piedi (`PUT`, todo 35) e il tipo di una corsa
-(`PUT`, todo 36).
+terreno di un'attivita' a piedi (`PUT`, todo 35), il tipo di una corsa
+(`PUT`, todo 36) e il tasto Refresh (`POST`, todo 41), che aggiorna i dati e
+riscrive un report.
 
 Lancio: `make api` (solo su 127.0.0.1: non c'e' ancora il login, e sono dati
 di salute). La documentazione interattiva e' su `/docs`.
@@ -17,8 +18,9 @@ import pandas as pd
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
+from training.api import refresh
 from training.api.cache import invalidate, load_activities
-from training.api.context import ICONS_DIR, UserContext, get_user_context
+from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.models import (
     Activity,
     ActivityDetail,
@@ -27,6 +29,7 @@ from training.api.models import (
     DailyData,
     EffectSeconds,
     Pause,
+    RefreshStatus,
     Report,
     ReportSection,
     Route,
@@ -63,7 +66,8 @@ app = FastAPI(
     title="Training API",
     description=(
         "Read-only access to activities, charts, daily data and daily reports. "
-        "The only writes are the terrain of an on-foot activity and the type of a run."
+        "The only writes are the terrain of an on-foot activity, the type of a run "
+        "and the Refresh job, which downloads new data and rewrites a daily report."
     ),
     version="0.1.0",
 )
@@ -274,3 +278,24 @@ def get_daily_report(day: date, ctx: Context) -> Report:
         for title, body in parse_report(path)
     ]
     return Report(day=day, sections=sections)
+
+
+@app.post(
+    "/api/reports/daily/{day}/refresh",
+    response_model=RefreshStatus,
+    status_code=202,
+    summary="Refresh data and rewrite the daily report",
+)
+def post_daily_refresh(day: date, ctx: Context) -> RefreshStatus:
+    """Download new data from Garmin and rewrite the daily report of `day`, in the
+    background (a few minutes). One job at a time: while one runs, this returns it and
+    starts nothing. Follow it with `GET /api/refresh`."""
+    if day > date.today():
+        raise HTTPException(status_code=422, detail=f"{day} is in the future.")
+    return RefreshStatus(**refresh.start(day, REPO_ROOT, ctx.summary_dir, ctx.data_dir))
+
+
+@app.get("/api/refresh", response_model=RefreshStatus, summary="Refresh job status")
+def get_refresh() -> RefreshStatus:
+    """The state of the latest Refresh job."""
+    return RefreshStatus(**refresh.status())
