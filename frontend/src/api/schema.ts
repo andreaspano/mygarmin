@@ -551,6 +551,8 @@ export interface components {
             endurance: components["schemas"]["EnduranceNow"] | null;
             /** @description Garmin's hill score. Null when there is none up to the day. */
             hill: components["schemas"]["ScoreNow"] | null;
+            /** @description Null before the day it was detected, or when it has not been downloaded. */
+            lactate_threshold: components["schemas"]["LactateThreshold"] | null;
             /** @description Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold. */
             threshold_hr: components["schemas"]["ThresholdHr"] | null;
         };
@@ -558,6 +560,31 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LactateThreshold
+         * @description Garmin's latest running lactate threshold. Only the latest one is known, so it is shown
+         *     from the day it was detected on.
+         */
+        LactateThreshold: {
+            /**
+             * Heart Rate
+             * @description In bpm.
+             */
+            heart_rate: number | null;
+            /** Speed Kmh */
+            speed_kmh: number | null;
+            /**
+             * Pace S Per Km
+             * @description Seconds per km, from the speed.
+             */
+            pace_s_per_km: number | null;
+            /**
+             * As Of
+             * Format: date
+             * @description The day Garmin detected it.
+             */
+            as_of: string;
         };
         /** Load */
         Load: {

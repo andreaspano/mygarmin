@@ -1,5 +1,5 @@
 ---
-status: failed
+status: done
 ---
 
 # Endurance score, hill score e soglia del lattato
@@ -126,45 +126,43 @@ Prese con Andrea il 2026-10-18:
 8. La cartella dati vera non ha cartelle `endurance_score`, `hill_score` o
    `lactate_threshold`; tutti i server avviati si fermano.
 
-## Needs decision (2026-10-18)
+## Decisione sulla soglia del lattato (2026-10-18)
 
-**Cosa blocca: la soglia del lattato.** Sui due giorni di prova autorizzati
-(2026-10-17 e 2025-01-15) `get_lactate_threshold(latest=False, ...)` ha
-risposto `{"speed": [], "heart_rate": [], "power": []}`: Garmin la scrive solo
-nel giorno in cui ne rileva una nuova. Senza una risposta piena non si
-conoscono la forma delle voci ne' l'unita' della velocita' (dal sorgente di
-`garminconnect` non si ricava), e un parser scritto alla cieca puo' mostrare
-un passo sbagliato. Il todo permette solo quei due giorni: niente altre
-chiamate.
+Sui due giorni di prova `get_lactate_threshold(latest=False, ...)` ha risposto
+con liste vuote: Garmin scrive la soglia solo nel giorno in cui ne rileva una
+nuova. Il todo e' andato in `failed` con tre opzioni, e Andrea ha scelto la 2:
+una sola chiamata `get_lactate_threshold(latest=True)`, che ha risposto
+`heartRate` 154, `speed` 0.277777, `calendarDate` 2026-10-16.
 
-**Fatto e verificato sul branch** (tutto tranne la soglia del lattato):
+Quindi, al posto di quanto scritto sopra:
 
-- i tre endpoint in `DAILY_ENDPOINTS` (anche `lactate_threshold`, che si
-  scarica gia' giorno per giorno);
-- `endurance_score`, `endurance_level` e `hill_score` in `health_daily`, con
-  `HEALTH_LOGIC_VERSION` 2; la tabella si ricrea con DROP, perche' `CREATE
-  TABLE IF NOT EXISTS` non aggiunge colonne;
-- il livello dell'endurance score si legge dai limiti nella risposta stessa
-  (4926 sul 2026-10-17 -> Intermediate); per l'hill score la risposta ha solo
-  un id di classificazione e non il nome, quindi niente livello;
-- `fitness.endurance` e `fitness.hill` nell'API, e i due numeri nella card
-  Fitness;
-- `fitness_status.py` legge ancora solo i nove endpoint di prima; il JSON di
-  `make daily_data` e' identico a prima del todo.
+- **niente endpoint giornaliero** `lactate_threshold`: chiesto giorno per
+  giorno non dice niente, e nel backfill sarebbero circa 660 chiamate a
+  vuoto;
+- **un file unico**, `health/lactate_threshold_latest.json`, riscritto da
+  `update_activity` (`export_lactate_threshold`, dentro
+  `refresh_recent_health`); il backfill non lo tocca, perche' l'ultima soglia
+  scritta nei giorni passati sarebbe falsa;
+- **la velocita' e' in decimi di m/s**: 0.277777 -> 2.78 m/s -> 10.0 km/h ->
+  6:00/km, l'unica lettura plausibile accanto alle corse di Andrea. Da
+  confermare contro Garmin Connect;
+- **nella card** la soglia del lattato si vede dal giorno in cui e' stata
+  rilevata in poi; prima resta la frequenza di soglia del FIT (todo 37).
+  Non c'e' storico: si conosce solo l'ultima.
 
-**Opzioni:**
+## Revert
 
-1. Autorizzare **una** chiamata in piu', in una cartella temporanea:
-   `get_lactate_threshold(latest=False, start_date="2025-01-01",
-   end_date=<ieri>)`. Mostra le soglie rilevate in quel periodo con la loro
-   forma e le loro date: si scrive il parser, la soglia si porta in avanti
-   dall'ultimo giorno rilevato (come il VO2max) e si finisce il todo.
-2. Autorizzare **una** chiamata `get_lactate_threshold(latest=True)`: da'
-   l'ultima soglia, ma nella forma di `latest`, diversa da quella dei file
-   giornalieri.
-3. Togliere la soglia del lattato da questo todo: merge di endurance e hill
-   score, il download giornaliero resta (dopo `make backfill_health` ci sono
-   i file veri), e il parser in un todo a parte.
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_38'$" --format=%H -1)
+```
 
-**Raccomandazione: 1.** Una chiamata sola, la stessa forma dei file
-giornalieri, e il todo si chiude come era stato deciso.
+Effetti fuori dal repo: le cartelle `health/endurance_score/` e
+`health/hill_score/` e il file `health/lactate_threshold_latest.json` nella
+cartella dati, scritti dai prossimi `make update_activity` e `make
+backfill_health`: il codice vecchio non li legge, sono innocui. In
+`activities.db` la tabella `health_daily` resta con le tre colonne in piu' e
+`health_logic_version` 2: al primo accesso il codice vecchio (versione 1) la
+svuota e la riempie di nuovo, e le colonne in piu' restano a NULL, innocue.
+
+Dopo il revert, rifare il merge di `todo_38` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

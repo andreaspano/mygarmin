@@ -38,6 +38,7 @@ from training.api.models import (
 )
 from training.interface.daily_data import build_daily_data, fitness_on
 from training.interface.db import _clean, load_activity_records
+from training.interface.health import load_lactate_threshold
 from training.interface.health_db import load_health_db
 from training.interface.report_text import parse_report, section_icon
 from training.interface.run_chart import (
@@ -253,6 +254,10 @@ def get_daily(day: date, ctx: Context) -> DailyData:
         fitness["threshold_hr"] = {"value": zones["threshold_hr"], "as_of": zones["as_of"]}
     else:
         fitness["threshold_hr"] = None
+    # La soglia del lattato e' solo l'ultima (todo 38): vale dal giorno in cui
+    # Garmin l'ha rilevata in poi, prima no.
+    lactate = load_lactate_threshold(ctx.data_dir)
+    fitness["lactate_threshold"] = lactate if lactate and lactate["as_of"] <= day.isoformat() else None
     return DailyData(
         **data, sleep_minutes=round(hours * 60) if hours is not None else None, fitness=fitness
     )

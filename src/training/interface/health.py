@@ -1,7 +1,7 @@
 """Lettura delle metriche giornaliere di salute dai JSON di Garmin.
 
 Un file per giorno e per endpoint, in `DATA_DIR/health/<endpoint>/<data>.json`
-(li scrive `garmin/health.py`). Qui si aprono tutti e dodici, ma se ne tengono
+(li scrive `garmin/health.py`). Qui si aprono tutti e undici, ma se ne tengono
 solo i valori giornalieri: le serie minuto per minuto (stress, respiro, sonno)
 si leggono e si buttano, e restano nei JSON per chi le vuole intere
 (`garmin/fitness_status.py` legge i file grezzi per conto suo).
@@ -29,7 +29,7 @@ from typing import Any
 import pandas as pd
 
 from training.garmin.config import DATA_DIR
-from training.garmin.health import DAILY_ENDPOINTS
+from training.garmin.health import DAILY_ENDPOINTS, LACTATE_THRESHOLD_FILE
 
 # Gli endpoint da aprire: tutti quelli che `export_daily_health` scarica.
 # L'ordine non conta: e' solo l'insieme dei file da leggere per un giorno.
@@ -311,12 +311,12 @@ def _hill(payload: Any, day: str) -> float | None:
 
 
 def _day_paths(health_dir: Path, day: str) -> dict[str, Path]:
-    """I dodici file di un giorno, per endpoint (non e' detto che esistano)."""
+    """Gli undici file di un giorno, per endpoint (non e' detto che esistano)."""
     return {name: health_dir / name / f"{day}.json" for name in _USED_ENDPOINTS}
 
 
 def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
-    """Una riga: tutte le grandezze di un giorno, lette dai dodici file."""
+    """Una riga: tutte le grandezze di un giorno, lette dagli undici file."""
     payloads = {name: _read_json(path) for name, path in _day_paths(health_dir, day).items()}
 
     sleep_seconds = _number(_dig(payloads["sleep"], "dailySleepDTO", "sleepTimeSeconds"))
@@ -356,10 +356,39 @@ def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
     }
 
 
+def load_lactate_threshold(data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
+    """L'ultima soglia del lattato della corsa (todo 38), dal file unico che
+    riscrive `update_activity`, o None se non c'e'.
+
+    Forma (2026-10-18): `{"speed_and_heart_rate": {"calendarDate":
+    "2026-10-16T20:47:52.593", "speed": 0.277777, "heartRate": 154, ...},
+    "power": {...}}`. La velocita' e' in decimi di m/s: 0.277777 sono 2.78
+    m/s, cioe' 10.0 km/h, 6:00/km, che sta fra le corse facili (8-9 km/h a
+    130-140 bpm) e le ripetute (10-11 km/h a 147-148). Non e' una misura del
+    giorno: e' la soglia in vigore dal giorno `as_of` in poi."""
+    entry = _dig(_read_json(Path(data_dir) / "health" / LACTATE_THRESHOLD_FILE), "speed_and_heart_rate")
+    heart_rate = _number(_dig(entry, "heartRate"))
+    speed = _number(_dig(entry, "speed"))
+    when = _text(_dig(entry, "calendarDate"))
+    if when is None or (heart_rate is None and speed is None):
+        return None
+    try:
+        as_of = date.fromisoformat(when[:10])
+    except ValueError:
+        return None
+    speed_kmh = speed * 36 if speed is not None and speed > 0 else None
+    return {
+        "heart_rate": int(heart_rate) if heart_rate is not None else None,
+        "speed_kmh": round(speed_kmh, 1) if speed_kmh is not None else None,
+        "pace_s_per_km": round(3600 / speed_kmh) if speed_kmh is not None else None,
+        "as_of": as_of.isoformat(),
+    }
+
+
 def available_days(data_dir: Path = DATA_DIR) -> list[date]:
     """I giorni per cui c'e' almeno un file, in ordine.
 
-    Si guarda l'unione dei dodici endpoint e non uno solo: un giorno in cui
+    Si guarda l'unione degli undici endpoint e non uno solo: un giorno in cui
     manca il sonno ma c'e' la readiness e' comunque un giorno da mostrare."""
     health_dir = Path(data_dir) / "health"
     days: set[date] = set()
