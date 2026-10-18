@@ -304,28 +304,47 @@ def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
     }
 
 
+def _latest_with_change(health: pd.DataFrame, day: date, column: str, digits: int = 1) -> dict[str, Any] | None:
+    """Il valore piu' recente di `column` fino a `day`, il giorno della riga
+    da cui viene, e la variazione rispetto al valore piu' recente di 28
+    giorni prima (None se allora non c'era). None se non c'e' nessun valore."""
+    values = health.loc[: pd.Timestamp(day), column].dropna()
+    if values.empty:
+        return None
+    now = float(values.iloc[-1])
+    before = health.loc[: pd.Timestamp(day - timedelta(days=BASELINE_LONG)), column].dropna()
+    then = float(before.iloc[-1]) if not before.empty else None
+    return {
+        "now": _value(now, digits),
+        "as_of": values.index[-1].date().isoformat(),
+        "days_ago_28": _value(then, digits),
+        "change": _value(now - then, digits) if then is not None else None,
+    }
+
+
 def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
-    """La card Fitness della Day in React (todo 37): il VO2max piu' recente
-    fino a `day`, sempre, con la data in cui Garmin l'ha misurato e la
-    variazione in 28 giorni. Al contrario di `_vo2max_change` non c'e' soglia:
-    la card lo mostra anche quando non si e' mosso.
+    """La card Fitness della Day in React (todo 37 e 38): VO2max, endurance e
+    hill score piu' recenti fino a `day`, sempre, con la data e la variazione
+    in 28 giorni. Al contrario di `_vo2max_change` non c'e' soglia: la card li
+    mostra anche quando non si sono mossi.
 
     La usa solo `GET /api/daily/{day}`, non `build_daily_data`: il JSON del
     report giornaliero non cambia."""
-    values = health.loc[: pd.Timestamp(day), "vo2max"].dropna()
-    if values.empty:
-        return {"vo2max": None}
-    now = float(values.iloc[-1])
-    measured = health.at[values.index[-1], "vo2max_date"]
-    before = health.loc[: pd.Timestamp(day - timedelta(days=BASELINE_LONG)), "vo2max"].dropna()
-    then = float(before.iloc[-1]) if not before.empty else None
+    vo2max = _latest_with_change(health, day, "vo2max")
+    if vo2max is not None:
+        # Il giorno in cui Garmin l'ha misurato, non quello del file che lo
+        # porta (vedi `health._vo2max`).
+        measured = health.at[pd.Timestamp(vo2max["as_of"]), "vo2max_date"]
+        if isinstance(measured, str):
+            vo2max["as_of"] = measured
+    endurance = _latest_with_change(health, day, "endurance_score", digits=0)
+    if endurance is not None:
+        level = health.at[pd.Timestamp(endurance["as_of"]), "endurance_level"]
+        endurance["level"] = level if isinstance(level, str) else None
     return {
-        "vo2max": {
-            "now": _value(now, 1),
-            "as_of": measured if isinstance(measured, str) else values.index[-1].date().isoformat(),
-            "days_ago_28": _value(then, 1),
-            "change": _value(now - then, 1) if then is not None else None,
-        }
+        "vo2max": vo2max,
+        "endurance": endurance,
+        "hill": _latest_with_change(health, day, "hill_score", digits=0),
     }
 
 

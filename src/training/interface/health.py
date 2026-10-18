@@ -1,7 +1,7 @@
 """Lettura delle metriche giornaliere di salute dai JSON di Garmin.
 
 Un file per giorno e per endpoint, in `DATA_DIR/health/<endpoint>/<data>.json`
-(li scrive `garmin/health.py`). Qui si aprono tutti e nove, ma se ne tengono
+(li scrive `garmin/health.py`). Qui si aprono tutti e dodici, ma se ne tengono
 solo i valori giornalieri: le serie minuto per minuto (stress, respiro, sonno)
 si leggono e si buttano, e restano nei JSON per chi le vuole intere
 (`garmin/fitness_status.py` legge i file grezzi per conto suo).
@@ -76,6 +76,9 @@ COLUMNS = [
     "load_aerobic_high",
     "load_anaerobic",
     "load_balance_phrase",
+    "endurance_score",
+    "endurance_level",
+    "hill_score",
 ]
 
 # Le colonne di testo; tutte le altre sono numeri (`REAL` in SQLite, `float`
@@ -86,6 +89,7 @@ TEXT_COLUMNS = (
     "training_status_phrase",
     "acwr_status",
     "load_balance_phrase",
+    "endurance_level",
 )
 
 
@@ -258,13 +262,61 @@ def _load_balance(payload: Any, day: str) -> dict[str, Any]:
     }
 
 
+# I livelli dell'endurance score, dal piu' basso. La risposta di Garmin porta
+# il limite inferiore di ognuno (`classificationLowerLimit<Livello>`, sotto
+# Intermediate e' Recreational): il livello si legge da li' e non dal numero
+# `classification`, che Garmin non spiega. Il 2026-10-17: 4926, fra 4600
+# (Intermediate) e 5100 (Trained), con `classification` 2.
+_ENDURANCE_LEVELS = (
+    ("Intermediate", "classificationLowerLimitIntermediate"),
+    ("Trained", "classificationLowerLimitTrained"),
+    ("Well-trained", "classificationLowerLimitWellTrained"),
+    ("Expert", "classificationLowerLimitExpert"),
+    ("Superior", "classificationLowerLimitSuperior"),
+    ("Elite", "classificationLowerLimitElite"),
+)
+
+
+def _same_day(payload: Any, day: str) -> dict | None:
+    """La risposta se e' un dizionario del giorno `day`, se no None.
+
+    Endurance e hill score si chiedono per un giorno e rispondono con un
+    dizionario solo (`{"calendarDate": "2026-10-17", "overallScore": ...}`);
+    `{}` prima che l'orologio li calcolasse. Se un giorno rispondessero con
+    piu' giorni o con un altro giorno, non e' il valore chiesto."""
+    if not isinstance(payload, dict) or _dig(payload, "calendarDate") != day:
+        return None
+    return payload
+
+
+def _endurance(payload: Any, day: str) -> dict[str, Any]:
+    """Endurance score del giorno e il suo livello di Garmin (todo 38)."""
+    entry = _same_day(payload, day)
+    score = _number(_dig(entry, "overallScore"))
+    level = None
+    if score is not None:
+        level = "Recreational"
+        for name, key in _ENDURANCE_LEVELS:
+            limit = _number(_dig(entry, key))
+            if limit is not None and score >= limit:
+                level = name
+    return {"endurance_score": score, "endurance_level": level}
+
+
+def _hill(payload: Any, day: str) -> float | None:
+    """Hill score del giorno (todo 38): `overallScore`. La risposta ha anche
+    `hillScoreClassificationId` ma non il nome del livello, e il numero da
+    solo non si traduce con certezza: il livello non si tiene."""
+    return _number(_dig(_same_day(payload, day), "overallScore"))
+
+
 def _day_paths(health_dir: Path, day: str) -> dict[str, Path]:
-    """I nove file di un giorno, per endpoint (non e' detto che esistano)."""
+    """I dodici file di un giorno, per endpoint (non e' detto che esistano)."""
     return {name: health_dir / name / f"{day}.json" for name in _USED_ENDPOINTS}
 
 
 def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
-    """Una riga: tutte le grandezze di un giorno, lette dai nove file."""
+    """Una riga: tutte le grandezze di un giorno, lette dai dodici file."""
     payloads = {name: _read_json(path) for name, path in _day_paths(health_dir, day).items()}
 
     sleep_seconds = _number(_dig(payloads["sleep"], "dailySleepDTO", "sleepTimeSeconds"))
@@ -299,13 +351,15 @@ def _day_row(health_dir: Path, day: str) -> dict[str, Any]:
         "vo2max_date": vo2max_date,
         **_training_status(payloads["training_status"], day),
         **_load_balance(payloads["training_status"], day),
+        **_endurance(payloads["endurance_score"], day),
+        "hill_score": _hill(payloads["hill_score"], day),
     }
 
 
 def available_days(data_dir: Path = DATA_DIR) -> list[date]:
     """I giorni per cui c'e' almeno un file, in ordine.
 
-    Si guarda l'unione dei nove endpoint e non uno solo: un giorno in cui
+    Si guarda l'unione dei dodici endpoint e non uno solo: un giorno in cui
     manca il sonno ma c'e' la readiness e' comunque un giorno da mostrare."""
     health_dir = Path(data_dir) / "health"
     days: set[date] = set()

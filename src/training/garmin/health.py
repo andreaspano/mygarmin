@@ -22,6 +22,13 @@ DAILY_ENDPOINTS = {
     "resting_heart_rate": lambda api, d: api.get_rhr_day(d),
     "training_readiness": lambda api, d: api.get_training_readiness(d),
     "training_status": lambda api, d: api.get_training_status(d),
+    # La card Fitness della Day in React (todo 38). Endurance e hill score
+    # rispondono con il dizionario del giorno (`{}` prima che l'orologio li
+    # calcolasse); la soglia del lattato con le liste `speed`, `heart_rate` e
+    # `power`, vuote nei giorni in cui Garmin non ne ha rilevata una nuova.
+    "endurance_score": lambda api, d: api.get_endurance_score(d),
+    "hill_score": lambda api, d: api.get_hill_score(d),
+    "lactate_threshold": lambda api, d: api.get_lactate_threshold(latest=False, start_date=d, end_date=d),
 }
 
 
