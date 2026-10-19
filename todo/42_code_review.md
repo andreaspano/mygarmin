@@ -271,12 +271,20 @@ oppure, per quello che non si corregge:
   riviste. `.claude/agents/fitness-status.md` e' stato letto, ma solo come
   prova per il rilievo su `ALLOWED_TOOLS`.
 - `frontend/src/api/schema.ts` e' generato: non guardato, non toccato.
-- La prova nel browser non si e' potuta fare: su questa macchina
-  `chromium-browser` e' solo lo stub dello snap e non c'e' nessun browser
-  installato (e l'estensione di Chrome non e' collegata). Al suo posto, i tre
-  componenti rifatti sono stati resi con `react-dom/server` nelle due
-  versioni, vecchia e nuova, e il markup e' identico (vedi "Verifica" nel
-  rapporto). La pagina vera la guarda Andrea.
+- La prova nel browser e' stata fatta il 2026-10-19, con Firefox headless
+  guidato in WebDriver BiDi (`chromium-browser` e' solo lo stub dello snap, e
+  l'estensione di Chrome non e' collegata). La Day si disegna intera nei due
+  casi che contano per il menu rifatto: il 2026-10-11, dove terreno e tipo
+  sono stimati, dice "Auto (guess: Long)" e "Auto (guess: Trail)"; il
+  2026-10-15, dove li ha scelti Andrea, dice "Intervals" e "Road". Il resto
+  della scheda Training c'e' tutto: intestazione con l'icona (`CardHead`), le
+  cinque metriche (`Stat`), la barra degli effetti, il grafico a tre fasce e
+  il link alla mappa. In console nessun errore: un solo avviso, di Vega
+  ("Conflicting legend property \"disable\""), che viene dalla specifica di
+  Altair e non da qui.
+  Prima, e in piu', i tre componenti rifatti erano stati resi con
+  `react-dom/server` nelle due versioni, vecchia e nuova, con markup
+  identico.
 
 ## Vincoli
 
