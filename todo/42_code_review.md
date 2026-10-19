@@ -183,18 +183,31 @@ oppure, per quello che non si corregge:
 
 ### Non corretti: cambierebbero il comportamento, o sono scelte di Andrea
 
-- `src/training/api/refresh.py:29` - **`ALLOWED_TOOLS` non copre quello che
-  l'agente fa.** L'agente salva il report con **Write** (`fitness-status.md`,
-  passo 3: "Read it first ..., then Write the new version"), ma la regola e'
-  `Edit(summary/01.daily/**)`; e lancia `cd /home/andrea/dev/mygarmin && make
-  ...`, che le regole `Bash(make update_activity)` e `Bash(make -s
-  daily_data:*)` non riconoscono. Con `claude -p` un permesso che manca viene
-  negato, quindi il tasto Refresh fallirebbe con "The agent finished without
-  writing the report". Il todo 41 chiedeva `Write(summary/01.daily/**)` e la
-  sua verifica usava un `claude` finto, che non passa dai permessi: non e' mai
-  stato provato per davvero. Non corretto: e' correttezza (fuori dallo scopo)
-  e cambia cosa fa il tasto. Consiglio: provarlo una volta a mano e sistemare
-  le tre regole.
+- `src/training/api/refresh.py:29` - **rilievo sbagliato, ritirato il
+  2026-10-19.** Avevo scritto che `ALLOWED_TOOLS` non copre quello che
+  l'agente fa: che `Edit(summary/01.daily/**)` non permette le Write
+  dell'agente, e che `Bash(make update_activity)` non riconosce il `cd <repo>
+  && make ...` che l'agente scrive. La documentazione di Claude Code dice il
+  contrario su tutti e due i punti, e le regole come stanno sono giuste:
+  - i permessi sui file si controllano **solo** con regole `Edit(path)` e
+    `Read(path)`: "If you write a path rule for `Write` ... Claude Code
+    accepts the rule but never consults it ... Use `Edit(docs/**)` in place of
+    `Write(docs/**)`". `Edit(summary/01.daily/**)` e' quindi il modo giusto di
+    permettere le Write dell'agente in quella cartella; una regola
+    `Write(...)` verrebbe ignorata. Il path e' relativo alla cartella di
+    lavoro, che e' `repo_root` (`cwd` di `subprocess.run`), cioe' proprio il
+    file che l'agente scrive.
+  - i comandi composti vengono spezzati: "A rule must match each subcommand
+    independently", e "a `cd` into a path inside your working directory ... is
+    also read-only", quindi il `cd <repo>` non chiede niente e resta da
+    coprire solo `make update_activity`, che la regola prende alla lettera.
+  - `Bash(make -s daily_data:*)` e' una regola valida: "The `:*` suffix is an
+    equivalent way to write a trailing wildcard", riconosciuta a fine riga
+    come qui.
+  Resta vero che il tasto non e' mai stato provato sul `claude` vero (il todo
+  41 lo dice). Se un giorno fallisse, la cosa utile e' `--permission-prompts
+  none`: in `-p` senza nessuno che risponda, un permesso che manca verrebbe
+  negato subito invece di aspettare i 15 minuti del timeout.
 - `src/training/interface/daily_data.py:104` - `_hrv_baseline(day)` e'
   chiamata senza `data_dir`, quindi legge sempre dal `DATA_DIR` globale anche
   quando `build_daily_data` ne riceve un altro (l'API passa `ctx.data_dir`).
