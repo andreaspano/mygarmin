@@ -36,6 +36,15 @@ _PAUSE_LABEL_MIN_SHARE = 0.03
 
 EFFECTS = ("Low aerobic", "High aerobic", "Anaerobic")
 
+# Il passo (min/km) sull'asse di destra del pannello della velocita', solo
+# per la corsa: chi corre legge il passo, non i km/h. L'asse e' lo stesso
+# della velocita' (il passo e' 60 diviso i km/h), quindi si segnano dei passi
+# tondi invece delle tacche che verrebbero dai km/h: 3:00, 3:30, 4:00 ... Sotto
+# i 20:00 al km non si etichetta piu' niente, che e' gia' camminata piano.
+_PACE_TICKS_S = (180, 210, 240, 270, 300, 330, 360, 420, 480, 600, 720, 900, 1200)
+# Da km/h a "m:ss", dentro Vega: sull'asse il valore e' sempre una velocita'.
+_PACE_LABEL = "format(floor(60 / datum.value), 'd') + ':' + format(round((60 / datum.value % 1) * 60), '02d')"
+
 # Tema chiaro e scuro: gli stessi colori del grafico di riferimento. Le zone
 # hanno un solo colore a intensita' crescente perche' verde e rosso sono gia'
 # della pendenza; la velocita' reale e' nel colore del testo, perche' sul
@@ -254,6 +263,7 @@ def run_analysis_chart(
     bounds: list[int] | None,
     threshold_hr: int | None,
     theme: str = "light",
+    sport: str | None = None,
 ) -> alt.VConcatChart | None:
     """Il grafico a tre fasce, o None se non c'e' niente da disegnare.
 
@@ -262,7 +272,10 @@ def run_analysis_chart(
     linea equivalente c'e' solo se il database ha `equiv_speed_kmh` (gli sport
     a piedi). Senza `bounds` niente bande, senza `threshold_hr` niente
     effetti. I pannelli hanno ognuno la sua scala: velocita' e pendenza non si
-    confrontano in altezza, e i battiti non partono da zero."""
+    confrontano in altezza, e i battiti non partono da zero.
+
+    Con `sport` "running" il pannello della velocita' ha anche il passo
+    (min/km) sull'asse di destra: stessa scala, altre etichette."""
     if records.empty:
         return None
     palette = _PALETTES.get(theme, _PALETTES["light"])
@@ -462,6 +475,32 @@ def run_analysis_chart(
         speed_high = _ceil(np.nanmax(full[list(series)].to_numpy()))
         y_scale = alt.Scale(domain=[0, speed_high], nice=False)
         layers = background(x_axis)
+        pace_axis = False
+        if sport == "running":
+            # Una riga trasparente solo per portare il secondo asse: la scala
+            # e' la stessa della velocita', quindi le due letture non possono
+            # discordare.
+            pace_speeds = [3600 / seconds for seconds in _PACE_TICKS_S]
+            pace_speeds = [kmh for kmh in pace_speeds if 0 < kmh <= speed_high]
+            if pace_speeds:
+                pace_axis = True
+                layers.append(
+                    alt.Chart(pd.DataFrame({"kmh": [speed_high]}))
+                    .mark_rule(opacity=0)
+                    .encode(
+                        y=alt.Y(
+                            "kmh:Q",
+                            scale=y_scale,
+                            title="Pace (min/km)",
+                            axis=alt.Axis(
+                                orient="right",
+                                values=pace_speeds,
+                                labelExpr=_PACE_LABEL,
+                                grid=False,
+                            ),
+                        )
+                    )
+                )
         # Con intervalli tutti isolati (una vasca in piscina ha pochi record)
         # una linea non si vedrebbe: allora i punti.
         isolated = not (data["bin"].diff() == 1).any()
@@ -484,7 +523,14 @@ def run_analysis_chart(
             )
         )
         layers.extend(crosshair(x_axis))
-        panels.append(alt.layer(*layers).properties(height=260, width="container"))
+        speed_panel = alt.layer(*layers).properties(height=260, width="container")
+        if pace_axis:
+            # Le due scale devono restare separate, se no Vega-Lite unisce i
+            # due assi in uno solo a destra e il titolo diventa "Pace
+            # (min/km), Speed (km/h)". Separate ma con lo stesso `y_scale`:
+            # non possono dire due cose diverse.
+            speed_panel = speed_panel.resolve_scale(y="independent")
+        panels.append(speed_panel)
 
     if has_slope:
         x_axis = axis_for(position)

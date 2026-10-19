@@ -212,7 +212,7 @@ def get_activity_chart_vega(
     row = _activity_row(activity_id, ctx)
     bounds, threshold = zone_settings(row)
     records = load_activity_records(activity_id, ctx.data_dir)
-    chart = run_analysis_chart(records, bounds, threshold, theme)
+    chart = run_analysis_chart(records, bounds, threshold, theme, _clean(row["sport"]))
     if chart is None:
         raise HTTPException(status_code=404, detail="Nothing to plot for this activity.")
     return chart.to_dict()
