@@ -549,10 +549,13 @@ def run_analysis_chart(
                     "slope_abs:Q",
                     title="Slope (°)",
                     scale=alt.Scale(domain=[0, _ceil(data["slope_abs"].max())], nice=False),
-                    # A sinistra come gli altri due pannelli: a destra, con il
-                    # grafico largo quanto il contenitore, Vega-Lite non lascia
-                    # spazio all'asse e la pagina lo tagliava (tacche, numeri e
-                    # titolo spariti).
+                    # A sinistra come gli altri due pannelli, per
+                    # uniformita'. Un tempo a destra la pagina tagliava
+                    # l'asse (tacche, numeri e titolo spariti); non succede
+                    # piu' da quando il frontend chiede `autosize: fit-x,
+                    # contains: padding` (`RunChart.themeConfig`), e si vede
+                    # dal passo del pannello della velocita', che sta a
+                    # destra e ci sta tutto anche a finestra stretta.
                     axis=alt.Axis(tickCount=3),
                 ),
                 y2=alt.datum(0),
