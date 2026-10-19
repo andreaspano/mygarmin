@@ -204,10 +204,15 @@ oppure, per quello che non si corregge:
   - `Bash(make -s daily_data:*)` e' una regola valida: "The `:*` suffix is an
     equivalent way to write a trailing wildcard", riconosciuta a fine riga
     come qui.
-  Resta vero che il tasto non e' mai stato provato sul `claude` vero (il todo
-  41 lo dice). Se un giorno fallisse, la cosa utile e' `--permission-prompts
-  none`: in `-p` senza nessuno che risponda, un permesso che manca verrebbe
-  negato subito invece di aspettare i 15 minuti del timeout.
+  Provato sul `claude` vero il 2026-10-19 alle 22:23, per la prima volta: la
+  POST rende 202 `running`, un secondo clic non lancia un altro lavoro, un
+  giorno futuro da' 422, e in 54 secondi lo stato arriva a `done`. Nel
+  frattempo l'agente ha fatto `make update_activity` (12 file di salute,
+  `activities.db`, i nomi e i tipi delle attivita') e ha riscritto
+  `summary/01.daily/2026-10-19.md` con la Write: nessun permesso negato.
+  Se un giorno fallisse, la cosa utile e' `--permission-prompts none`: in
+  `-p` senza nessuno che risponda, un permesso che manca verrebbe negato
+  subito invece di aspettare i 15 minuti del timeout.
 - `src/training/interface/daily_data.py:104` - `_hrv_baseline(day)` e'
   chiamata senza `data_dir`, quindi legge sempre dal `DATA_DIR` globale anche
   quando `build_daily_data` ne riceve un altro (l'API passa `ctx.data_dir`).
