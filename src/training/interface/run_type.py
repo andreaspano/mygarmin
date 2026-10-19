@@ -7,13 +7,10 @@ lettura; le correzioni stanno in `activity_run_type.json` nella cartella
 dati, accanto a `activity_terrain.json`, perche' `db.rebuild()` cancella il
 database e le perderebbe."""
 
-import json
-import os
-import tempfile
 import threading
 from pathlib import Path
 
-from training.interface.fit import _load_json_map
+from training.interface.fit import _load_json_map, save_json_map
 
 RUN_TYPES = ("race", "intervals", "long", "tempo", "easy")
 
@@ -94,11 +91,4 @@ def save_run_type_override(data_dir: Path, activity_id: int, run_type: str | Non
             overrides.pop(str(activity_id), None)
         else:
             overrides[str(activity_id)] = run_type
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".activity_run_type.", suffix=".json")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(overrides, f, indent=2, sort_keys=True)
-            os.replace(tmp, path)
-        except BaseException:
-            Path(tmp).unlink(missing_ok=True)
-            raise
+        save_json_map(path, overrides)

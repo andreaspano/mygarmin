@@ -1,7 +1,7 @@
 // La traccia dell'attivita' su una mappa Leaflet. Le tessere sono di
-// OpenStreetMap, come oggi `st.map` carica le sue da Carto: la traccia resta
-// nel browser, alle tessere arriva solo la zona. I punti li carica
-// `TrainingCard`, che mostra "Open the route map" solo se ci sono.
+// OpenStreetMap: la traccia resta nel browser, alle tessere arriva solo la
+// zona. I punti li carica `TrainingCard`, che mostra "Open the route map"
+// solo se ci sono.
 import "leaflet/dist/leaflet.css";
 
 import { MapContainer, Polyline, TileLayer } from "react-leaflet";

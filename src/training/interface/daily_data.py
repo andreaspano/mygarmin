@@ -30,7 +30,7 @@ from training.interface.health import _day_paths, _dig, _primary_entry, _read_js
 from training.interface.health_db import load_health_db
 from training.interface.grade import EQUIV_SPEED_SPORTS
 from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
-from training.interface.weekly_data import WEEKDAYS, _mean, _value
+from training.interface.weekly_data import WEEKDAYS, _load, _mean, _value
 
 # Le misure della mattina, con la riga di `health_daily` da cui si leggono:
 # 0 e' il giorno D, -1 il giorno prima. Il sonno con la data di D e' la notte
@@ -50,19 +50,6 @@ MORNING_METRICS: dict[str, tuple[str, int]] = {
     "body_battery_low_yesterday": ("body_battery_low", -1),
     "spo2_avg": ("spo2_avg", 0),
 }
-
-LOAD_METRICS = (
-    "load_acute",
-    "load_chronic",
-    "acwr",
-    "acwr_status",
-    "training_status",
-    "training_status_phrase",
-    "load_aerobic_low",
-    "load_aerobic_high",
-    "load_anaerobic",
-    "load_balance_phrase",
-)
 
 # Le soglie degli allarmi della sezione Health. Sono qui e non nel testo
 # dell'agente: il modello racconta gli allarmi, non li decide.
@@ -199,17 +186,6 @@ def _alerts(health: pd.DataFrame, day: date, morning: dict[str, Any], sleep: dic
     return alerts
 
 
-def _load_on(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
-    """Il carico dell'ultimo giorno fino a `day` che lo ha (Garmin lo da' a
-    fine giornata, quindi la mattina spesso e' quello del giorno prima)."""
-    known = health.loc[: pd.Timestamp(day), "load_acute"].dropna()
-    if known.empty:
-        return None
-    as_of = known.index[-1]
-    row = health.loc[as_of]
-    return {"as_of": as_of.date().isoformat(), **{m: _value(row[m], 2) for m in LOAD_METRICS}}
-
-
 # Le fasce obiettivo del carico mensile per zona, come le chiama Garmin nel
 # JSON del training status. `health_daily` non le tiene: si leggono dal file
 # del giorno, come la fascia dell'HRV.
@@ -222,7 +198,7 @@ LOAD_TARGET_FIELDS = {
 
 def _load_targets(as_of: str, data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
     """Le fasce obiettivo (`min`, `max`) del carico per zona nel giorno
-    `as_of`, quello del carico di `_load_on`. `None` se il file non c'e', non
+    `as_of`, quello del carico di `_load`. `None` se il file non c'e', non
     e' di quel giorno o non ha le fasce."""
     path = _day_paths(Path(data_dir) / "health", as_of)["training_status"]
     entry = _primary_entry(
@@ -492,8 +468,8 @@ def build_daily_data(
 
     morning = _morning(health, day)
     sleep = _sleep_last_7(health, day)
-    load_now = _load_on(health, day)
-    load_week_ago = _load_on(health, day - timedelta(days=7))
+    load_now = _load(health, day)
+    load_week_ago = _load(health, day - timedelta(days=7))
     health_known = health.index[health["sleep_hours"].notna() | health["resting_hr"].notna()]
 
     return {

@@ -19,8 +19,8 @@ import pandas as pd
 from training.interface.db import list_activities
 from training.interface.health_db import load_health_db
 
-# Lo stesso minuto di `interface/data.py`: un'attivita' scaricata mentre il
-# server gira compare da se', senza riavviarlo.
+# Un minuto: un'attivita' scaricata mentre il server gira compare da se',
+# senza riavviarlo.
 ACTIVITIES_TTL_SECONDS = 60
 
 _lock = threading.Lock()
@@ -58,8 +58,9 @@ def load_health(data_dir: Path) -> pd.DataFrame:
 
 def invalidate(data_dir: Path) -> None:
     """Dimentica attivita' e salute di una cartella dati: la prossima richiesta le
-    rilegge. Dopo una scrittura (il terreno, todo 35), cosi' la modifica si
-    vede subito e non dopo un minuto."""
+    rilegge. Dopo una scrittura (il terreno, todo 35; il tipo di corsa, todo
+    36) e alla fine di un Refresh (todo 41), cosi' la modifica si vede subito
+    e non dopo un minuto."""
     with _lock:
         _cache.pop(Path(data_dir), None)
     with _health_lock:

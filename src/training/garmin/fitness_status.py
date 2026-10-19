@@ -21,9 +21,10 @@ from .config import DATA_DIR, FITNESS_STATUS_WINDOW_DAYS
 from .health import export_daily_health
 
 
-# Gli endpoint che legge il report: i nove di prima del todo 38. Endurance,
-# hill score e soglia del lattato sono solo per la Day in React, e l'input
-# dell'agente del report non cambia.
+# I nove endpoint di prima del todo 38: endurance, hill score e soglia del
+# lattato sono solo per la Day in React, e questo snapshot resta com'era.
+# L'agente del report non lo usa piu' (prende i fatti da `make daily_data`,
+# todo 31), ma `make fitness_status` resta.
 REPORT_ENDPOINTS = (
     "stats",
     "sleep",

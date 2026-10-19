@@ -8,9 +8,22 @@ export function num(value: number | null | undefined, digits = 0): string {
   return value == null ? "–" : value.toFixed(digits);
 }
 
-export function Stat({ label, value, unit, sub }: { label: string; value: ReactNode; unit?: string; sub?: ReactNode }) {
+export function Stat({
+  label,
+  value,
+  unit,
+  sub,
+  help,
+}: {
+  label: string;
+  value: ReactNode;
+  unit?: string;
+  sub?: ReactNode;
+  /** La spiegazione nel tooltip del riquadro. */
+  help?: string;
+}) {
   return (
-    <div className="stat">
+    <div className="stat" title={help}>
       <div className="stat-label">{label}</div>
       <div className="stat-value">
         {value}

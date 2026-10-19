@@ -1,7 +1,9 @@
 """Parsing dei file FIT delle attivita' (data/*_ACTIVITY.fit)."""
 
 import json
+import os
 import re
+import tempfile
 from datetime import timezone
 from pathlib import Path
 
@@ -41,6 +43,21 @@ def _load_json_map(path: Path) -> dict:
         return {}
     with open(path, encoding="utf-8") as f:
         return json.load(f)
+
+
+def save_json_map(path: Path, values: dict) -> None:
+    """Scrive la mappa in `path`: un file temporaneo nella stessa cartella,
+    poi `os.replace`. Chi legge vede la versione vecchia o quella nuova, mai
+    un file a meta'. Il lock fra due scritture insieme lo mette chi chiama
+    (`terrain.py`, `run_type.py`), uno per file."""
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.stem}.", suffix=".json")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(values, f, indent=2, sort_keys=True)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
 
 
 def _semicircles_to_degrees(value: int | None) -> float | None:

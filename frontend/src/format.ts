@@ -51,9 +51,9 @@ export function timeOf(timestamp: string): string {
   return timestamp.slice(11, 16);
 }
 
-/** L'arrotondamento di `round` di Python: a meta' strada, al pari. La
- * Streamlit lo usa per le durate, e `Math.round` darebbe un minuto in piu'
- * sui 30 secondi (todo 33, verifica 5). */
+/** L'arrotondamento di `round` di Python: a meta' strada, al pari. Le durate
+ * si leggono come quelle dei report, che passano da `round`, e `Math.round`
+ * darebbe un minuto in piu' sui 30 secondi (todo 33, verifica 5). */
 export function roundHalfEven(value: number): number {
   const floor = Math.floor(value);
   const diff = value - floor;

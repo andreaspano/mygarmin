@@ -40,8 +40,9 @@ _USED_ENDPOINTS = tuple(DAILY_ENDPOINTS)
 _WAKEUP_CONTEXT = "AFTER_WAKEUP_RESET"
 
 # Le colonne del DataFrame, nello stesso ordine della tabella `health_daily`.
-# Le prime nove sono quelle della pagina Recovery; le altre servono a chi mette
-# la salute accanto alle attivita' (VO2max, carico, training status).
+# Le prime nove sono quelle delle card Recovery e Health della Day; le altre
+# servono a chi mette la salute accanto alle attivita' (VO2max, carico,
+# training status).
 COLUMNS = [
     "readiness",
     "body_battery_low",
@@ -359,7 +360,8 @@ def load_lactate_threshold(data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
 
     Forma (2026-10-18): `{"speed_and_heart_rate": {"calendarDate":
     "2026-10-16T20:47:52.593", "speed": 0.277777, "heartRate": 154, ...},
-    "power": {...}}`. La velocita' e' in decimi di m/s: 0.277777 sono 2.78
+    "power": {...}}`. La velocita' arriva divisa per dieci rispetto ai m/s
+    (da qui il per 36 che porta ai km/h): 0.277777 sono 2.78
     m/s, cioe' 10.0 km/h, 6:00/km, che sta fra le corse facili (8-9 km/h a
     130-140 bpm) e le ripetute (10-11 km/h a 147-148). Non e' una misura del
     giorno: e' la soglia in vigore dal giorno `as_of` in poi."""

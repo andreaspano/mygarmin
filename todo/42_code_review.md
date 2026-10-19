@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Revisione di tutto il codice
@@ -35,10 +35,10 @@ Prese con Andrea il 2026-10-19:
 
 Il todo e' la specifica e vince sul protocollo della skill. Di `/atodo`
 restano il ramo `todo_42`, le regole di autonomia, "mai riparare da soli per
-far tornare verde" e la scala delle verifiche. **Non** si fanno i passi 5-8:
-niente `status: done`, niente commit, niente `git merge --no-ff`, nessuna
-sezione `## Revert` (vedi in fondo). Alla fine il ramo `todo_42` esiste con
-le modifiche nel working tree, e `git status` le mostra.
+far tornare verde" e la scala delle verifiche. Il commit e il merge non erano
+previsti qui (li doveva fare Andrea), ma il 2026-10-19 li ha chiesti a fine
+revisione: il lavoro e' quindi committato sul ramo e unito in `main` come in
+un todo normale, con la sezione `## Revert` in fondo.
 
 ## Work
 
@@ -103,7 +103,162 @@ oppure, per quello che non si corregge:
 <file>:<riga> - <cosa non andava> - non corretto: <perche'>
 ```
 
-(l'elenco va qui sotto)
+### Corretti: commenti e documenti che mentivano
+
+- `src/training/api/cache.py:22` - diceva "lo stesso minuto di
+  `interface/data.py`", un modulo cancellato con la Streamlit (commit
+  `fc696d0`, todo 40) - il
+  commento tiene il minuto e il perche', senza il rimando morto.
+- `src/training/api/cache.py:60` - la docstring di `invalidate` citava solo la
+  scrittura del terreno (todo 35), ma la chiamano anche il tipo di corsa (todo
+  36) e la fine di un Refresh (todo 41) - elencati tutti e tre.
+- `src/training/garmin/activities.py:189` - "la pagina Recovery le legge da
+  li'": quella pagina era della Streamlit e non esiste piu' - ora dice le card
+  Recovery e Health della Day.
+- `src/training/garmin/fitness_status.py:24` - la tupla era presentata come
+  "gli endpoint che legge il report", e si diceva che allargarla cambierebbe
+  "l'input dell'agente del report": dal todo 31 l'agente prende i fatti da
+  `make daily_data` e non passa piu' da qui (il todo 31 lo dice:
+  "l'agente non li usa piu'") - riscritto, la tupla resta com'era.
+- `src/training/interface/health.py:43` - "le prime nove sono quelle della
+  pagina Recovery" - come sopra, sono quelle delle card Recovery e Health.
+- `src/training/interface/health.py:363` - la velocita' della soglia del
+  lattato era detta "in decimi di m/s", ma il codice moltiplica per 36 (il
+  numero di Garmin e' un decimo del valore in m/s, non il contrario) - via il
+  nome d'unita' sbagliato, resta il conto.
+- `src/training/interface/sports.py:16` - l'icona del riposo era data "nella
+  tabella della Day (righe vuote, todo 30)", che era la tabella della
+  Streamlit - ora la striscia della settimana e i "Rest day" della scheda
+  Training, che sono i due posti che la usano davvero.
+- `src/training/interface/sports.py:26` - citava la regola di `profile.py`
+  (`CAPITALIZE_KEYS`), cancellato con la Streamlit - via il riferimento.
+- `src/training/interface/db.py:10` - "both call sync() first" per
+  `list_activities()` e `load_activity_records()`: la seconda non chiama
+  `sync()` - ora dice come stanno le cose (la seconda si aspetta che la prima
+  abbia gia' sincronizzato, che e' l'ordine che usano API e report).
+- `src/training/interface/db.py:299` - "Solo da questa data in poi" veniva
+  dopo aver citato l'11/09/2026, mentre `THRESHOLD_FALLBACK_FROM` e' il
+  2026-08-01: si leggeva il taglio sbagliato - ora rimanda alla costante.
+- `frontend/src/format.ts:54` - "La Streamlit lo usa per le durate" - il
+  motivo di `roundHalfEven` e' leggere le durate come i report, che passano
+  dal `round` di Python.
+- `frontend/src/components/RunChart.tsx:10` - "(nella Streamlit li mette il
+  tema di Streamlit)" - via.
+- `frontend/src/components/RunChart.tsx:53` - "la tabella non deve
+  aspettarla": nella Day non c'e' nessuna tabella - "il resto della pagina".
+- `frontend/src/components/RouteMap.tsx:1` - "come oggi `st.map` carica le sue
+  da Carto" - via il paragone con la Streamlit.
+- `Makefile:18` - "circa 3.300 chiamate" per un anno di salute: erano nove
+  endpoint al giorno, dal todo 38 sono undici - circa 4.000 (365 x 11 = 4.015;
+  365 x 9 = 3.285, da cui veniva il numero vecchio). La stima di 30-45 minuti
+  resta: non si puo' misurare senza chiamare Garmin.
+- `README.md:29` - "Tutto `GET` ... tranne due `PUT`": dal todo 41 c'e' anche
+  la `POST` del tasto Refresh, l'unica che scarica da Garmin e riscrive un
+  report - corretto, e la riga sotto (il Refresh) lo diceva gia'.
+- `README.md:71` - "(vedi sotto)" mandava a una spiegazione che sta nella
+  sezione sopra - "(vedi sopra)".
+
+### Corretti: riuso e semplificazione
+
+- `src/training/interface/daily_data.py:33` - `LOAD_METRICS` era una copia
+  identica (verificata) di quella di `weekly_data`, da cui questo modulo
+  importa gia' `WEEKDAYS`, `_mean` e `_value` - via la copia.
+- `src/training/interface/daily_data.py:33` - `_load_on` era riga per riga
+  `weekly_data._load` - via, si importa `_load`.
+- `src/training/interface/fit.py:48` - la scrittura atomica del JSON (file
+  temporaneo, `os.replace`, pulizia) stava uguale in `terrain.py` e
+  `run_type.py` - `save_json_map`, accanto a `_load_json_map` che quei due
+  moduli usano gia' da qui; i lock restano uno per file, dove erano.
+- `frontend/src/api/client.ts:34` - `isAbort` stava in `DayPage` e in
+  `TrainingCard`, e in `RunChart` scritto a mano - esportata da `client.ts`,
+  accanto a `ApiError`.
+- `frontend/src/components/Stat.tsx:11` - `Metric` (TrainingCard) era `Stat`
+  con il tooltip - `Stat` prende `help` e `Metric` non c'e' piu'; senza
+  `help` il markup di `Stat` non cambia.
+- `frontend/src/components/LoadCard.tsx:87` - `LoadCard` e `TrainingCard`
+  riscrivevano a mano il `block-head` di `CardHead` - usano `CardHead`.
+- `frontend/src/components/TrainingCard.tsx:121` - `TerrainPicker` e
+  `RunTypePicker` erano lo stesso componente due volte (la docstring del
+  secondo diceva "come `TerrainPicker`") - un solo `OverridePicker`.
+
+### Non corretti: cambierebbero il comportamento, o sono scelte di Andrea
+
+- `src/training/api/refresh.py:29` - **`ALLOWED_TOOLS` non copre quello che
+  l'agente fa.** L'agente salva il report con **Write** (`fitness-status.md`,
+  passo 3: "Read it first ..., then Write the new version"), ma la regola e'
+  `Edit(summary/01.daily/**)`; e lancia `cd /home/andrea/dev/mygarmin && make
+  ...`, che le regole `Bash(make update_activity)` e `Bash(make -s
+  daily_data:*)` non riconoscono. Con `claude -p` un permesso che manca viene
+  negato, quindi il tasto Refresh fallirebbe con "The agent finished without
+  writing the report". Il todo 41 chiedeva `Write(summary/01.daily/**)` e la
+  sua verifica usava un `claude` finto, che non passa dai permessi: non e' mai
+  stato provato per davvero. Non corretto: e' correttezza (fuori dallo scopo)
+  e cambia cosa fa il tasto. Consiglio: provarlo una volta a mano e sistemare
+  le tre regole.
+- `src/training/interface/daily_data.py:104` - `_hrv_baseline(day)` e'
+  chiamata senza `data_dir`, quindi legge sempre dal `DATA_DIR` globale anche
+  quando `build_daily_data` ne riceve un altro (l'API passa `ctx.data_dir`).
+  Oggi i due coincidono, ma `api/context.py` esiste proprio perche' un giorno
+  non coincidano. Non corretto: correttezza.
+- `src/training/garmin/activities.py:17` - `_ACTIVITY_ID_RE`,
+  `_NAMES_FILENAME`, `_TYPES_FILENAME`, i loader di nomi e tipi e
+  `_existing_activity_ids` ci sono anche in `interface/fit.py`
+  (`load_activity_names`, `load_activity_types`, `_load_json_map`,
+  `list_activity_files`, `activity_id_from_path`): `garmin/` scrive quei file
+  e `interface/` li legge, ognuno con il suo codice. Non corretto: metterli in
+  un posto solo vuol dire far dipendere `garmin/` da `interface/` (oggi la
+  dipendenza va nell'altro verso) o aprire un modulo nuovo - e' una scelta di
+  struttura, non una ripulitura.
+- `src/training/garmin/activities.py:159` e `:238` - il ciclo "scarica,
+  estrai, stampa, dormi" e' lo stesso in `download_activities_between` e in
+  `update_activity`, messaggi compresi. Non corretto: sta sulla strada di
+  rete, che la verifica non puo' percorrere (`make update_activity` e i
+  backfill non si lanciano), quindi un'estrazione resterebbe non provata.
+- `src/training/garmin/__init__.py:17` - il messaggio dice `pip install
+  garminconnect`, ma il progetto si gestisce con uv (`uv.lock`, `uv run`,
+  `pyproject.toml`). Non corretto: e' un testo a schermo.
+- `src/training/interface/activity_report.py:13` - `OUT_DIR =
+  Path("summary/00.activity")` e' relativo, quindi `make activity_reports`
+  scrive nel posto giusto solo dalla radice del repo; `api/context.py` per la
+  stessa cosa parte da `REPO_ROOT`, "perche' l'API non deve dipendere dalla
+  cartella da cui si lancia". Non corretto: cambierebbe dove finiscono i file.
+- `src/training/interface/activity_report.py:66` - la pendenza e' ricalcolata
+  a mano (quota diviso distanza, campione per campione, clip a +-30) mentre
+  `grade.slope_pct` fa lo stesso lavoro meglio (finestra di 30 m, quota
+  lisciata). Non corretto: i numeri dei report cambierebbero.
+- `src/training/interface/activity_report.py:119` -
+  `load_activity_comments` non ha nessun chiamante in tutto il repo (la
+  leggeva la Streamlit). Non corretto: la pagina Activities e' fra quelle che
+  arriveranno (`TopBar`), ed e' esattamente quello che le servirebbe:
+  cancellarla e' una scelta di Andrea.
+- `src/training/interface/db.py:211` - `_insert_activity` scrive a mano i 23
+  nomi di colonna tre volte (colonne, parametri, `DO UPDATE SET`), mentre
+  `_insert_records` la sua SQL la genera da una tupla. Non corretto: sta sulla
+  strada di scrittura di `activities.db` e qui non si puo' provare (un
+  `rebuild()` cancella il database).
+- `src/training/interface/daily_data.py:218` - `_vo2max_change` e
+  `_latest_with_change` fanno lo stesso lavoro; la prima aggiunge solo la
+  soglia di 0.5. Non corretto: unirle sposterebbe il confronto sul valore
+  arrotondato e cambierebbe i casi al limite (una differenza di 0.45 diventa
+  0.5 e passerebbe).
+- `src/training/api/app.py:43` - `_clean` e' importata privata da `db.py`;
+  stessa cosa per `_mean`/`_value` (da `weekly_data`) e `_day_paths`/`_dig`/
+  `_primary_entry`/`_read_json` (da `health`). Non corretto: renderle
+  pubbliche e' un rinominare diffuso, piu' gusto che difetto.
+
+### Fuori dalla revisione
+
+- `export/` e `.claude/` non sono fra le cartelle elencate nel todo
+  (`src/training`, `frontend/src`, `Makefile`, `README.md`): non sono state
+  riviste. `.claude/agents/fitness-status.md` e' stato letto, ma solo come
+  prova per il rilievo su `ALLOWED_TOOLS`.
+- `frontend/src/api/schema.ts` e' generato: non guardato, non toccato.
+- La prova nel browser non si e' potuta fare: su questa macchina
+  `chromium-browser` e' solo lo stub dello snap e non c'e' nessun browser
+  installato (e l'estensione di Chrome non e' collegata). Al suo posto, i tre
+  componenti rifatti sono stati resi con `react-dom/server` nelle due
+  versioni, vecchia e nuova, e il markup e' identico (vedi "Verifica" nel
+  rapporto). La pagina vera la guarda Andrea.
 
 ## Vincoli
 
@@ -139,5 +294,12 @@ oppure, per quello che non si corregge:
 
 ## Revert
 
-Non serve: non si committa e non si unisce niente. Per buttare tutto,
-`git checkout -- .` sul ramo `todo_42`, o si cancella il ramo.
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_42'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. La revisione ha toccato commenti, documenti
+e codice a comportamento uguale: niente dati, niente report, niente database.
+
+Dopo il revert, rifare il merge di `todo_42` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

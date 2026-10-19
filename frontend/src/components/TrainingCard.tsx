@@ -7,12 +7,13 @@
 // tutti e due stimati dall'API e correggibili.
 import { useEffect, useState } from "react";
 
-import { api, iconUrl, type Activity, type ActivityDetail, type DailyData, type RunType, type Terrain } from "../api/client";
+import { api, iconUrl, isAbort, type Activity, type ActivityDetail, type DailyData, type RunType, type Terrain } from "../api/client";
 import { durationLabel, effectMinutesLabel, fixed, timeOf } from "../format";
 import { markdown } from "../markdown";
 import type { ColorScheme } from "../useColorScheme";
 import { RouteMap } from "./RouteMap";
 import { RunChart } from "./RunChart";
+import { CardHead, Stat } from "./Stat";
 
 const TE_HELP = {
   aerobic:
@@ -55,10 +56,6 @@ function runTypeLabel(value: string): string {
 
 type Sport = { label: (sport: string | null | undefined) => string; icon: (sport: string | null | undefined) => string | null };
 
-function isAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
-}
-
 /** "after 2 rest days" o "3rd training day in a row": dai conteggi dell'API,
  * che contano i giorni prima di quello scelto. */
 function context(data: DailyData | null): string | null {
@@ -68,16 +65,6 @@ function context(data: DailyData | null): string | null {
   if (rest > 0) return `after ${rest} rest day${rest === 1 ? "" : "s"}`;
   if (training > 0) return `after ${training} training day${training === 1 ? "" : "s"} in a row`;
   return null;
-}
-
-function Metric({ label, value, sub, help }: { label: string; value: string; sub?: string; help: string }) {
-  return (
-    <div className="stat" title={help}>
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
-      {sub && <div className="stat-sub">{sub}</div>}
-    </div>
-  );
 }
 
 function EffectsBar({ detail }: { detail: ActivityDetail }) {
@@ -127,20 +114,45 @@ function TrainingEffect({ label, value, help, tone }: { label: string; value: nu
   );
 }
 
-/** Il terreno: "Auto" quando vale la stima, altrimenti la scelta di Andrea.
- * Dopo il salvataggio l'attivita' si rilegge dall'API (`onSaved`). */
-function TerrainPicker({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
+/** Il menu di una stima correggibile: il terreno (todo 35) e il tipo della
+ * corsa (todo 36) hanno lo stesso riquadro. "Auto" quando vale la stima,
+ * altrimenti la scelta di Andrea; dopo il salvataggio l'attivita' si rilegge
+ * dall'API (`onSaved`). */
+function OverridePicker({
+  activityId,
+  name,
+  label,
+  help,
+  options,
+  value,
+  source,
+  onSave,
+  onSaved,
+  errorText,
+}: {
+  activityId: number;
+  /** Il nome del campo, per l'`id` del menu: "terrain", "run-type". */
+  name: string;
+  label: string;
+  help: string;
+  options: readonly { value: string; label: string }[];
+  value: string;
+  source: string | null;
+  onSave: (value: string | null) => Promise<unknown>;
+  onSaved: () => Promise<void>;
+  errorText: string;
+}) {
   const [saving, setSaving] = useState(false);
   const [failed, setFailed] = useState(false);
-  if (activity.terrain == null) return null;
-  const guess = activity.terrain_source === "guess" ? activity.terrain : null;
-  const label = (t: string) => TERRAINS.find((x) => x.value === t)?.label ?? t;
+  const guess = source === "guess" ? value : null;
+  const optionLabel = (v: string) => options.find((o) => o.value === v)?.label ?? v;
+  const fieldId = `${name}-${activityId}`;
 
-  async function change(value: string) {
+  async function change(next: string) {
     setSaving(true);
     setFailed(false);
     try {
-      await api.setTerrain(activity.activity_id, value === "auto" ? null : (value as Terrain));
+      await onSave(next === "auto" ? null : next);
       await onSaved();
     } catch (error) {
       console.error(error);
@@ -151,71 +163,25 @@ function TerrainPicker({ activity, onSaved }: { activity: Activity; onSaved: () 
   }
 
   return (
-    <div className="picker" title={TERRAIN_HELP}>
-      <label className="stat-label" htmlFor={`terrain-${activity.activity_id}`}>
-        Terrain
+    <div className="picker" title={help}>
+      <label className="stat-label" htmlFor={fieldId}>
+        {label}
       </label>
       <select
-        id={`terrain-${activity.activity_id}`}
+        id={fieldId}
         className="btn"
-        value={activity.terrain_source === "user" ? activity.terrain : "auto"}
+        value={source === "user" ? value : "auto"}
         disabled={saving}
         onChange={(e) => void change(e.target.value)}
       >
-        <option value="auto">{guess ? `Auto (guess: ${label(guess)})` : "Auto (guess)"}</option>
-        {TERRAINS.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
+        <option value="auto">{guess ? `Auto (guess: ${optionLabel(guess)})` : "Auto (guess)"}</option>
+        {options.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
           </option>
         ))}
       </select>
-      {failed && <div className="muted">Could not save the terrain.</div>}
-    </div>
-  );
-}
-
-/** Il tipo della corsa, come `TerrainPicker`: "Auto" quando vale la stima,
- * altrimenti la scelta di Andrea. La stima viene dall'API. */
-function RunTypePicker({ activity, onSaved }: { activity: Activity; onSaved: () => Promise<void> }) {
-  const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
-  if (activity.run_type == null) return null;
-  const guess = activity.run_type_source === "guess" ? activity.run_type : null;
-
-  async function change(value: string) {
-    setSaving(true);
-    setFailed(false);
-    try {
-      await api.setRunType(activity.activity_id, value === "auto" ? null : (value as RunType));
-      await onSaved();
-    } catch (error) {
-      console.error(error);
-      setFailed(true);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="picker" title={RUN_TYPE_HELP}>
-      <label className="stat-label" htmlFor={`run-type-${activity.activity_id}`}>
-        Run type
-      </label>
-      <select
-        id={`run-type-${activity.activity_id}`}
-        className="btn"
-        value={activity.run_type_source === "user" ? activity.run_type : "auto"}
-        disabled={saving}
-        onChange={(e) => void change(e.target.value)}
-      >
-        <option value="auto">{guess ? `Auto (guess: ${runTypeLabel(guess)})` : "Auto (guess)"}</option>
-        {RUN_TYPES.map((t) => (
-          <option key={t.value} value={t.value}>
-            {t.label}
-          </option>
-        ))}
-      </select>
-      {failed && <div className="muted">Could not save the run type.</div>}
+      {failed && <div className="muted">{errorText}</div>}
     </div>
   );
 }
@@ -282,27 +248,27 @@ function ActivityView({
             </div>
           </div>
           <div className="stats five">
-            <Metric
+            <Stat
               label="Distance"
               value={fixed(a.total_distance_km, 1, " km")}
               help="Total distance recorded by the watch, in km."
             />
-            <Metric
+            <Stat
               label="Duration"
               value={durationLabel(a.total_time_min)}
               help="Elapsed time from start to finish, pauses and stops included."
             />
-            <Metric
+            <Stat
               label="Elevation"
               value={a.total_ascent_m != null ? `+${a.total_ascent_m.toFixed(0)} / -${fixed(a.total_descent_m, 0)} m` : "-"}
               help="Total ascent and descent recorded by the watch, in metres."
             />
-            <Metric
+            <Stat
               label="Average speed"
               value={fixed(a.avg_speed_kmh, 1, " km/h")}
               help="Average speed, over moving time (the duration is elapsed time, stops included)."
             />
-            <Metric
+            <Stat
               label="Average heart rate"
               value={fixed(a.avg_heart_rate, 0, " bpm")}
               sub={a.max_heart_rate != null ? `Max ${a.max_heart_rate}` : undefined}
@@ -317,8 +283,34 @@ function ActivityView({
         </div>
         <aside className="training-side">
           {comment && <div className="prose">{markdown(comment)}</div>}
-          {detail && <RunTypePicker activity={detail} onSaved={reload} />}
-          {detail && <TerrainPicker activity={detail} onSaved={reload} />}
+          {detail?.run_type != null && (
+            <OverridePicker
+              activityId={id}
+              name="run-type"
+              label="Run type"
+              help={RUN_TYPE_HELP}
+              options={RUN_TYPES}
+              value={detail.run_type}
+              source={detail.run_type_source}
+              onSave={(v) => api.setRunType(id, v as RunType | null)}
+              onSaved={reload}
+              errorText="Could not save the run type."
+            />
+          )}
+          {detail?.terrain != null && (
+            <OverridePicker
+              activityId={id}
+              name="terrain"
+              label="Terrain"
+              help={TERRAIN_HELP}
+              options={TERRAINS}
+              value={detail.terrain}
+              source={detail.terrain_source}
+              onSave={(v) => api.setTerrain(id, v as Terrain | null)}
+              onSaved={reload}
+              errorText="Could not save the terrain."
+            />
+          )}
           {(a.aerobic_te != null || a.anaerobic_te != null) && (
             <div className="te-box">
               <div className="stat-label">Garmin Training Effect, 0 to 5</div>
@@ -361,10 +353,7 @@ export function TrainingCard({
 
   return (
     <section className="card training-card" aria-label="Training">
-      <div className="block-head">
-        {icon && <img src={iconUrl(icon)} alt="" width={22} height={22} />}
-        <span>Training</span>
-      </div>
+      <CardHead icon={icon} title="Training" />
       {activities.length > 1 && (
         <div className="tabs" role="tablist" aria-label="Activities of the day">
           {activities.map((a) => {

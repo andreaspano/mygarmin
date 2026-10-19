@@ -4,9 +4,10 @@
 // barre, con la fascia obiettivo di Garmin quando i file di salute ce
 // l'hanno; riposi e ultima seduta dura da `/api/daily/{day}`. Il VO2max e'
 // passato alla card Fitness (todo 37).
-import { iconUrl, type DailyData } from "../api/client";
+import type { DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
 import { markdown } from "../markdown";
+import { CardHead } from "./Stat";
 
 type Row = { key: "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic"; label: string; tone: string };
 
@@ -83,10 +84,7 @@ export function LoadCard({ data, text, icon }: { data: DailyData; text: string |
   const recent = data.recent;
   return (
     <section className="card load-card" aria-label="Load">
-      <div className="block-head">
-        {icon && <img src={iconUrl(icon)} alt="" width={22} height={22} />}
-        <span>Load</span>
-      </div>
+      <CardHead icon={icon} title="Load" />
       <h2>{title}</h2>
       {text && <div className="prose">{markdown(text)}</div>}
       <Balance data={data} />

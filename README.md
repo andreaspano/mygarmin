@@ -26,9 +26,9 @@ make api
 Ascolta solo su `http://127.0.0.1:8000`: non c'e' ancora il login, e sono
 dati di salute. La documentazione interattiva e' su
 `http://127.0.0.1:8000/docs`, lo schema OpenAPI su `/openapi.json`. Tutto
-`GET`, niente download da Garmin e niente scrittura di report, tranne due
-`PUT`: il terreno di un'attivita' a piedi (todo 35) e il tipo di una corsa
-(todo 36).
+`GET` tranne tre endpoint: il `PUT` del terreno di un'attivita' a piedi (todo
+35), il `PUT` del tipo di una corsa (todo 36) e la `POST` del tasto Refresh
+(todo 41), la sola che scarica da Garmin e riscrive un report.
 
 ### Il terreno delle attivita' a piedi
 
@@ -68,7 +68,7 @@ sistema con `make backfill_health`.
 Endurance e hill score si scaricano ogni giorno con il resto della salute
 (`health/endurance_score/` e `health/hill_score/`); per lo storico, dopo il
 primo aggiornamento, `make backfill_health` scarica solo i file che mancano
-o che non sono completi (vedi sotto).
+o che non sono completi (vedi sopra).
 La soglia del lattato no: Garmin la da' solo il giorno in cui ne rileva una
 nuova, quindi `make update_activity` tiene l'ultima in un file unico,
 `health/lactate_threshold_latest.json`. La card Fitness la mostra dal giorno
