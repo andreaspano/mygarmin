@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # La sezione Training come un allenatore che parla al suo atleta
@@ -147,3 +147,20 @@ aggiunge:
    lodi non ne deve ricevere.
 6. Mai `make update_activity`, `make backfill_health`, `make backfill` ne'
    `make backfill_activity_names`.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_43'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: i dati scaricati durante la verifica. Il passo 5
+(far scrivere il report a `claude -p --agent fitness-status`) ha lanciato
+`make update_activity`, che ha richiamato Garmin e riscritto i dodici file di
+salute di oggi, `activities.db`, `activity_names.json` e
+`activity_types.json`: nessuna attivita' nuova, gli stessi file che scrive un
+aggiornamento normale, e il revert del codice non li tocca. Il report del
+2026-10-15, riscritto dalla verifica, e' stato rimesso com'era.
+
+Dopo il revert, rifare il merge di `todo_43` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

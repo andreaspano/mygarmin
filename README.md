@@ -50,7 +50,9 @@ minuti e' un tempo, senza allenamento da 100 minuti in su e' una lunga,
 altrimenti facile. Gara non si stima mai. Lo si corregge dalla scheda
 Training della Day in React; le correzioni stanno in `activity_run_type.json`
 nella cartella dati, accanto a `activity_terrain.json`, e un rebuild non le
-perde. I report non lo mostrano.
+perde. Il report giornaliero lo usa nella sezione Training (todo 43): e' il
+metro con cui l'allenatore giudica la seduta, perche' dice che seduta voleva
+essere.
 
 ### I file di salute di un giorno
 

@@ -13,15 +13,35 @@ from training.interface.db import list_activities, load_activity_records
 OUT_DIR = Path("summary/00.activity")
 
 
-def activity_comments(records: pd.DataFrame) -> list[str]:
-    """Commento automatico rule-based sulla singola attivita', basato solo
-    sui dati campionati (nessuna chiamata esterna): confronta prima e
-    seconda meta' per ritmo/FC, mette in relazione FC e pendenza, e
-    valuta la regolarita' della cadenza."""
-    comments = []
+# Le grandezze che dicono come e' stata corsa una seduta. Stanno qui perche'
+# le frasi di questo report ci sono nate sopra, ma le legge anche
+# `daily_data`, che le mette nel JSON del giorno (todo 43): il conto e' uno
+# solo, e le due strade non possono piu' divergere.
+_NUMBER_KEYS = (
+    "speed_first_half_kmh",
+    "speed_second_half_kmh",
+    "speed_change_pct",
+    "hr_first_half",
+    "hr_second_half",
+    "hr_change_pct",
+    "cadence_mean",
+    "cadence_variation_pct",
+    "uphill_hr",
+    "flat_hr",
+)
+
+
+def activity_numbers(records: pd.DataFrame) -> dict[str, float | None]:
+    """Come e' stata corsa la seduta, in numeri: le medie della prima e della
+    seconda meta' (per distanza) con la differenza in percento, la cadenza
+    con la sua variabilita', e i battiti in salita contro quelli in piano.
+
+    Grezzi, non arrotondati: `activity_comments()` ci scrive sopra le sue
+    frasi e `daily_data` li arrotonda per il JSON, ognuno con i suoi
+    decimali. `None` dove il dato non c'e' o non si puo' ricavare."""
+    out: dict[str, float | None] = dict.fromkeys(_NUMBER_KEYS)
 
     has_distance = records["distance_km"].notna().any() and records["distance_km"].max() > 0
-    speed1 = speed2 = hr1 = hr2 = None
     if has_distance:
         half_distance = records["distance_km"].max() / 2
         first_half = records[records["distance_km"] <= half_distance]
@@ -29,34 +49,15 @@ def activity_comments(records: pd.DataFrame) -> list[str]:
 
         speed1, speed2 = first_half["speed_kmh"].mean(), second_half["speed_kmh"].mean()
         if pd.notna(speed1) and pd.notna(speed2) and speed1 > 0:
-            delta_pct = (speed2 - speed1) / speed1 * 100
-            if delta_pct >= 5:
-                comments.append(
-                    f"Negative split: average speed {delta_pct:.0f}% higher in the second "
-                    f"half ({speed2:.1f} km/h vs {speed1:.1f} km/h) — good pacing."
-                )
-            elif delta_pct <= -5:
-                comments.append(
-                    f"Positive split: average speed {abs(delta_pct):.0f}% lower in the second "
-                    f"half ({speed2:.1f} km/h vs {speed1:.1f} km/h) — likely pace drop-off."
-                )
-            else:
-                comments.append(
-                    f"Steady pace between first and second half ({speed1:.1f} vs {speed2:.1f} km/h)."
-                )
+            out["speed_first_half_kmh"] = float(speed1)
+            out["speed_second_half_kmh"] = float(speed2)
+            out["speed_change_pct"] = (speed2 - speed1) / speed1 * 100
 
         hr1, hr2 = first_half["heart_rate"].mean(), second_half["heart_rate"].mean()
         if pd.notna(hr1) and pd.notna(hr2) and hr1 > 0:
-            hr_delta_pct = (hr2 - hr1) / hr1 * 100
-            if hr_delta_pct >= 5:
-                comments.append(
-                    f"Cardiac drift: average HR +{hr_delta_pct:.0f}% in the second half "
-                    f"({hr1:.0f} → {hr2:.0f} bpm) — possible fatigue or heat."
-                )
-            elif hr_delta_pct <= -5:
-                comments.append(
-                    f"Average HR dropped in the second half ({hr1:.0f} → {hr2:.0f} bpm) — good recovery."
-                )
+            out["hr_first_half"] = float(hr1)
+            out["hr_second_half"] = float(hr2)
+            out["hr_change_pct"] = (hr2 - hr1) / hr1 * 100
 
     if (
         records["altitude_m"].notna().any()
@@ -68,25 +69,83 @@ def activity_comments(records: pd.DataFrame) -> list[str]:
         slope_pct = ((altitude_diff / distance_diff_m) * 100).clip(-30, 30)
         uphill_hr = records.loc[slope_pct > 3, "heart_rate"].mean()
         flat_hr = records.loc[slope_pct.between(-1, 1), "heart_rate"].mean()
-        if pd.notna(uphill_hr) and pd.notna(flat_hr) and (uphill_hr - flat_hr) >= 5:
-            comments.append(
-                f"Uphill (slope > 3%) average HR rises to {uphill_hr:.0f} bpm vs "
-                f"{flat_hr:.0f} bpm on flat ground (+{uphill_hr - flat_hr:.0f} bpm)."
-            )
+        if pd.notna(uphill_hr):
+            out["uphill_hr"] = float(uphill_hr)
+        if pd.notna(flat_hr):
+            out["flat_hr"] = float(flat_hr)
 
     if records["cadence"].notna().any():
         cadence = records["cadence"].dropna()
         cadence_mean = cadence.mean()
-        cadence_cv = (cadence.std() / cadence_mean * 100) if cadence_mean else None
-        if cadence_cv is not None:
-            if cadence_cv <= 5:
-                comments.append(
-                    f"Very steady cadence (mean {cadence_mean:.0f}, variation {cadence_cv:.0f}%)."
-                )
-            elif cadence_cv >= 15:
-                comments.append(
-                    f"Fairly variable cadence (mean {cadence_mean:.0f}, variation {cadence_cv:.0f}%)."
-                )
+        if pd.notna(cadence_mean) and cadence_mean:
+            variation = cadence.std() / cadence_mean * 100
+            out["cadence_mean"] = float(cadence_mean)
+            out["cadence_variation_pct"] = float(variation) if pd.notna(variation) else None
+
+    return out
+
+
+def activity_comments(records: pd.DataFrame) -> list[str]:
+    """Commento automatico rule-based sulla singola attivita', basato solo
+    sui dati campionati (nessuna chiamata esterna): confronta prima e
+    seconda meta' per ritmo/FC, mette in relazione FC e pendenza, e
+    valuta la regolarita' della cadenza.
+
+    I numeri li da' `activity_numbers()`; qui si scelgono le soglie e le
+    parole."""
+    numbers = activity_numbers(records)
+    comments = []
+
+    delta_pct = numbers["speed_change_pct"]
+    if delta_pct is not None:
+        speed1 = numbers["speed_first_half_kmh"]
+        speed2 = numbers["speed_second_half_kmh"]
+        if delta_pct >= 5:
+            comments.append(
+                f"Negative split: average speed {delta_pct:.0f}% higher in the second "
+                f"half ({speed2:.1f} km/h vs {speed1:.1f} km/h) — good pacing."
+            )
+        elif delta_pct <= -5:
+            comments.append(
+                f"Positive split: average speed {abs(delta_pct):.0f}% lower in the second "
+                f"half ({speed2:.1f} km/h vs {speed1:.1f} km/h) — likely pace drop-off."
+            )
+        else:
+            comments.append(
+                f"Steady pace between first and second half ({speed1:.1f} vs {speed2:.1f} km/h)."
+            )
+
+    hr_delta_pct = numbers["hr_change_pct"]
+    if hr_delta_pct is not None:
+        hr1, hr2 = numbers["hr_first_half"], numbers["hr_second_half"]
+        if hr_delta_pct >= 5:
+            comments.append(
+                f"Cardiac drift: average HR +{hr_delta_pct:.0f}% in the second half "
+                f"({hr1:.0f} → {hr2:.0f} bpm) — possible fatigue or heat."
+            )
+        elif hr_delta_pct <= -5:
+            comments.append(
+                f"Average HR dropped in the second half ({hr1:.0f} → {hr2:.0f} bpm) — good recovery."
+            )
+
+    uphill_hr, flat_hr = numbers["uphill_hr"], numbers["flat_hr"]
+    if uphill_hr is not None and flat_hr is not None and (uphill_hr - flat_hr) >= 5:
+        comments.append(
+            f"Uphill (slope > 3%) average HR rises to {uphill_hr:.0f} bpm vs "
+            f"{flat_hr:.0f} bpm on flat ground (+{uphill_hr - flat_hr:.0f} bpm)."
+        )
+
+    cadence_cv = numbers["cadence_variation_pct"]
+    if cadence_cv is not None:
+        cadence_mean = numbers["cadence_mean"]
+        if cadence_cv <= 5:
+            comments.append(
+                f"Very steady cadence (mean {cadence_mean:.0f}, variation {cadence_cv:.0f}%)."
+            )
+        elif cadence_cv >= 15:
+            comments.append(
+                f"Fairly variable cadence (mean {cadence_mean:.0f}, variation {cadence_cv:.0f}%)."
+            )
 
     if not comments:
         comments.append("Not enough data for an automatic comment on this activity.")

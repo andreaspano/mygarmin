@@ -25,6 +25,7 @@ from typing import Any
 import pandas as pd
 
 from training.garmin.config import DATA_DIR
+from training.interface.activity_report import activity_numbers
 from training.interface.db import list_activities, load_activity_records
 from training.interface.health import _day_paths, _dig, _primary_entry, _read_json
 from training.interface.health_db import load_health_db
@@ -63,6 +64,12 @@ SHORT_NIGHTS_ALERT = 3  # notti corte negli ultimi 7 giorni
 HARD_SESSION_MIN = 10  # contati con `_minutes_above_z3`, anche senza soglia
 VO2MAX_CHANGE = 0.5
 RECENT_DAYS = 14
+# Il confronto con le sedute simili di prima (todo 43): quanto si guarda
+# indietro, e quante ne servono perche' una mediana voglia dire qualcosa. Con
+# due sedute la mediana e' un caso, e l'allenatore non deve poterci costruire
+# sopra un andamento.
+COMPARE_WINDOW_DAYS = 90
+MIN_COMPARABLE = 3
 BASELINE_SHORT = 7
 BASELINE_LONG = 28
 
@@ -230,20 +237,19 @@ def _vo2max_change(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
     return {"now": _value(now, 1), "days_ago_28": _value(then, 1), "change": _value(now - then, 1)}
 
 
-def _effect_minutes(activity: pd.Series, data_dir: Path) -> dict[str, float] | None:
+def _effect_minutes(activity: pd.Series, records: pd.DataFrame) -> dict[str, float] | None:
     """I minuti per effetto stimato (`run_chart.effects`), o `None` senza zone,
     soglia o battiti."""
     bounds, threshold = zone_settings(activity)
     if not has_effects(bounds, threshold):
         return None
-    records = load_activity_records(int(activity["activity_id"]), data_dir)
     if records.empty or records["heart_rate"].isna().all():
         return None
     seconds = effects(records, bounds, threshold)
     return {name: _value(seconds[name] / 60, 1) for name in EFFECTS}
 
 
-def _minutes_above_z3(activity: pd.Series, data_dir: Path) -> float | None:
+def _minutes_above_z3(activity: pd.Series, records: pd.DataFrame) -> float | None:
     """I minuti con i battiti sopra il tetto di Z3 (alto aerobico piu'
     anaerobico). Servono solo i tetti delle zone, non la soglia: molti file
     (tutto agosto 2026, le uscite in bici) la salvano a zero o non ce
@@ -252,15 +258,83 @@ def _minutes_above_z3(activity: pd.Series, data_dir: Path) -> float | None:
     bounds, _ = zone_settings(activity)
     if not bounds:
         return None
-    records = load_activity_records(int(activity["activity_id"]), data_dir)
     if records.empty or records["heart_rate"].isna().all():
         return None
     above = records["heart_rate"].astype(float) > bounds[2]
     return _value(float(durations_s(records)[above].sum()) / 60, 1)
 
 
-def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
+# Quanti decimali per ogni numero di `activity_numbers`: le velocita' e le
+# percentuali uno, i battiti e la cadenza nessuno.
+_EXECUTION_DIGITS = {
+    "speed_first_half_kmh": 1,
+    "speed_second_half_kmh": 1,
+    "speed_change_pct": 1,
+    "hr_first_half": 0,
+    "hr_second_half": 0,
+    "hr_change_pct": 1,
+    "cadence_mean": 0,
+    "cadence_variation_pct": 1,
+    "uphill_hr": 0,
+    "flat_hr": 0,
+}
+
+
+def _execution(records: pd.DataFrame) -> dict[str, Any] | None:
+    """Come e' stata corsa la seduta (todo 43): le due meta' per velocita' e
+    battiti, la cadenza, i battiti in salita contro quelli in piano. I conti
+    sono quelli di `activity_report.activity_numbers`, gli stessi che vanno
+    nei report per attivita'; qui si arrotondano. `None` se dai record non si
+    ricava niente (palestra, file senza campioni)."""
+    if records.empty:
+        return None
+    numbers = activity_numbers(records)
+    if all(value is None for value in numbers.values()):
+        return None
+    return {name: _value(value, _EXECUTION_DIGITS[name]) for name, value in numbers.items()}
+
+
+def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, Any]:
+    """Le sedute simili dei `COMPARE_WINDOW_DAYS` giorni prima: stesso sport, e
+    stesso tipo di corsa quando la seduta ne ha uno. Rende quante sono e le
+    mediane con cui confrontarla.
+
+    Il giorno stesso resta fuori: il confronto e' con quello che c'era prima.
+    Sotto `MIN_COMPARABLE` sedute le mediane non si danno (restano `None`):
+    il numero si da' comunque, cosi' chi scrive sa perche' non c'e' il
+    paragone."""
+    day = activity["start_time"].date()
+    days = activities["start_time"].dt.date
+    run_type = _value(activity["run_type"])
+    similar = activities[
+        (activities["sport"] == activity["sport"])
+        & (days >= day - timedelta(days=COMPARE_WINDOW_DAYS))
+        & (days < day)
+    ]
+    if run_type is not None:
+        similar = similar[similar["run_type"] == run_type]
+    median = None
+    if len(similar) >= MIN_COMPARABLE:
+        median = {
+            "distance_km": _value(similar["total_distance_km"].median(), 2),
+            "duration_min": _value(similar["total_time_min"].median(), 0),
+            "avg_hr": _value(similar["avg_heart_rate"].median(), 0),
+            "grade_adjusted_speed_kmh": _value(similar["equiv_speed_kmh"].median(), 1),
+        }
+    return {
+        "sport": _value(activity["sport"]),
+        "run_type": run_type,
+        "window_days": COMPARE_WINDOW_DAYS,
+        "count": int(len(similar)),
+        "median": median,
+    }
+
+
+def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> dict[str, Any]:
     start = activity["start_time"]
+    # I record una volta sola: li vogliono gli effetti, i minuti sopra Z3 e
+    # `_execution`.
+    records = load_activity_records(int(activity["activity_id"]), data_dir)
     return {
         "date": start.date().isoformat(),
         "weekday": WEEKDAYS[start.weekday()],
@@ -275,8 +349,18 @@ def _session(activity: pd.Series, data_dir: Path) -> dict[str, Any]:
         "aerobic_te": _value(activity["aerobic_te"], 1),
         "anaerobic_te": _value(activity["anaerobic_te"], 1),
         "grade_adjusted_speed_kmh": _value(activity["equiv_speed_kmh"], 1),
-        "effect_minutes": _effect_minutes(activity, data_dir),
-        "minutes_above_z3": _minutes_above_z3(activity, data_dir),
+        # Che seduta voleva essere: il tipo (scelto da Andrea o stimato), il
+        # terreno e l'allenamento pianificato che l'orologio ha seguito.
+        "run_type": _value(activity["run_type"]),
+        "run_type_source": _value(activity["run_type_source"]),
+        "terrain": _value(activity["terrain"]),
+        "workout_name": _value(activity["workout_name"]),
+        "workout_active_steps": _value(activity["workout_active_steps"], 0),
+        "workout_active_max_s": _value(activity["workout_active_max_s"], 0),
+        "effect_minutes": _effect_minutes(activity, records),
+        "minutes_above_z3": _minutes_above_z3(activity, records),
+        "execution": _execution(records),
+        "compared_with": _compared_with(activities, activity),
     }
 
 
@@ -392,7 +476,8 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
     last_hard = None
     window = before[before["start_time"].dt.date >= day - timedelta(days=BASELINE_LONG)]
     for _, activity in window.iloc[::-1].iterrows():
-        minutes = _minutes_above_z3(activity, data_dir)
+        records = load_activity_records(int(activity["activity_id"]), data_dir)
+        minutes = _minutes_above_z3(activity, records)
         if minutes is not None and minutes >= HARD_SESSION_MIN:
             last_hard = activity["start_time"].date()
             break
@@ -486,8 +571,11 @@ def build_daily_data(
             "vo2max_change": _vo2max_change(health, day),
         },
         "sessions": {
-            "yesterday": [_session(a, data_dir) for _, a in _on(activities, day - timedelta(days=1)).iterrows()],
-            "today": [_session(a, data_dir) for _, a in _on(activities, day).iterrows()],
+            "yesterday": [
+                _session(a, data_dir, activities)
+                for _, a in _on(activities, day - timedelta(days=1)).iterrows()
+            ],
+            "today": [_session(a, data_dir, activities) for _, a in _on(activities, day).iterrows()],
         },
         "recent": _recent(activities, day, data_dir),
         "hr_zones": _hr_zones(activities, day),
