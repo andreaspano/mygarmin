@@ -94,6 +94,20 @@ make frontend           # in un altro, poi http://127.0.0.1:5173
 ```
 
 In sviluppo Vite passa `/api` e `/icons` all'API, quindi non serve CORS.
+
+Vite ascolta solo su 127.0.0.1. Per aprire la pagina dalle altre macchine
+della tailnet, su mutolo si lascia a `tailscale serve` l'indirizzo Tailscale,
+una volta sola (la configurazione resta anche dopo il riavvio):
+
+```bash
+sudo tailscale set --operator=$USER                            # una volta, per non rifare sudo
+tailscale serve --bg --http=5173 http://127.0.0.1:5173         # poi http://mutolo:5173
+```
+
+Da li' in poi basta `make api` e `make frontend` su mutolo. L'API resta su
+127.0.0.1: dalla tailnet passa solo la pagina. Con `tailscale serve status`
+si vede la configurazione, con `tailscale serve reset` si spegne.
+
 I tipi delle risposte vengono dall'OpenAPI: dopo un cambio ai modelli
 dell'API, con l'API accesa, `make frontend_types` rigenera
 `frontend/src/api/schema.ts` (che non si modifica a mano).

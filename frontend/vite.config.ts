@@ -17,9 +17,14 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     port: 5173,
-    // Dalle altre macchine della tailnet si arriva col nome della macchina,
-    // corto (`mutolo`, MagicDNS) o intero (*.ts.net): Vite rifiuta i nomi
-    // che non conosce. Su mutolo Vite ascolta sull'indirizzo Tailscale.
+    // Vite ascolta solo su 127.0.0.1, anche su mutolo. Dalle altre macchine
+    // della tailnet si arriva con `tailscale serve`, che ascolta
+    // sull'indirizzo Tailscale e gira le richieste qui:
+    //   sudo tailscale serve --bg --http=5173 http://127.0.0.1:5173
+    // L'host che arriva e' allora `mutolo` (MagicDNS, con la porta che Vite
+    // non guarda), oppure `mutolo.tailab3950.ts.net` se nella tailnet si
+    // accendono i certificati HTTPS e si serve in https. Vite rifiuta i nomi
+    // che non conosce, e li' servono entrambi.
     allowedHosts: [".ts.net", "mutolo"],
     proxy: {
       "/api": API,
