@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Revisione di tutto il codice
@@ -35,10 +35,10 @@ Prese con Andrea il 2026-10-19:
 
 Il todo e' la specifica e vince sul protocollo della skill. Di `/atodo`
 restano il ramo `todo_42`, le regole di autonomia, "mai riparare da soli per
-far tornare verde" e la scala delle verifiche. **Non** si fanno i passi 5-8:
-niente `status: done`, niente commit, niente `git merge --no-ff`, nessuna
-sezione `## Revert` (vedi in fondo). Alla fine il ramo `todo_42` esiste con
-le modifiche nel working tree, e `git status` le mostra.
+far tornare verde" e la scala delle verifiche. Il commit e il merge non erano
+previsti qui (li doveva fare Andrea), ma il 2026-10-19 li ha chiesti a fine
+revisione: il lavoro e' quindi committato sul ramo e unito in `main` come in
+un todo normale, con la sezione `## Revert` in fondo.
 
 ## Work
 
@@ -294,5 +294,12 @@ oppure, per quello che non si corregge:
 
 ## Revert
 
-Non serve: non si committa e non si unisce niente. Per buttare tutto,
-`git checkout -- .` sul ramo `todo_42`, o si cancella il ramo.
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_42'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. La revisione ha toccato commenti, documenti
+e codice a comportamento uguale: niente dati, niente report, niente database.
+
+Dopo il revert, rifare il merge di `todo_42` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
