@@ -8,8 +8,11 @@ SQLite so normal reads are indexed lookups instead of a FIT re-parse. The
 them via rebuild().
 
 Two entry points matter to callers: list_activities() and
-load_activity_records() — both call sync() first, so new .fit files are
-picked up automatically without a manual cache-clear or restart.
+load_activity_records(). list_activities() calls sync() first, so new .fit
+files are picked up automatically without a manual cache-clear or restart;
+load_activity_records() reads the records of one activity straight from the
+DB, so it expects list_activities() to have synced already (that is the order
+the API and the reports use).
 
 L'API non chiama list_activities() a ogni richiesta: passa da
 `api/cache.py`, che ci mette davanti una cache per non rifare la scansione
@@ -293,7 +296,7 @@ def _parse_and_store(
 # (o l'hanno a zero, come le escursioni e alcune corse) si da' quella
 # dell'ultima corsa prima di loro che ne ha una vera. Se prima non ce n'e'
 # (l'orologio salva soglie vere solo dall'11/09/2026), quella della prima corsa
-# dopo. Solo da questa data in poi, per scelta di Andrea: lo storico piu'
+# dopo. Solo dalla data qui sotto in poi, per scelta di Andrea: lo storico piu'
 # vecchio resta com'e' nel FIT.
 THRESHOLD_FALLBACK_FROM = "2026-08-01"
 

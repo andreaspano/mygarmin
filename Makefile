@@ -15,7 +15,8 @@ backfill_health:
 
 # Attivita' e metriche di salute di un intervallo a scelta, estremi inclusi:
 #   make backfill FROM=2024-01-01 TO=2024-12-31
-# Un anno di salute sono circa 3.300 chiamate (30-45 minuti). Come
+# Un anno di salute sono circa 4.000 chiamate, undici al giorno (30-45
+# minuti). Come
 # backfill_health, si interrompe con Ctrl+C e riprende dai giorni mancanti.
 backfill:
 	@test -n "$(FROM)" -a -n "$(TO)" || { echo "Uso: make backfill FROM=YYYY-MM-DD TO=YYYY-MM-DD"; exit 2; }

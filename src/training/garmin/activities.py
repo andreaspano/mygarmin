@@ -186,8 +186,9 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
     quelle precedenti siano gia' state scaricate.
 
     Alla fine rinfresca anche le metriche di salute degli ultimi giorni
-    (`refresh_recent_health`): la pagina Recovery le legge da li', e tenere
-    aggiornate le attivita' e non la salute lascerebbe meta' dell'app indietro.
+    (`refresh_recent_health`): le card Recovery e Health della Day le leggono
+    da li', e tenere aggiornate le attivita' e non la salute lascerebbe meta'
+    dell'app indietro.
     Lo fa anche quando non c'e' nessuna attivita' nuova, che e' anzi il caso
     normale: un giorno di riposo non aggiunge uscite ma ha comunque il suo
     sonno, la sua readiness e il suo body battery. Lo storico, che costa

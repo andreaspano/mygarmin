@@ -13,8 +13,9 @@ SPORT_ICON_FILES = {
     "rock_climbing": "climbing.png",
 }
 
-# L'icona dei giorni di riposo nella tabella della Day (righe vuote, todo 30):
-# grigia, per restare indietro rispetto ai colori degli sport.
+# L'icona dei giorni di riposo: la striscia della settimana la mette nei
+# giorni senza attivita', e la scheda Training nei "Rest day". Grigia, per
+# restare indietro rispetto ai colori degli sport.
 REST_ICON_FILE = "rest.png"
 
 
@@ -22,10 +23,9 @@ def sport_label(value: str | None) -> str:
     """Il nome di uno sport (o di un sotto-tipo) come si legge a schermo.
 
     Nei dati gli sport sono chiavi: `cross_country_skiing`. A schermo diventano
-    "Cross country skiing", con la stessa regola che `profile.py` applica ai
-    suoi valori (`CAPITALIZE_KEYS`): iniziale maiuscola e basta. Passa di qui
-    ogni etichetta, cosi' lo stesso sport si legge uguale nelle tabelle, nelle
-    schede, nei grafici e nei filtri."""
+    "Cross country skiing": iniziale maiuscola e basta. Passa di qui ogni
+    etichetta, cosi' lo stesso sport si legge uguale nella striscia della
+    settimana, nelle linguette e nella scheda Training."""
     if not value:
         return "?"
     return value.replace("_", " ").capitalize()

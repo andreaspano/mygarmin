@@ -4,12 +4,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { Result, VisualizationSpec } from "vega-embed";
 
-import { api } from "../api/client";
+import { api, isAbort } from "../api/client";
 import type { ColorScheme } from "../useColorScheme";
 
-// I colori di assi, legende e griglia. La specifica di Altair non li fissa
-// (nella Streamlit li mette il tema di Streamlit): senza, sul fondo scuro le
-// scritte di Vega restano grigio scuro e non si leggono.
+// I colori di assi, legende e griglia: la specifica di Altair non li fissa,
+// e senza, sul fondo scuro le scritte di Vega restano grigio scuro e non si
+// leggono.
 const TEXT_COLORS: Record<ColorScheme, { text: string; muted: string; grid: string }> = {
   light: { text: "#31333f", muted: "#6b7280", grid: "rgba(49, 51, 63, 0.1)" },
   dark: { text: "#fafafa", muted: "#9ca3af", grid: "rgba(250, 250, 250, 0.12)" },
@@ -50,7 +50,7 @@ export function RunChart({ activityId, theme }: { activityId: number; theme: Col
         // `width: "container"` prende la larghezza del riquadro, che c'e'
         // gia' quando si chiama `embed`; vega-embed lo segue se cambia.
         // vega-embed si carica solo qui: Vega e' la parte piu' grande
-        // dell'app, e la tabella non deve aspettarla.
+        // dell'app, e il resto della pagina non deve aspettarla.
         const { default: embed } = await import("vega-embed");
         if (cancelled || !box.current) return;
         view = await embed(box.current, spec as VisualizationSpec, {
@@ -62,7 +62,7 @@ export function RunChart({ activityId, theme }: { activityId: number; theme: Col
         else setState("ready");
       })
       .catch((error: unknown) => {
-        if (!cancelled && !(error instanceof DOMException && error.name === "AbortError")) {
+        if (!cancelled && !isAbort(error)) {
           console.error(error);
           setState("error");
         }

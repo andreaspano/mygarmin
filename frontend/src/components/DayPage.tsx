@@ -11,7 +11,7 @@
 // `history.pushState`.
 import { useEffect, useMemo, useState } from "react";
 
-import { api, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
+import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon } from "../markdown";
 import { useColorScheme } from "../useColorScheme";
@@ -44,10 +44,6 @@ function dayFromUrl(now: string): string {
 function stripRange(day: string, now: string): [string, string] {
   const end = day >= addDays(now, -(STRIP_DAYS - 1)) ? now : addDays(day, STRIP_AFTER);
   return [addDays(end, -(STRIP_DAYS - 1)), end];
-}
-
-function isAbort(error: unknown): boolean {
-  return error instanceof DOMException && error.name === "AbortError";
 }
 
 const API_DOWN = "Cannot reach the API. Is it running (make api)?";

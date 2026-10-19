@@ -7,13 +7,10 @@ calcola in lettura e non sta in `activities.db`; le correzioni stanno in
 `activity_terrain.json` nella cartella dati, accanto a `activity_names.json`,
 perche' `db.rebuild()` cancella il database e le perderebbe."""
 
-import json
-import os
-import tempfile
 import threading
 from pathlib import Path
 
-from training.interface.fit import _load_json_map
+from training.interface.fit import _load_json_map, save_json_map
 from training.interface.grade import EQUIV_SPEED_SPORTS
 
 TERRAINS = ("track", "road", "gravel", "trail", "mountain")
@@ -94,11 +91,4 @@ def save_terrain_override(data_dir: Path, activity_id: int, terrain: str | None)
             overrides.pop(str(activity_id), None)
         else:
             overrides[str(activity_id)] = terrain
-        fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=".activity_terrain.", suffix=".json")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as f:
-                json.dump(overrides, f, indent=2, sort_keys=True)
-            os.replace(tmp, path)
-        except BaseException:
-            Path(tmp).unlink(missing_ok=True)
-            raise
+        save_json_map(path, overrides)

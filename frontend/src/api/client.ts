@@ -29,6 +29,12 @@ export class ApiError extends Error {
   }
 }
 
+/** L'errore di una chiamata annullata (`AbortController`), che non e' un
+ * guasto: succede a ogni cambio di giorno e a ogni smontaggio. */
+export function isAbort(error: unknown): boolean {
+  return error instanceof DOMException && error.name === "AbortError";
+}
+
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const response = await fetch(url, { signal });
   if (!response.ok) throw new ApiError(response.status, url);
