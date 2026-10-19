@@ -76,8 +76,9 @@ export function DayHeader({
           >
             ›
           </button>
-          {/* Lo stesso calendario del tasto accanto, con il pallino del
-              giorno di oggi dentro: i due si distinguono per quello. */}
+          {/* Il salto all'ultimo giorno: la freccia contro la sbarra, come
+              il "vai in fondo" dei lettori. Oggi e' sempre il giorno piu'
+              recente, quindi la sbarra e' la fine della fila. */}
           <button
             type="button"
             className="btn icon-btn"
@@ -87,9 +88,8 @@ export function DayHeader({
             title="Today"
           >
             <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14">
-              <rect x="1.5" y="3" width="13" height="11.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
-              <path d="M1.5 7h13M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.5" />
-              <circle cx="8" cy="10.9" r="1.7" fill="currentColor" />
+              <path d="M4.5 3.5 9 8l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              <path d="M11.5 3.5v9" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
             </svg>
           </button>
           {/* Solo il calendario, senza scritta: il nome del campo lo da'
