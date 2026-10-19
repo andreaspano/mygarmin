@@ -196,6 +196,20 @@ h2 {
 .date-pick {
   position: relative;
 }
+/* La striscia della settimana e, in fondo a destra, il tasto Refresh. La
+   striscia si stringe e scorre, il tasto resta della sua misura. */
+.day-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.day-strip .week-strip {
+  min-width: 0;
+}
+.day-strip .refresh-btn {
+  flex: 0 0 auto;
+}
 /* Il tasto Refresh mentre gira: disattivato ma leggibile, l'icona ruota. */
 .refresh-btn[aria-busy="true"] {
   opacity: 1;
