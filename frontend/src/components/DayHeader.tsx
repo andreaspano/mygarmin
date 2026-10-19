@@ -76,8 +76,21 @@ export function DayHeader({
           >
             ›
           </button>
-          <button type="button" className="btn" onClick={() => onChange(maxDay)} disabled={day === maxDay}>
-            Today
+          {/* Lo stesso calendario del tasto accanto, con il pallino del
+              giorno di oggi dentro: i due si distinguono per quello. */}
+          <button
+            type="button"
+            className="btn icon-btn"
+            onClick={() => onChange(maxDay)}
+            disabled={day === maxDay}
+            aria-label="Today"
+            title="Today"
+          >
+            <svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14">
+              <rect x="1.5" y="3" width="13" height="11.5" rx="2" fill="none" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M1.5 7h13M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.5" />
+              <circle cx="8" cy="10.9" r="1.7" fill="currentColor" />
+            </svg>
           </button>
           {/* Solo il calendario, senza scritta: il nome del campo lo da'
               l'`aria-label` dell'input, che copre tutto il riquadro. */}
