@@ -43,25 +43,17 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           label="Resting heart rate"
           value={num(m.resting_hr.value)}
           unit="bpm"
+          // Sotto il numero solo la barra: la fascia dice da sola dove sta
+          // il valore, e i suoi estremi sono scritti sulle tacche.
           sub={
-            <>
-              {restingBand && <RangeBar value={m.resting_hr.value} low={restingBand.low} high={restingBand.high} />}
-              {restingBand && `Usual range ${num(restingBand.low, 1)}–${num(restingBand.high, 1)} · `}
-              28-day avg {num(m.resting_hr.avg_28d.mean, 1)}
-            </>
+            restingBand && <RangeBar value={m.resting_hr.value} low={restingBand.low} high={restingBand.high} />
           }
         />
         <Stat
           label="HRV, weekly average"
           value={num(m.hrv_weekly_avg.value)}
           unit="ms"
-          sub={
-            <>
-              {baseline && <RangeBar value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
-              {baseline && `Balanced range ${baseline.low}–${baseline.high} · `}
-              28-day avg {num(m.hrv_weekly_avg.avg_28d.mean, 1)} · last night {num(m.hrv_last_night.value)} ms
-            </>
-          }
+          sub={baseline && <RangeBar value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
         />
         <Stat
           label="Breathing in sleep"
