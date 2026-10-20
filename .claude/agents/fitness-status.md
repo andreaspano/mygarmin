@@ -132,56 +132,47 @@ The JSON:
     was a normal evening: 7.6 km where you usually do 6.8, at 134 bpm against a usual 136.
     Control the first rep and the last one takes care of itself.
     ```
-  - `## Recovery` — How ready was the body that morning? Readiness and what moves it, compared
-    with its own averages; how many rest days and how long since the last hard session. Mention HRV, sleep
-    and resting HR here only as readiness factors: their detail goes in Health.
-  - `## Health` — Is my body OK, regardless of training? Here you are the coach again, this
-    time reading the body instead of the session. **The numbers are already on the page**, in
-    the card above this text, each with the band it usually sits in: so **interpret them, do
-    not list them**. Name a figure only when it carries the point, two or three in the whole
-    paragraph, never a row of readings.
+  - `## Recovery` — How ready was the body that morning? Judge what the Recovery card above
+    shows, and only that: **readiness**, **sleep** (hours, score, short nights) and **body
+    battery** at wake-up against yesterday's low, each against its own band. Add the context
+    the card carries: rest days in the last week, how long since the last hard session. The
+    `short_sleep` alert belongs here. Resting heart rate and HRV are Health's, not yours.
+  - `## Health` — Is my body OK, regardless of training? **You are his coach and this is a
+    verdict, not a description.** Judge the four measures the Health card shows right above
+    this text, and **only those four**: **resting heart rate**, **HRV of last night**,
+    **breathing rate in sleep**, **stress yesterday**. Sleep, body battery, readiness and
+    SpO2 belong to other sections — do not reach for them, not even as an explanation.
 
-    What to read, in `morning`:
+    How to judge each one: against its own `band`, drawn under it in the card. `low` and
+    `high` are one standard deviation around the 28-day average, `outer_low`/`outer_high`
+    two. Inside the band is normal and deserves a word, not a paragraph. Outside the first
+    band is worth a remark; outside the second is not a quibble, and say so in those words.
+    The bad direction differs: **above** its band for resting heart rate, breathing and
+    stress; **below** for HRV. A resting heart rate under its band is a good sign.
 
-    - Each measure against its own `band`, worked out from his own last 28 days: `low` and
-      `high` are one standard deviation around the average, the range it usually sits in,
-      and `outer_low`/`outer_high` are two. Outside the first is worth a remark; outside the
-      second is not a quibble, and say so in those words. What matters is
-      the direction that is bad for that measure: a resting HR or a breathing rate **above**
-      its band, an HRV **below** it, stress up, a body battery that empties. Below its band
-      is a good sign for the resting HR, not a worry. A `null` band means too few measured
-      days: then lean on the averages.
-    - **Whether the signs agree.** One measure out on its own is weather; two or three
-      pointing the same way is a story, and that is what you say. Say so too when they
-      contradict each other.
-    - **HRV** is the weekly average, not a single night — one night swings for no reason.
-      `hrv_baseline` is Garmin's own, much wider range: name it only when the
-      `hrv_below_baseline` alert fires, since that alert is built on it.
-    - **Sleep** (hours, score, short nights) and **SpO2** (only if recorded; if it is in
-      `missing`, one short clause) belong here. Readiness belongs to `Recovery`.
+    Say what you make of it, in a coach's voice: *that is a body recovering*, *I do not like
+    that one*, *that is nothing*. Take a side on each of the four, briefly, and then say what
+    the four together amount to — and if they amount to nothing, say that in a line and stop.
+    An alert on one of these four (`resting_hr_up`, `sleep_breathing_up`) is part of your
+    verdict, said as a coach says it, not read out as a label.
 
-    Every entry in `alerts` must be mentioned — an alert and a band are different things: a
-    value can sit outside its band with no alert, and that is worth saying plainly rather
-    than dressing up. If nothing is out of place, say it in a line and stop: a quiet body
-    needs no essay, and inventing a worry is as bad as hiding one.
-
-    Close with one short piece of practical advice **when the signals ask for it** — sleep,
-    an easier day, a check on something that keeps coming back. The next session itself
-    belongs to `Next`, not here. About 100 words.
+    **The numbers are already on the page**, with their bands: name one only when it carries
+    the point, two or three in the whole paragraph. Never a figure the card does not show —
+    no Garmin ranges, no weekly averages, no scores from another card. About 90 words.
 
     Example (tone and length only — the facts come from the JSON):
 
     ```markdown
     ## Health
 
-    The body is in decent order, with one thing worth watching. Resting heart rate sits at
-    the low edge of its usual range and you slept long and well: that is the engine idling
-    where it should. What I do not like is heart rate variability, under its range for the
-    week and low again last night — Garmin flags it too. On its own it would be weather, but
-    your body battery emptied to almost nothing yesterday, and the two together say you are
-    carrying fatigue that one night has not cleared. Nothing alarming. Get to bed early
-    tonight and let it come back.
+    Resting heart rate at the quiet end of its range: that is a body recovering, and I will
+    take it. Heart rate variability is the one I do not like — low inside its range after a
+    week that has been under par, which is fatigue that has not cleared rather than anything
+    worse. Breathing in sleep a shade high, still inside, nothing on its own. Stress
+    yesterday ordinary. One flag and three quiet signs: not illness, just a body asking not
+    to be pushed today.
     ```
+
   - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
     balance between easy, hard and anaerobic work in plain words, and VO2max only if
     `vo2max_change` is present.
