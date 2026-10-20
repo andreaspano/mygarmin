@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 
 from training.interface.grade import MODEL_SLOPE_LIMIT_PCT, rolling_mean, segments, slope_pct
+from training.interface.sports import has_distance
 
 BIN_S = 30
 # Un intervallo con meno di 10 s di dati si scarta: 10 campioni a un record al
@@ -268,7 +269,8 @@ def run_analysis_chart(
     """Il grafico a tre fasce, o None se non c'e' niente da disegnare.
 
     Ogni pannello c'e' solo se c'e' il suo dato: battiti se c'e' la FC,
-    velocita' se c'e' la velocita', pendenza se ci sono quota e distanza. La
+    velocita' se c'e' la velocita' ed e' uno sport che ha una distanza,
+    pendenza se ci sono quota e distanza. La
     linea equivalente c'e' solo se il database ha `equiv_speed_kmh` (gli sport
     a piedi). Senza `bounds` niente bande, senza `threshold_hr` niente
     effetti. I pannelli hanno ognuno la sua scala: velocita' e pendenza non si
@@ -284,7 +286,10 @@ def run_analysis_chart(
         return None
 
     has_hr = data["hr"].notna().any()
-    has_speed = (data["speed"] > 0).any()
+    # Gli sport senza distanza (il tapis roulant, todo 45) non hanno nemmeno
+    # una velocita' da disegnare: quella nei record e' la stessa stima del
+    # polso che altrove non mostriamo, solo campione per campione.
+    has_speed = has_distance(sport) and (data["speed"] > 0).any()
     has_slope = data["slope_pct"].notna().any()
     has_equiv = data["equiv"].notna().any()
     if not (has_hr or has_speed):

@@ -153,10 +153,11 @@ quando il JSON del giorno porta la potenza massima `make daily_data`
 moriva con "Object of type int64 is not JSON serializable". Dall'API non si
 vedeva, perche' li' `json.dumps` ha un `default=str`.
 
-Il grafico della scheda **continua a disegnare la velocita' campionata**
-anche sul nastro: e' una stima, ma e' l'unica cosa che fa vedere la forma
-della seduta (i blocchi a 8 km/h e quelli lenti). Se da' fastidio si toglie
-in due righe.
+Il grafico della scheda all'inizio **continuava a disegnare la velocita'
+campionata** anche sul nastro. Andrea l'ha fatto togliere subito dopo: quella
+linea e' la stessa stima del polso che non mostriamo da nessun'altra parte, e
+tenerla in un grafico non la rende piu' vera. Del tapis roulant resta la
+fascia dei battiti.
 
 ## Revert
 
