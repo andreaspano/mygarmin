@@ -466,23 +466,25 @@ h2 {
   color: var(--muted);
 }
 
-.hrv-range {
+/* La barra di una fascia (HRV, battito a riposo): il tratto della fascia e
+   la tacca di dove sta il valore di oggi. */
+.range-bar {
   margin: 4px 0 2px;
 }
-.hrv-track {
+.range-track {
   position: relative;
   height: 8px;
   border-radius: 4px;
   background: var(--track);
 }
-.hrv-band {
+.range-band {
   position: absolute;
   top: 0;
   bottom: 0;
   border-radius: 4px;
   background: var(--low);
 }
-.hrv-marker {
+.range-marker {
   position: absolute;
   top: -4px;
   width: 3px;
@@ -491,12 +493,12 @@ h2 {
   background: var(--text);
   border-radius: 1px;
 }
-.hrv-ticks {
+.range-ticks {
   position: relative;
   height: 14px;
   font-size: 0.68rem;
 }
-.hrv-ticks span {
+.range-ticks span {
   position: absolute;
   transform: translateX(-50%);
 }

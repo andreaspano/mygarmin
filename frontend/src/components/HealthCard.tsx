@@ -5,21 +5,22 @@ import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
 import { CardHead, num, Stat } from "./Stat";
 
-/** La fascia equilibrata dell'HRV e il valore della settimana, come nel
- * mockup. La scala va un po' oltre la fascia, per vedere anche un valore
- * fuori. */
-function HrvRange({ value, low, high }: { value: number | null; low: number; high: number }) {
+/** Una fascia e il valore di oggi dentro (come nel mockup): la fascia
+ * equilibrata dell'HRV secondo Garmin, e la fascia d'abitudine del battito a
+ * riposo che calcola l'API. La scala va un po' oltre la fascia, per vedere
+ * anche un valore fuori. */
+function RangeBar({ value, low, high }: { value: number | null; low: number; high: number }) {
   const pad = (high - low) * 0.6;
   const min = Math.min(low - pad, value ?? low);
   const max = Math.max(high + pad, value ?? high);
   const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
   return (
-    <div className="hrv-range" aria-hidden="true">
-      <div className="hrv-track">
-        <div className="hrv-band" style={{ left: at(low), width: `calc(${at(high)} - ${at(low)})` }} />
-        {value != null && <div className="hrv-marker" style={{ left: at(value) }} />}
+    <div className="range-bar" aria-hidden="true">
+      <div className="range-track">
+        <div className="range-band" style={{ left: at(low), width: `calc(${at(high)} - ${at(low)})` }} />
+        {value != null && <div className="range-marker" style={{ left: at(value) }} />}
       </div>
-      <div className="hrv-ticks">
+      <div className="range-ticks">
         <span style={{ left: at(low) }}>{low}</span>
         <span style={{ left: at(high) }}>{high}</span>
       </div>
@@ -44,6 +45,7 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           unit="bpm"
           sub={
             <>
+              {restingBand && <RangeBar value={m.resting_hr.value} low={restingBand.low} high={restingBand.high} />}
               {restingBand && `Usual range ${num(restingBand.low, 1)}–${num(restingBand.high, 1)} · `}
               28-day avg {num(m.resting_hr.avg_28d.mean, 1)}
             </>
@@ -55,7 +57,7 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           unit="ms"
           sub={
             <>
-              {baseline && <HrvRange value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
+              {baseline && <RangeBar value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
               {baseline && `Balanced range ${baseline.low}–${baseline.high} · `}
               28-day avg {num(m.hrv_weekly_avg.avg_28d.mean, 1)} · last night {num(m.hrv_last_night.value)} ms
             </>
