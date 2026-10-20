@@ -15,6 +15,9 @@
   --next-muted: #b4b4bd;
   --next-chip: rgba(255, 255, 255, 0.28);
   --next-accent: #ef8a17;
+  /* L'accento di Summary: viola chiaro, che si legge sul fondo scuro del
+     riquadro in tutti e due i temi, contro l'arancio di Next. */
+  --summary-accent: #9085e9;
   --ok-bg: #e3f4e8;
   --ok-text: #1f6b37;
   --warn-bg: rgba(255, 189, 69, 0.22);
@@ -295,6 +298,14 @@ h2 {
   font-weight: 600;
 }
 
+/* I due riquadri in testa, Next e Summary: affiancati, uguali di larghezza
+   come le card sotto, uno sotto l'altro quando la pagina si stringe. */
+.head-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
 /* Riquadro Next */
 .next-card {
   background: var(--next-bg);
@@ -343,6 +354,13 @@ h2 {
 }
 .next-session {
   max-width: 380px;
+}
+/* Summary: stesso riquadro di Next, accento suo. */
+.summary-card .next-icon {
+  background: var(--summary-accent);
+}
+.summary-card .eyebrow {
+  color: var(--summary-accent);
 }
 .next-session-label {
   font-size: 0.78rem;
@@ -751,6 +769,9 @@ h2 {
   }
   .day-header {
     flex-direction: column;
+  }
+  .head-row {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

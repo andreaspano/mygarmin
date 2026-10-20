@@ -22,6 +22,7 @@ import { HealthCard } from "./HealthCard";
 import { LoadCard } from "./LoadCard";
 import { NextCard } from "./NextCard";
 import { RecoveryCard } from "./RecoveryCard";
+import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { TrainingCard } from "./TrainingCard";
 import { WeekStrip } from "./WeekStrip";
@@ -205,7 +206,10 @@ export function DayPage() {
             Refresh of {refresh.day} failed: {refresh.message}
           </p>
         )}
-        <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
+        <div className="head-row">
+          <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
+          <SummaryCard body={null} />
+        </div>
         {data ? (
           <>
             <Alerts alerts={data.alerts} />
