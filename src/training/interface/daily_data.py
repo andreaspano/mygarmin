@@ -25,12 +25,13 @@ from typing import Any
 import pandas as pd
 
 from training.garmin.config import DATA_DIR
-from training.interface.activity_report import activity_numbers
+from training.interface.activity_report import NUMBERS_WITHOUT_DISTANCE, activity_numbers
 from training.interface.db import list_activities, load_activity_records
 from training.interface.health import _day_paths, _dig, _primary_entry, _read_json
 from training.interface.health_db import load_health_db
 from training.interface.grade import EQUIV_SPEED_SPORTS
 from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
+from training.interface.sports import has_distance
 from training.interface.weekly_data import WEEKDAYS, _load, _mean, _value
 
 # Le misure della mattina, con la riga di `health_daily` da cui si leggono:
@@ -311,24 +312,42 @@ _EXECUTION_DIGITS = {
 }
 
 
-def _execution(records: pd.DataFrame) -> dict[str, Any] | None:
+def _execution(records: pd.DataFrame, sport: str | None) -> dict[str, Any] | None:
     """Come e' stata corsa la seduta (todo 43): le due meta' per velocita' e
     battiti, la cadenza, i battiti in salita contro quelli in piano. I conti
     sono quelli di `activity_report.activity_numbers`, gli stessi che vanno
     nei report per attivita'; qui si arrotondano. `None` se dai record non si
-    ricava niente (palestra, file senza campioni)."""
+    ricava niente (palestra, file senza campioni).
+
+    Degli sport senza distanza resta la sola cadenza: tutto il resto e'
+    costruito sui chilometri che il polso ha indovinato."""
     if records.empty:
         return None
     numbers = activity_numbers(records)
+    if not has_distance(sport):
+        numbers = {name: numbers[name] for name in NUMBERS_WITHOUT_DISTANCE}
     if all(value is None for value in numbers.values()):
         return None
     return {name: _value(value, _EXECUTION_DIGITS[name]) for name, value in numbers.items()}
+
+
+def _short(activity: pd.Series) -> str:
+    """Un'attivita' in una riga, per l'elenco dei giorni passati: "running 8.1
+    km", o i minuti dove la distanza non c'e' (il tapis roulant) o non l'ha
+    registrata nessuno."""
+    km = _value(activity["total_distance_km"], 1) if has_distance(activity["sport"]) else None
+    size = f"{km} km" if km else f"{_value(activity['total_time_min'], 0)} min"
+    return f"{activity['sport']} {size}"
 
 
 def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, Any]:
     """Le sedute simili dei `COMPARE_WINDOW_DAYS` giorni prima: stesso sport, e
     stesso tipo di corsa quando la seduta ne ha uno. Rende quante sono e le
     mediane con cui confrontarla.
+
+    Il nastro si confronta con il nastro senza bisogno di dirlo: il tapis
+    roulant e' uno sport a se' (todo 45), e di quelle sedute la distanza non
+    si da' nemmeno come mediana.
 
     Il giorno stesso resta fuori: il confronto e' con quello che c'era prima.
     Sotto `MIN_COMPARABLE` sedute le mediane non si danno (restano `None`):
@@ -337,7 +356,6 @@ def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, A
     day = activity["start_time"].date()
     days = activities["start_time"].dt.date
     run_type = _value(activity["run_type"])
-    indoor = activity["sub_sport"] == "treadmill"
     similar = activities[
         (activities["sport"] == activity["sport"])
         & (days >= day - timedelta(days=COMPARE_WINDOW_DAYS))
@@ -345,22 +363,20 @@ def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, A
     ]
     if run_type is not None:
         similar = similar[similar["run_type"] == run_type]
-    # Il nastro con il nastro, la strada con la strada: una corsa sul tapis
-    # roulant accanto alla mediana delle uscite all'aperto non dice niente,
-    # ne' sulla distanza ne' sul passo.
-    similar = similar[(similar["sub_sport"] == "treadmill") == indoor]
     median = None
     if len(similar) >= MIN_COMPARABLE:
+        measured = has_distance(activity["sport"])
         median = {
-            "distance_km": _value(similar["total_distance_km"].median(), 2),
+            "distance_km": _value(similar["total_distance_km"].median(), 2) if measured else None,
             "duration_min": _value(similar["total_time_min"].median(), 0),
             "avg_hr": _value(similar["avg_heart_rate"].median(), 0),
-            "grade_adjusted_speed_kmh": _value(similar["equiv_speed_kmh"].median(), 1),
+            "grade_adjusted_speed_kmh": (
+                _value(similar["equiv_speed_kmh"].median(), 1) if measured else None
+            ),
         }
     return {
         "sport": _value(activity["sport"]),
         "run_type": run_type,
-        "indoor": bool(indoor),
         "window_days": COMPARE_WINDOW_DAYS,
         "count": int(len(similar)),
         "median": median,
@@ -389,13 +405,13 @@ def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> d
         "weekday": WEEKDAYS[start.weekday()],
         "start_time": start.strftime("%H:%M"),
         "sport": activity["sport"],
-        # Il tapis roulant cambia come si racconta la seduta (non si "esce",
-        # non c'e' terreno, il passo e' quello del nastro) e con cosa si
-        # confronta: senza questo l'agente vede solo "running".
         "sub_sport": _value(activity["sub_sport"]),
-        "indoor": bool(activity["sub_sport"] == "treadmill"),
         "name": activity["activity_name"],
+        # La distanza c'e' sempre, ma sul tapis roulant e' una stima del
+        # polso che in salita sbaglia di molto: `distance_unreliable` dice di
+        # non costruirci sopra nessun giudizio (todo 45).
         "distance_km": _value(activity["total_distance_km"], 2),
+        "distance_unreliable": not has_distance(activity["sport"]),
         "duration_min": _value(activity["total_time_min"], 0),
         "ascent_m": _value(activity["total_ascent_m"], 0),
         "avg_hr": _value(activity["avg_heart_rate"], 0),
@@ -407,7 +423,9 @@ def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> d
         **_power(records),
         "aerobic_te": _value(activity["aerobic_te"], 1),
         "anaerobic_te": _value(activity["anaerobic_te"], 1),
-        "grade_adjusted_speed_kmh": _value(activity["equiv_speed_kmh"], 1),
+        "grade_adjusted_speed_kmh": (
+            _value(activity["equiv_speed_kmh"], 1) if has_distance(activity["sport"]) else None
+        ),
         # Che seduta voleva essere: il tipo (scelto da Andrea o stimato), il
         # terreno e l'allenamento pianificato che l'orologio ha seguito.
         "run_type": _value(activity["run_type"]),
@@ -418,7 +436,7 @@ def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> d
         "workout_active_max_s": _value(activity["workout_active_max_s"], 0),
         "effect_minutes": _effect_minutes(activity, records),
         "minutes_above_z3": _minutes_above_z3(activity, records),
-        "execution": _execution(records),
+        "execution": _execution(records, activity["sport"]),
         "compared_with": _compared_with(activities, activity),
     }
 
@@ -562,9 +580,7 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
             {
                 "date": d.isoformat(),
                 "weekday": WEEKDAYS[d.weekday()],
-                "activities": [
-                    f"{a['sport']} {_value(a['total_distance_km'], 1)} km" for _, a in on_day.iterrows()
-                ],
+                "activities": [_short(a) for _, a in on_day.iterrows()],
             }
         )
     listed = activities[(dates >= day - timedelta(days=RECENT_DAYS - 1)) & (dates <= day)].sort_values("start_time")
@@ -584,7 +600,7 @@ def _recent(activities: pd.DataFrame, day: date, data_dir: Path) -> dict[str, An
             {
                 "date": a["start_time"].date().isoformat(),
                 "sport": a["sport"],
-                "distance_km": _value(a["total_distance_km"], 1),
+                "distance_km": _value(a["total_distance_km"], 1) if has_distance(a["sport"]) else None,
                 "duration_min": _value(a["total_time_min"], 0),
                 "aerobic_te": _value(a["aerobic_te"], 1),
                 "anaerobic_te": _value(a["anaerobic_te"], 1),

@@ -31,7 +31,9 @@ _write_lock = threading.Lock()
 
 
 def has_run_type(sport: str | None) -> bool:
-    """Solo le corse hanno un tipo, tapis roulant compreso."""
+    """Solo le corse hanno un tipo. Il tapis roulant no: e' uno sport a se'
+    (todo 45), e di una seduta sul nastro non si dice se era facile o a
+    ripetute guardando il passo, perche' il passo e' una stima del polso."""
     return sport == "running"
 
 

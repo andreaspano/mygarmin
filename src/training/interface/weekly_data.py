@@ -18,11 +18,13 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities
 from training.interface.health_db import load_health_db
+from training.interface.sports import has_distance
 
 # Le misure di recupero di ogni mattina, in `days`. L'HRV e' sempre quella
 # della notte (`hrv_last_night`): media settimanale e stato Garmin li porta
@@ -82,10 +84,14 @@ def last_closed_monday(today: date) -> date:
 
 def _value(value: Any, digits: int = 1) -> Any:
     """Il valore pronto per il JSON: NaN e None diventano None, i numeri
-    arrotondati, il resto (testo) com'e'."""
+    arrotondati, il resto (testo) com'e'.
+
+    Gli interi di numpy vanno dichiarati: `np.float64` e' un `float` per
+    Python, `np.int64` non e' un `int`, e passando di qui intatto faceva
+    fallire `json.dumps` (la potenza massima, che e' una colonna di interi)."""
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return None
-    if isinstance(value, (int, float)):
+    if isinstance(value, (int, float, np.integer)):
         rounded = round(float(value), digits)
         return int(rounded) if digits == 0 else rounded
     return value
@@ -116,6 +122,7 @@ def _week_health(health: pd.DataFrame, start: date) -> pd.DataFrame:
 
 def _activity_row(row: pd.Series) -> dict[str, Any]:
     start = row["start_time"]
+    measured = has_distance(row["sport"])
     return {
         "date": start.date().isoformat(),
         "weekday": WEEKDAYS[start.weekday()],
@@ -123,7 +130,9 @@ def _activity_row(row: pd.Series) -> dict[str, Any]:
         "sport": row["sport"],
         "sub_sport": row["sub_sport"] if row["sub_sport"] not in (None, "", "generic") else None,
         "name": row["activity_name"],
-        "distance_km": _value(row["total_distance_km"], 2),
+        # Niente distanza per il tapis roulant: e' una stima del polso (todo
+        # 45). Di quelle sedute restano i minuti e il battito.
+        "distance_km": _value(row["total_distance_km"], 2) if measured else None,
         "duration_min": _value(row["total_time_min"], 0),
         "ascent_m": _value(row["total_ascent_m"], 0),
         "avg_hr": _value(row["avg_heart_rate"], 0),
@@ -133,7 +142,8 @@ def _activity_row(row: pd.Series) -> dict[str, Any]:
 
 def _training(week: pd.DataFrame, start: date, last_day: date, today: date) -> dict[str, Any]:
     """Totali della settimana. Distanza e dislivello solo per sport: sommati
-    fra sport diversi non vogliono dire niente. I giorni di riposo contano
+    fra sport diversi non vogliono dire niente, e per gli sport senza
+    distanza (il tapis roulant) la distanza non si somma affatto. I giorni di riposo contano
     solo fino all'ultimo giorno passato, e oggi senza attivita' non e' ancora
     un riposo: la giornata non e' finita."""
     by_sport = {}
@@ -141,7 +151,11 @@ def _training(week: pd.DataFrame, start: date, last_day: date, today: date) -> d
         by_sport[sport] = {
             "sessions": int(len(group)),
             "time_min": _value(group["total_time_min"].sum(), 0),
-            "distance_km": _value(group["total_distance_km"].sum(min_count=1), 1),
+            "distance_km": (
+                _value(group["total_distance_km"].sum(min_count=1), 1)
+                if has_distance(sport)
+                else None
+            ),
             "ascent_m": _value(group["total_ascent_m"].sum(min_count=1), 0),
         }
     active = set(week["start_time"].dt.date) if not week.empty else set()
@@ -174,7 +188,9 @@ def _days(week: pd.DataFrame, health: pd.DataFrame, start: date, last_day: date)
                     {
                         "sport": a["sport"],
                         "name": a["activity_name"],
-                        "distance_km": _value(a["total_distance_km"], 2),
+                        "distance_km": (
+                            _value(a["total_distance_km"], 2) if has_distance(a["sport"]) else None
+                        ),
                         "duration_min": _value(a["total_time_min"], 0),
                     }
                     for _, a in today_acts.iterrows()

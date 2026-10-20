@@ -28,11 +28,10 @@ _TERRAIN_FILENAME = "activity_terrain.json"
 _write_lock = threading.Lock()
 
 
-def has_terrain(sport: str | None, sub_sport: str | None, garmin_type: str | None) -> bool:
-    """Solo gli sport a piedi hanno un terreno, e il tapis roulant no."""
-    if sport not in EQUIV_SPEED_SPORTS:
-        return False
-    return sub_sport != "treadmill" and garmin_type != "treadmill_running"
+def has_terrain(sport: str | None) -> bool:
+    """Solo gli sport a piedi hanno un terreno. Il tapis roulant non e' fra
+    loro da quando e' uno sport a se' (todo 45): sotto non c'e' terreno."""
+    return sport in EQUIV_SPEED_SPORTS
 
 
 def guess_terrain(
@@ -44,7 +43,7 @@ def guess_terrain(
 ) -> str | None:
     """Il terreno stimato, o `None` per gli sport senza terreno. Lo sterrato
     non si stima mai: dove i dati non decidono, e' strada."""
-    if not has_terrain(sport, sub_sport, garmin_type):
+    if not has_terrain(sport):
         return None
     if garmin_type == "track_running" or sub_sport == "track":
         return "track"

@@ -57,7 +57,7 @@ from training.interface.run_chart import (
     zone_settings,
 )
 from training.interface.run_type import save_run_type_override
-from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, sport_label
+from training.interface.sports import REST_ICON_FILE, SPORT_ICON_FILES, has_distance, sport_label
 from training.interface.terrain import save_terrain_override
 
 # I giorni prima di `end` quando `start` non c'e': quattro settimane, `end`
@@ -86,9 +86,18 @@ def _records_dicts(frame: pd.DataFrame, columns: list[str]) -> list[dict[str, An
     return [{col: _clean(row[col]) for col in columns} for _, row in frame.iterrows()]
 
 
+# Quello che la pagina non deve vedere degli sport senza distanza (todo 45):
+# la distanza che il polso ha stimato e tutto quello che ne discende. Il
+# database le tiene, cosi' se un giorno arriva un sensore calibrato il dato
+# vecchio e' ancora li'; la pagina al loro posto mostra le calorie.
+_DISTANCE_FIELDS = ("total_distance_km", "avg_speed_kmh", "equiv_speed_kmh")
+
+
 def _activity_fields(row: pd.Series) -> dict[str, Any]:
     fields = {name: _clean(row[name]) for name in Activity.model_fields if name != "start_time"}
     fields["start_time"] = row["start_time"].to_pydatetime()
+    if not has_distance(row["sport"]):
+        fields.update(dict.fromkeys(_DISTANCE_FIELDS))
     return fields
 
 

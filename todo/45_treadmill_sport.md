@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il tapis roulant diventa uno sport a se'
@@ -129,3 +129,50 @@ pendenza nel file non c'e'.
 6. `make frontend_types`, `npm run typecheck`, `npm run build`.
 7. La pagina: l'icona nuova nella striscia della settimana, la scheda
    Training senza il riquadro della distanza, i minuti al posto dei km.
+
+## Come e' andata
+
+Fatto come scritto, con tre aggiunte decise strada facendo, tutte dello
+stesso segno:
+
+- **La velocita' media sparisce con la distanza.** E' la stessa stima divisa
+  per il tempo: lasciarla a schermo sarebbe stato nascondere la bugia e
+  tenerne il quoziente. Al posto del riquadro Distance la scheda Training
+  mostra le **calorie**, e i numeri diventano quattro invece di cinque.
+- **`execution` perde tutto tranne la cadenza.** Le due meta' sono meta' *di
+  distanza*: sul nastro anche il confronto dei battiti sarebbe caduto in un
+  punto scelto dalla stima del polso, non a meta' seduta. La cadenza no, e
+  resta.
+- **Anche i report per attivita'** (`summary/00.activity/`) non dichiarano
+  piu' la distanza degli sport che non ne hanno: al suo posto le calorie.
+
+E un difetto trovato per strada, che non c'entra con il tapis roulant ma
+fermava la verifica: `_value` lasciava passare gli interi di numpy
+(`np.float64` per Python e' un `float`, `np.int64` non e' un `int`), e da
+quando il JSON del giorno porta la potenza massima `make daily_data`
+moriva con "Object of type int64 is not JSON serializable". Dall'API non si
+vedeva, perche' li' `json.dumps` ha un `default=str`.
+
+Il grafico della scheda **continua a disegnare la velocita' campionata**
+anche sul nastro: e' una stima, ma e' l'unica cosa che fa vedere la forma
+della seduta (i blocchi a 8 km/h e quelli lenti). Se da' fastidio si toglie
+in due righe.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_45'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: le 23 sedute restano `sport = treadmill` in
+`activities.db` con `equiv_speed_kmh` a NULL (l'UPDATE in `sync()` e' gia'
+passato); il codice vecchio le rimette a `running` solo al prossimo rebuild,
+e fino ad allora la pagina le mostra come uno sport senza icona. Restano
+anche il frammento `summary/01.daily/2026-10-20/training.md` riscritto senza
+distanza e il report `summary/00.activity/24794900255.md`, che e' ancora
+quello vecchio ("# running", "Positive split... pace drop-off"): i report per
+attivita' non si rigenerano mai da soli, va cancellato a mano e rifatto con
+`make activity_reports`.
+
+Dopo il revert, rifare il merge di `todo_45` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

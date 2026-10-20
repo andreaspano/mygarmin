@@ -54,7 +54,7 @@ _GENERIC_SPORTS = {None, "", "generic"}
 GARMIN_TYPE_TO_SPORT = {
     "running": "running",
     "trail_running": "running",
-    "treadmill_running": "running",
+    "treadmill_running": "treadmill",
     "track_running": "running",
     "street_running": "running",
     "cycling": "cycling",
@@ -77,13 +77,23 @@ GARMIN_TYPE_TO_SPORT = {
 }
 
 
-def sport_from_garmin_type(sport: str | None, type_key: str | None) -> str | None:
-    """Lo sport da mostrare. Vince il tipo di Garmin Connect, quando lo
-    conosciamo: e' quello che l'utente puo' correggere dopo (una corsa
-    registrata col profilo "Escursione" resta "hiking" nel FIT per sempre,
-    anche se su Connect diventa "street_running"). Il FIT resta la risposta
-    quando Connect non dice niente o usa una chiave che non mappiamo; se il
-    FIT e' "generic" si mostra la chiave di Connect cosi' com'e'."""
+def sport_from_garmin_type(
+    sport: str | None, type_key: str | None, sub_sport: str | None = None
+) -> str | None:
+    """Lo sport da mostrare. Prima di tutto il tapis roulant: il `sub_sport`
+    del FIT lo scrive il profilo dell'orologio, ed e' il solo segnale che c'e'
+    sempre. Delle 23 sedute sul nastro dello storico una sola ha un tipo su
+    Garmin Connect (`treadmill_running`), le altre 22 non ne hanno nessuno: la
+    mappa qui sopra, da sola, ne prenderebbe una su ventitre.
+
+    Poi vince il tipo di Garmin Connect, quando lo conosciamo: e' quello che
+    l'utente puo' correggere dopo (una corsa registrata col profilo
+    "Escursione" resta "hiking" nel FIT per sempre, anche se su Connect
+    diventa "street_running"). Il FIT resta la risposta quando Connect non
+    dice niente o usa una chiave che non mappiamo; se il FIT e' "generic" si
+    mostra la chiave di Connect cosi' com'e'."""
+    if sub_sport == "treadmill":
+        return "treadmill"
     if type_key in GARMIN_TYPE_TO_SPORT:
         return GARMIN_TYPE_TO_SPORT[type_key]
     if sport not in _GENERIC_SPORTS or not type_key:
@@ -269,7 +279,9 @@ def _parse_and_store(
         return False
     records = _parse_fit_records(path)
     activity_id = str(summary["activity_id"])
-    summary["sport"] = sport_from_garmin_type(summary.get("sport"), types.get(activity_id))
+    summary["sport"] = sport_from_garmin_type(
+        summary.get("sport"), types.get(activity_id), summary.get("sub_sport")
+    )
     # Dai record gia' letti qui sopra: il FIT non si rilegge. Solo per gli
     # sport in cui il modello di costo ha senso; per gli altri resta vuota.
     # Se `sync()` riclassifica lo sport piu' tardi, questi valori (quello
@@ -345,6 +357,18 @@ def rebuild(data_dir: Path = DATA_DIR) -> int:
         count = sum(
             _parse_and_store(conn, p, names, types, parsed_at) for p in list_activity_files(data_dir)
         )
+        # Il nastro vince su tutto, anche su un tipo di Connect che dice
+        # "running": lo `sub_sport` del FIT e' il solo segnale che c'e' sempre
+        # (vedi `sport_from_garmin_type`). Questo UPDATE e' anche quello che
+        # riclassifica lo storico dopo il todo 45, senza un rebuild: il
+        # `sub_sport` e' gia' in tabella, e rileggere 978 file FIT per
+        # ricavarne un dato che c'e' gia' non avrebbe senso. La velocita'
+        # equivalente in piano va via con lo sport: il modello di costo vale
+        # per chi si muove sul terreno, non per chi sta fermo su un nastro.
+        conn.execute(
+            "UPDATE activities SET sport='treadmill', equiv_speed_kmh=NULL "
+            "WHERE sub_sport='treadmill'"
+        )
         _fill_missing_thresholds(conn)
         conn.execute(
             "INSERT INTO schema_meta (key, value) VALUES ('logic_version', ?) "
@@ -403,6 +427,18 @@ def sync(data_dir: Path = DATA_DIR) -> int:
                 if type_key and type_key not in GARMIN_TYPE_TO_SPORT
             ],
         )
+        # Il nastro vince su tutto, anche su un tipo di Connect che dice
+        # "running": lo `sub_sport` del FIT e' il solo segnale che c'e' sempre
+        # (vedi `sport_from_garmin_type`). Questo UPDATE e' anche quello che
+        # riclassifica lo storico dopo il todo 45, senza un rebuild: il
+        # `sub_sport` e' gia' in tabella, e rileggere 978 file FIT per
+        # ricavarne un dato che c'e' gia' non avrebbe senso. La velocita'
+        # equivalente in piano va via con lo sport: il modello di costo vale
+        # per chi si muove sul terreno, non per chi sta fermo su un nastro.
+        conn.execute(
+            "UPDATE activities SET sport='treadmill', equiv_speed_kmh=NULL "
+            "WHERE sub_sport='treadmill'"
+        )
         _fill_missing_thresholds(conn)
         conn.commit()
         return added
@@ -436,7 +472,7 @@ def _add_terrain(df: pd.DataFrame, data_dir: Path) -> None:
     for row in df.itertuples(index=False):
         key = str(row.activity_id)
         garmin_type = types.get(key)
-        if not has_terrain(row.sport, row.sub_sport, garmin_type):
+        if not has_terrain(row.sport):
             terrains.append(None)
             sources.append(None)
         elif key in overrides:
