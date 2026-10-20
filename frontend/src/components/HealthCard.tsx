@@ -1,7 +1,7 @@
 // "Health" (todo 37, prima un blocco di "This morning"): frequenza a riposo,
 // HRV, respiro e stress da `/api/daily/{day}`, sotto la sezione Health del
 // report. Il frontend non fa conti: medie e fasce vengono dall'API.
-import type { DailyData } from "../api/client";
+import type { DailyData, Measure } from "../api/client";
 import { markdown } from "../markdown";
 import { CardHead, num, Stat } from "./Stat";
 
@@ -28,13 +28,20 @@ function RangeBar({ value, low, high }: { value: number | null; low: number; hig
   );
 }
 
+/** La barra della fascia di una misura, o niente se la fascia non c'e'
+ * (pochi giorni misurati). */
+function MeasureBar({ measure }: { measure: Measure }) {
+  if (!measure.band) return null;
+  return <RangeBar value={measure.value} low={measure.band.low} high={measure.band.high} />;
+}
+
 export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
   const m = data.morning;
+  // Sotto ogni numero solo la barra della sua fascia: dice da sola dove sta
+  // il valore, e gli estremi sono scritti sulle tacche. Quella dell'HRV e'
+  // di Garmin (`hrv_baseline`), le altre le calcola l'API dai 28 giorni
+  // prima e stanno dentro la misura (`band`).
   const baseline = m.hrv_baseline;
-  // La fascia d'abitudine del battito a riposo: la calcola l'API dai 28
-  // giorni prima (media piu' e meno uno scarto tipo), perche' Garmin non ne
-  // manda una come fa per l'HRV.
-  const restingBand = m.resting_hr_band;
   return (
     <section className="card" aria-label="Health">
       <CardHead icon={icon} title="Health" />
@@ -45,9 +52,7 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           unit="bpm"
           // Sotto il numero solo la barra: la fascia dice da sola dove sta
           // il valore, e i suoi estremi sono scritti sulle tacche.
-          sub={
-            restingBand && <RangeBar value={m.resting_hr.value} low={restingBand.low} high={restingBand.high} />
-          }
+          sub={<MeasureBar measure={m.resting_hr} />}
         />
         <Stat
           label="HRV, weekly average"
@@ -59,13 +64,9 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           label="Breathing in sleep"
           value={num(m.resp_sleep.value, 1)}
           unit="/min"
-          sub={`28-day avg ${num(m.resp_sleep.avg_28d.mean, 1)}`}
+          sub={<MeasureBar measure={m.resp_sleep} />}
         />
-        <Stat
-          label="Stress, yesterday"
-          value={num(m.stress_avg_yesterday.value)}
-          sub={`28-day avg ${num(m.stress_avg_yesterday.avg_28d.mean, 1)}`}
-        />
+        <Stat label="Stress, yesterday" value={num(m.stress_avg_yesterday.value)} sub={<MeasureBar measure={m.stress_avg_yesterday} />} />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
     </section>

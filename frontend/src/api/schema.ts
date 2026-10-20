@@ -701,7 +701,7 @@ export interface components {
         };
         /**
          * Measure
-         * @description One morning measure, with its 7- and 28-day averages.
+         * @description One morning measure, with its 7- and 28-day averages and its usual band.
          */
         Measure: {
             /** Value */
@@ -716,6 +716,8 @@ export interface components {
             avg_28d: components["schemas"]["Mean"];
             /** Delta Vs 28D */
             delta_vs_28d: number | null;
+            /** @description Where the measure usually sits: the 28-day average plus and minus one standard deviation. Computed here, not Garmin's. Null under 14 measured days. */
+            band: components["schemas"]["Range"] | null;
         };
         /**
          * Morning
@@ -741,8 +743,6 @@ export interface components {
             hrv_status: string | null;
             /** @description Garmin's balanced HRV range, in ms. */
             hrv_baseline: components["schemas"]["Range"] | null;
-            /** @description Where the resting heart rate usually sits: the 28-day average plus and minus one standard deviation, in bpm. Computed here, not Garmin's. Null under 14 measured days. */
-            resting_hr_band: components["schemas"]["Range"] | null;
         };
         /**
          * Pause

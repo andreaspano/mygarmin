@@ -88,18 +88,17 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
     return health.reindex(index)[column]
 
 
-def _band(health: pd.DataFrame, day: date, column: str) -> dict[str, Any] | None:
-    """Dove sta di solito una misura: la media dei `BASELINE_LONG` giorni
-    prima, piu' e meno uno scarto tipo. La stessa finestra di `avg_28d`, cosi'
-    il valore e la fascia raccontano lo stesso periodo.
+def _band(window: pd.Series) -> dict[str, Any] | None:
+    """Dove sta di solito una misura: la media della finestra piu' e meno uno
+    scarto tipo. La finestra e' quella di `avg_28d`, cosi' la media e la
+    fascia raccontano lo stesso periodo.
 
-    Garmin una fascia per il battito a riposo non la manda (per l'HRV si',
-    vedi `_hrv_baseline`): questa si calcola dallo storico. Non e' la soglia
-    dell'allarme - quello scatta a `RHR_RISE_BPM` sopra la media per
-    `RHR_RISE_DAYS` giorni di fila - ma dice dove il battito sta di solito.
-    `None` sotto `MIN_BAND_DAYS` giorni misurati, dove lo scarto tipo sarebbe
-    rumore."""
-    values = _window(health, column, day, BASELINE_LONG).dropna()
+    Garmin una fascia la manda solo per l'HRV (`_hrv_baseline`); queste si
+    calcolano dallo storico. Non sono soglie d'allarme - quello del battito
+    a riposo scatta a `RHR_RISE_BPM` sopra la media per `RHR_RISE_DAYS`
+    giorni di fila - ma dicono dove la misura sta di solito. `None` sotto
+    `MIN_BAND_DAYS` giorni misurati, dove lo scarto tipo sarebbe rumore."""
+    values = window.dropna()
     if len(values) < MIN_BAND_DAYS:
         return None
     mean, sd = values.mean(), values.std()
@@ -117,7 +116,8 @@ def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
         source = day + timedelta(days=offset)
         value = _value(_health_row(health, source)[column], 1)
         short = _mean(_window(health, column, source, BASELINE_SHORT), 1)
-        long = _mean(_window(health, column, source, BASELINE_LONG), 1)
+        long_window = _window(health, column, source, BASELINE_LONG)
+        long = _mean(long_window, 1)
         delta = (
             _value(value - long["mean"], 1)
             if value is not None and long["mean"] is not None
@@ -129,10 +129,10 @@ def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
             "avg_7d": short,
             "avg_28d": long,
             "delta_vs_28d": delta,
+            "band": _band(long_window),
         }
     result["hrv_status"] = _value(_health_row(health, day)["hrv_status"])
     result["hrv_baseline"] = _hrv_baseline(day)
-    result["resting_hr_band"] = _band(health, day, "resting_hr")
     return result
 
 

@@ -187,18 +187,25 @@ class Mean(BaseModel):
 
 
 class Measure(BaseModel):
-    """One morning measure, with its 7- and 28-day averages."""
+    """One morning measure, with its 7- and 28-day averages and its usual band."""
 
     value: float | None
     date: Date = Field(description="The day the value is read from.")
     avg_7d: Mean
     avg_28d: Mean
     delta_vs_28d: float | None
+    band: "Range | None" = Field(
+        description="Where the measure usually sits: the 28-day average plus and minus one "
+        "standard deviation. Computed here, not Garmin's. Null under 14 measured days."
+    )
 
 
 class Range(BaseModel):
     low: float
     high: float
+
+
+Measure.model_rebuild()
 
 
 class Morning(BaseModel):
@@ -218,10 +225,6 @@ class Morning(BaseModel):
     spo2_avg: Measure
     hrv_status: str | None = Field(description="Garmin's word for the HRV status.")
     hrv_baseline: Range | None = Field(description="Garmin's balanced HRV range, in ms.")
-    resting_hr_band: Range | None = Field(
-        description="Where the resting heart rate usually sits: the 28-day average plus and minus "
-        "one standard deviation, in bpm. Computed here, not Garmin's. Null under 14 measured days."
-    )
 
 
 class SleepLast7(BaseModel):

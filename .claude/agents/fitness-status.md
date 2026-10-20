@@ -139,10 +139,11 @@ The JSON:
     stress or poor sleep. Compare each measure with its own averages and with its own band,
     never with population norms. In this order:
 
-    - **resting HR**, against `resting_hr_band`: the range it usually sits in, worked out
-      from his own last 28 days, not Garmin's. Above the band is the direction that matters;
-      below it is a good sign, not a worry. When the band is `null` there were too few
-      measured days, so compare with the averages alone.
+    - **resting HR**, against its `band`: every measure in `morning` carries one, the range
+      it usually sits in, worked out from his own last 28 days (the average plus and minus
+      one standard deviation), not Garmin's. For the resting HR, above the band is the
+      direction that matters; below it is a good sign, not a worry. When a `band` is `null`
+      there were too few measured days, so compare with the averages alone.
     - **HRV**, the weekly average against `hrv_baseline` (Garmin's own balanced range), not a
       single night.
     - **breathing rate during sleep**, **sleep** (hours, score, short nights), **stress and
