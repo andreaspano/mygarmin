@@ -3,42 +3,9 @@
 // report. Il frontend non fa conti: medie e fasce vengono dall'API.
 import type { ReactNode } from "react";
 
-import type { Band, DailyData, Measure } from "../api/client";
+import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
-import { CardHead, num, Stat } from "./Stat";
-
-/** Una fascia e il valore di oggi dentro (come nel mockup): la fascia
- * equilibrata dell'HRV secondo Garmin, e la fascia d'abitudine del battito a
- * riposo che calcola l'API. La scala va un po' oltre la fascia, per vedere
- * anche un valore fuori. */
-function RangeBar({ value, band }: { value: number | null; band: Band }) {
-  const { low, high, outer_low: outerLow, outer_high: outerHigh } = band;
-  const pad = (outerHigh - outerLow) * 0.12;
-  const min = Math.min(outerLow - pad, value ?? outerLow);
-  const max = Math.max(outerHigh + pad, value ?? outerHigh);
-  const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
-  const span = (a: number, b: number) => ({ left: at(a), width: `calc(${at(b)} - ${at(a)})` });
-  return (
-    <div className="range-bar" aria-hidden="true">
-      <div className="range-track">
-        <div className="range-wide" style={span(outerLow, outerHigh)} />
-        <div className="range-band" style={span(low, high)} />
-        {value != null && <div className="range-marker" style={{ left: at(value) }} />}
-      </div>
-      <div className="range-ticks">
-        <span style={{ left: at(low) }}>{low}</span>
-        <span style={{ left: at(high) }}>{high}</span>
-      </div>
-    </div>
-  );
-}
-
-/** La barra della fascia di una misura, o niente se la fascia non c'e'
- * (pochi giorni misurati). */
-function MeasureBar({ measure }: { measure: Measure }) {
-  if (!measure.band) return null;
-  return <RangeBar value={measure.value} band={measure.band} />;
-}
+import { CardHead, MeasureBar, num, Stat } from "./Stat";
 
 export function HealthCard({
   data,

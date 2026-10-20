@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Recovery ridisegnata sulla logica di Health
@@ -137,3 +137,42 @@ Riscritto sullo stampo di `01_health.md`, che e' gia' tarato:
    ne' l'ultima seduta dura.
 6. Un giorno vecchio con poche misure (fascia `null`): il numero resta, la
    barra non c'e', niente si rompe.
+
+## Come e' andata
+
+Fatto come scritto. Due cose da sapere:
+
+- **Le tacche del sonno seguono il numero grande.** `RangeBar` ha preso una
+  funzione opzionale per scriverle, e il riquadro Sleep le passa
+  `durationLabel`: sotto "7h25" si leggono "6h30" e "8h42", non "6.5" e
+  "8.7". `MeasureBar` ha preso per lo stesso motivo un valore opzionale: il
+  marcatore sta su `sleep_minutes / 60`, che e' piu' preciso dello
+  `sleep_hours` arrotondato a un decimo d'ora.
+- **Una sola fascia e' cambiata**: `body_battery_morning.outer_high`, da
+  118.7 a 100. Tutte le altre del 2026-10-20 sono identiche a prima, limiti
+  compresi (stress e sleep score stavano gia' dentro).
+
+Il testo rigenerato del 20 ottobre fa quello che il prompt chiede: "Good
+enough to work this morning, not to race" e poi le quattro misure, con il
+minimo di ieri letto come costo della seduta ("that is what the session
+cost") e non come un problema di recupero. Non nomina piu' ne' lo sleep
+score, ne' le notti corte, ne' i giorni di riposo.
+
+Aggiornato anche il paragrafo della pagina Day nel README, che era rimasto
+indietro di due todo: diceva che c'erano i segnali d'allarme (tolti) e che
+Fitness non ha testo (dal todo 44 ce l'ha).
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_46'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: resta riscritto il frammento
+`summary/01.daily/2026-10-20/recovery.md`, che e' il testo nuovo, piu' corto
+e senza i numeri delle altre card. Il codice vecchio lo mostra lo stesso: e'
+solo testo. Per riavere quello di prima va rifatta la sezione con `make
+daily_report DAY=2026-10-20 SECTION=recovery`.
+
+Dopo il revert, rifare il merge di `todo_46` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
