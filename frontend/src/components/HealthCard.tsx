@@ -30,6 +30,10 @@ function HrvRange({ value, low, high }: { value: number | null; low: number; hig
 export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
   const m = data.morning;
   const baseline = m.hrv_baseline;
+  // La fascia d'abitudine del battito a riposo: la calcola l'API dai 28
+  // giorni prima (media piu' e meno uno scarto tipo), perche' Garmin non ne
+  // manda una come fa per l'HRV.
+  const restingBand = m.resting_hr_band;
   return (
     <section className="card" aria-label="Health">
       <CardHead icon={icon} title="Health" />
@@ -38,7 +42,12 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           label="Resting heart rate"
           value={num(m.resting_hr.value)}
           unit="bpm"
-          sub={`28-day avg ${num(m.resting_hr.avg_28d.mean, 1)}`}
+          sub={
+            <>
+              {restingBand && `Usual range ${num(restingBand.low, 1)}–${num(restingBand.high, 1)} · `}
+              28-day avg {num(m.resting_hr.avg_28d.mean, 1)}
+            </>
+          }
         />
         <Stat
           label="HRV, weekly average"

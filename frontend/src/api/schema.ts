@@ -741,6 +741,8 @@ export interface components {
             hrv_status: string | null;
             /** @description Garmin's balanced HRV range, in ms. */
             hrv_baseline: components["schemas"]["Range"] | null;
+            /** @description Where the resting heart rate usually sits: the 28-day average plus and minus one standard deviation, in bpm. Computed here, not Garmin's. Null under 14 measured days. */
+            resting_hr_band: components["schemas"]["Range"] | null;
         };
         /**
          * Pause

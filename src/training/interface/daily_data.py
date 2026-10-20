@@ -70,6 +70,9 @@ RECENT_DAYS = 14
 # sopra un andamento.
 COMPARE_WINDOW_DAYS = 90
 MIN_COMPARABLE = 3
+# I giorni misurati che servono perche' uno scarto tipo voglia dire qualcosa:
+# sotto, la fascia del battito a riposo non si da'.
+MIN_BAND_DAYS = 14
 BASELINE_SHORT = 7
 BASELINE_LONG = 28
 
@@ -83,6 +86,26 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
     """I `days` giorni che finiscono il giorno prima di `end` (escluso)."""
     index = pd.date_range(end - timedelta(days=days), end - timedelta(days=1), freq="D")
     return health.reindex(index)[column]
+
+
+def _band(health: pd.DataFrame, day: date, column: str) -> dict[str, Any] | None:
+    """Dove sta di solito una misura: la media dei `BASELINE_LONG` giorni
+    prima, piu' e meno uno scarto tipo. La stessa finestra di `avg_28d`, cosi'
+    il valore e la fascia raccontano lo stesso periodo.
+
+    Garmin una fascia per il battito a riposo non la manda (per l'HRV si',
+    vedi `_hrv_baseline`): questa si calcola dallo storico. Non e' la soglia
+    dell'allarme - quello scatta a `RHR_RISE_BPM` sopra la media per
+    `RHR_RISE_DAYS` giorni di fila - ma dice dove il battito sta di solito.
+    `None` sotto `MIN_BAND_DAYS` giorni misurati, dove lo scarto tipo sarebbe
+    rumore."""
+    values = _window(health, column, day, BASELINE_LONG).dropna()
+    if len(values) < MIN_BAND_DAYS:
+        return None
+    mean, sd = values.mean(), values.std()
+    if pd.isna(mean) or pd.isna(sd):
+        return None
+    return {"low": _value(mean - sd, 1), "high": _value(mean + sd, 1)}
 
 
 def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
@@ -109,6 +132,7 @@ def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
         }
     result["hrv_status"] = _value(_health_row(health, day)["hrv_status"])
     result["hrv_baseline"] = _hrv_baseline(day)
+    result["resting_hr_band"] = _band(health, day, "resting_hr")
     return result
 
 

@@ -218,6 +218,10 @@ class Morning(BaseModel):
     spo2_avg: Measure
     hrv_status: str | None = Field(description="Garmin's word for the HRV status.")
     hrv_baseline: Range | None = Field(description="Garmin's balanced HRV range, in ms.")
+    resting_hr_band: Range | None = Field(
+        description="Where the resting heart rate usually sits: the 28-day average plus and minus "
+        "one standard deviation, in bpm. Computed here, not Garmin's. Null under 14 measured days."
+    )
 
 
 class SleepLast7(BaseModel):
