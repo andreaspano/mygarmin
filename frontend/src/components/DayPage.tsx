@@ -21,6 +21,7 @@ import { HealthCard } from "./HealthCard";
 import { LoadCard } from "./LoadCard";
 import { NextCard } from "./NextCard";
 import { RecoveryCard } from "./RecoveryCard";
+import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { TrainingCard } from "./TrainingCard";
@@ -67,6 +68,22 @@ export function DayPage() {
   // non per un lavoro fallito ore prima.
   const [watched, setWatched] = useState(false);
   const [stripStart, stripEnd] = stripRange(day, now);
+
+  // Il tasto di una card: rifa' solo quella sezione, le altre tengono il
+  // testo che hanno. Lo stato arriva dallo stesso `GET /api/refresh`.
+  const refreshSection = (section: string) => {
+    api
+      .startSectionRefresh(day, section)
+      .then((status) => {
+        setWatched(true);
+        setRefresh(status);
+      })
+      .catch(() => setError(API_DOWN));
+  };
+
+  const sectionButton = (key: string) => (
+    <SectionRefresh section={key} state={refresh?.sections?.[key]} onRefresh={refreshSection} />
+  );
 
   const startRefresh = () => {
     api
@@ -206,16 +223,40 @@ export function DayPage() {
           </p>
         )}
         <div className="head-row">
-          <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
-          <SummaryCard body={null} />
+          <NextCard
+            body={sectionBody(report, "Next")}
+            tomorrow={data?.recent.trained_today ?? true}
+            refresh={sectionButton("next")}
+          />
+          <SummaryCard body={sectionBody(report, "Summary")} refresh={sectionButton("summary")} />
         </div>
         {data ? (
           <>
             <div className="cards-grid">
-              <HealthCard data={data} text={sectionBody(report, "Health")} icon={sectionIcon(report, "Health")} />
-              <LoadCard data={data} text={sectionBody(report, "Load")} icon={sectionIcon(report, "Load")} />
-              <RecoveryCard data={data} text={sectionBody(report, "Recovery")} icon={sectionIcon(report, "Recovery")} />
-              <FitnessCard data={data} />
+              <HealthCard
+                data={data}
+                text={sectionBody(report, "Health")}
+                icon={sectionIcon(report, "Health")}
+                refresh={sectionButton("health")}
+              />
+              <LoadCard
+                data={data}
+                text={sectionBody(report, "Load")}
+                icon={sectionIcon(report, "Load")}
+                refresh={sectionButton("load")}
+              />
+              <RecoveryCard
+                data={data}
+                text={sectionBody(report, "Recovery")}
+                icon={sectionIcon(report, "Recovery")}
+                refresh={sectionButton("recovery")}
+              />
+              <FitnessCard
+                data={data}
+                text={sectionBody(report, "Fitness")}
+                icon={sectionIcon(report, "Fitness")}
+                refresh={sectionButton("fitness")}
+              />
             </div>
           </>
         ) : (
@@ -229,6 +270,7 @@ export function DayPage() {
           restIcon={sportList?.rest_icon ?? null}
           sport={sport}
           theme={theme}
+          refresh={sectionButton("training")}
         />
         {dataNote && <p className="caption">{dataNote}</p>}
       </main>

@@ -1,4 +1,4 @@
-.PHONY: update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -61,6 +61,15 @@ activity_reports:
 #   make weekly_data WEEK=2026-09-21   (un lunedi')
 weekly_data:
 	uv run training-weekly-data $(if $(WEEK),--week $(WEEK))
+
+# Il report giornaliero, scritto dai sette agenti uno alla volta (todo 44).
+# Lo stesso lavoro del tasto Refresh, ma da terminale: scarica i dati nuovi,
+# prepara i fatti una volta sola e lancia gli agenti in fila.
+#   make daily_report                        (oggi, tutte le sezioni)
+#   make daily_report DAY=2026-10-07         (un giorno a scelta)
+#   make daily_report SECTION=health         (solo una sezione)
+daily_report:
+	uv run training-daily-report $(if $(DAY),--day $(DAY)) $(if $(SECTION),--section $(SECTION))
 
 # I fatti di un giorno in JSON, per il report giornaliero. Solo dati locali:
 # per il giorno aggiornato, prima make update_activity.

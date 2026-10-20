@@ -203,6 +203,10 @@ export interface paths {
         /**
          * Daily report
          * @description The written daily report of `day`, split into its sections.
+         *
+         *     Dal todo 44 ogni sezione e' un file suo in `01.daily/<giorno>/`, scritto
+         *     dal suo agente. I giorni di prima hanno il file unico `<giorno>.md`, e si
+         *     continuano a leggere da li'.
          */
         get: operations["get_daily_report_api_reports_daily__day__get"];
         put?: never;
@@ -223,12 +227,34 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Refresh data and rewrite the daily report
-         * @description Download new data from Garmin and rewrite the daily report of `day`, in the
-         *     background (a few minutes). One job at a time: while one runs, this returns it and
-         *     starts nothing. Follow it with `GET /api/refresh`.
+         * Refresh data and rewrite the whole daily report
+         * @description Download new data from Garmin and rewrite every section of the daily report of
+         *     `day`, in the background: one agent per section, one after another, so a few minutes.
+         *     One job at a time: while one runs, this returns it and starts nothing. Follow it with
+         *     `GET /api/refresh`.
          */
         post: operations["post_daily_refresh_api_reports_daily__day__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/daily/{day}/refresh/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rewrite one section of the daily report
+         * @description Rewrite a single section: only its agent runs, the other sections keep the text they
+         *     have. 422 for a section that does not exist.
+         */
+        post: operations["post_daily_refresh_section_api_reports_daily__day__refresh__section__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -830,11 +856,14 @@ export interface components {
         /**
          * RefreshStatus
          * @description The Refresh job of the Day page: download new data and rewrite a daily report.
+         *
+         *     One agent per section, run one after another (todo 44), so a section can fail on its
+         *     own while the others are rewritten.
          */
         RefreshStatus: {
             /**
              * Status
-             * @description idle until the first job since the API started.
+             * @description idle until the first job since the API started. failed when any section did.
              * @enum {string}
              */
             status: "idle" | "running" | "done" | "failed";
@@ -852,6 +881,13 @@ export interface components {
              * @description Why the job failed. Null otherwise.
              */
             message: string | null;
+            /**
+             * Sections
+             * @description One entry per section of the report, by key: summary, training, recovery, health, load, fitness, next.
+             */
+            sections: {
+                [key: string]: components["schemas"]["SectionRefresh"];
+            };
         };
         /**
          * Report
@@ -932,6 +968,27 @@ export interface components {
              * @description Null when there is no value 28 days before.
              */
             change: number | null;
+        };
+        /**
+         * SectionRefresh
+         * @description How the agent of one section fared in the latest job.
+         */
+        SectionRefresh: {
+            /**
+             * Status
+             * @description idle until this section is rewritten for the first time since the API started.
+             * @enum {string}
+             */
+            status: "idle" | "running" | "done" | "failed";
+            /** Started */
+            started: string | null;
+            /** Finished */
+            finished: string | null;
+            /**
+             * Message
+             * @description Why this section failed; it then kept the text it had. Null otherwise.
+             */
+            message: string | null;
         };
         /** SleepLast7 */
         SleepLast7: {
@@ -1419,6 +1476,38 @@ export interface operations {
             header?: never;
             path: {
                 day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_daily_refresh_section_api_reports_daily__day__refresh__section__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+                section: string;
             };
             cookie?: never;
         };

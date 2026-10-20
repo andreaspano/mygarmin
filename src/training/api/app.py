@@ -11,6 +11,7 @@ codice bloccante, e FastAPI li serve su un pool di thread."""
 
 import math
 from datetime import date, timedelta
+from pathlib import Path
 from typing import Annotated, Any, Literal
 
 import numpy as np
@@ -21,6 +22,8 @@ from fastapi.staticfiles import StaticFiles
 from training.api import refresh
 from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
+from training.api.daily import daily_payload
+from training.api.sections import SECTIONS
 from training.api.models import (
     Activity,
     ActivityDetail,
@@ -244,38 +247,51 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     daily report."""
     if day > date.today():
         raise HTTPException(status_code=422, detail=f"{day} is in the future.")
-    health = load_health(ctx.data_dir)
-    data = build_daily_data(day, ctx.data_dir, load_activities(ctx.data_dir), health)
-    # Il sonno della mattina in minuti, per scriverlo "8h04": `sleep_hours`
-    # e' arrotondato a 0.1 h (6 minuti), le ore notte per notte a 0.01.
-    hours = data["sleep_last_7"]["hours"].get(day.isoformat())
-    # La card Fitness (todo 37): solo qui e non in `build_daily_data`, perche'
-    # il JSON del report giornaliero resti com'e'. La soglia e' quella di
-    # `hr_zones`, ripetuta con un tipo.
-    fitness = fitness_on(health, day)
-    zones = data["hr_zones"]
-    if zones and zones.get("threshold_hr") is not None:
-        fitness["threshold_hr"] = {"value": zones["threshold_hr"], "as_of": zones["as_of"]}
-    else:
-        fitness["threshold_hr"] = None
-    # La soglia del lattato e' solo l'ultima (todo 38): vale dal giorno in cui
-    # Garmin l'ha rilevata in poi, prima no.
-    lactate = load_lactate_threshold(ctx.data_dir)
-    fitness["lactate_threshold"] = lactate if lactate and lactate["as_of"] <= day.isoformat() else None
-    return DailyData(
-        **data, sleep_minutes=round(hours * 60) if hours is not None else None, fitness=fitness
-    )
+    # Gli stessi fatti che l'orchestratore del Refresh mette nel file degli
+    # agenti: una strada sola, cosi' la pagina e chi scrive il testo vedono
+    # le stesse cose.
+    return DailyData(**daily_payload(day, ctx.data_dir))
+
+
+def _fragment_sections(folder: Path) -> list[tuple[str | None, str]]:
+    """Le sezioni dai frammenti di una cartella (todo 44): un file per
+    sezione, nell'ordine in cui si leggono. Il file manca quando il suo
+    agente non ha ancora scritto o e' fallito: quella sezione non c'e' e le
+    altre si vedono lo stesso.
+
+    Niente testo senza titolo: la riga "Data: ..." del file unico la scartava
+    gia' `parse_report`, quindi alla pagina non e' mai arrivata."""
+    found: list[tuple[str | None, str]] = []
+    for section in SECTIONS:
+        path = folder / f"{section.key}.md"
+        if not path.exists():
+            continue
+        body = path.read_text(encoding="utf-8").strip()
+        if body:
+            found.append((section.title, body))
+    return found
 
 
 @app.get("/api/reports/daily/{day}", response_model=Report, summary="Daily report")
 def get_daily_report(day: date, ctx: Context) -> Report:
-    """The written daily report of `day`, split into its sections."""
+    """The written daily report of `day`, split into its sections.
+
+    Dal todo 44 ogni sezione e' un file suo in `01.daily/<giorno>/`, scritto
+    dal suo agente. I giorni di prima hanno il file unico `<giorno>.md`, e si
+    continuano a leggere da li'."""
+    folder = ctx.summary_dir / "01.daily" / day.isoformat()
     path = ctx.summary_dir / "01.daily" / f"{day.isoformat()}.md"
-    if not path.exists():
+    if folder.is_dir():
+        found = _fragment_sections(folder)
+    elif path.exists():
+        found = parse_report(path)
+    else:
+        raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
+    if not found:
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
     sections = [
         ReportSection(title=title, body=body, icon=section_icon(title) if title else None)
-        for title, body in parse_report(path)
+        for title, body in found
     ]
     return Report(day=day, sections=sections)
 
@@ -284,15 +300,35 @@ def get_daily_report(day: date, ctx: Context) -> Report:
     "/api/reports/daily/{day}/refresh",
     response_model=RefreshStatus,
     status_code=202,
-    summary="Refresh data and rewrite the daily report",
+    summary="Refresh data and rewrite the whole daily report",
 )
 def post_daily_refresh(day: date, ctx: Context) -> RefreshStatus:
-    """Download new data from Garmin and rewrite the daily report of `day`, in the
-    background (a few minutes). One job at a time: while one runs, this returns it and
-    starts nothing. Follow it with `GET /api/refresh`."""
+    """Download new data from Garmin and rewrite every section of the daily report of
+    `day`, in the background: one agent per section, one after another, so a few minutes.
+    One job at a time: while one runs, this returns it and starts nothing. Follow it with
+    `GET /api/refresh`."""
     if day > date.today():
         raise HTTPException(status_code=422, detail=f"{day} is in the future.")
     return RefreshStatus(**refresh.start(day, REPO_ROOT, ctx.summary_dir, ctx.data_dir))
+
+
+@app.post(
+    "/api/reports/daily/{day}/refresh/{section}",
+    response_model=RefreshStatus,
+    status_code=202,
+    summary="Rewrite one section of the daily report",
+)
+def post_daily_refresh_section(day: date, section: str, ctx: Context) -> RefreshStatus:
+    """Rewrite a single section: only its agent runs, the other sections keep the text they
+    have. 422 for a section that does not exist."""
+    if day > date.today():
+        raise HTTPException(status_code=422, detail=f"{day} is in the future.")
+    try:
+        keys = refresh.section_keys(section)
+    except KeyError:
+        known = ", ".join(s.key for s in SECTIONS)
+        raise HTTPException(status_code=422, detail=f"Unknown section {section!r}. Known: {known}.")
+    return RefreshStatus(**refresh.start(day, REPO_ROOT, ctx.summary_dir, ctx.data_dir, keys))
 
 
 @app.get("/api/refresh", response_model=RefreshStatus, summary="Refresh job status")

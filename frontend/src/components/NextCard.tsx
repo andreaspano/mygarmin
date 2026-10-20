@@ -1,9 +1,19 @@
 // Il riquadro scuro "Next" (todo 34): cosa fare dopo, dalla sezione Next del
 // report. Il titolo e i passi della seduta (i chip) ci sono solo nei report
 // scritti col formato nuovo; i vecchi mostrano il testo com'e'.
+import type { ReactNode } from "react";
+
 import { inline, markdown, nextParts } from "../markdown";
 
-export function NextCard({ body, tomorrow }: { body: string | null; tomorrow: boolean }) {
+export function NextCard({
+  body,
+  tomorrow,
+  refresh,
+}: {
+  body: string | null;
+  tomorrow: boolean;
+  refresh?: ReactNode;
+}) {
   const parts = body ? nextParts(body) : null;
   return (
     <section className="next-card" aria-label="Next session">
@@ -12,7 +22,10 @@ export function NextCard({ body, tomorrow }: { body: string | null; tomorrow: bo
           →
         </span>
         <div>
-          <div className="eyebrow">Next · {tomorrow ? "tomorrow" : "today"}</div>
+          <div className="eyebrow">
+            Next · {tomorrow ? "tomorrow" : "today"}
+            {refresh}
+          </div>
           <h2>{parts?.title ? inline(parts.title) : "Next"}</h2>
           {parts ? (
             <div className="next-reason">{markdown(parts.reason)}</div>

@@ -1,17 +1,15 @@
 // "Fitness" (todo 37 e 38): cosa Andrea e' capace di fare, che cambia piano
 // nelle settimane. VO2max (prima in fondo a "Load"), endurance e hill score di
 // Garmin e la soglia del lattato (o, prima che Garmin ne rilevi una, la
-// frequenza di soglia del FIT), da `fitness` di `/api/daily/{day}`. Il report non ha una sezione Fitness: solo
-// numeri. Un valore che manca e' "–", la card resta.
+// frequenza di soglia del FIT), da `fitness` di `/api/daily/{day}`. Dal todo
+// 44 ha anche il suo testo, scritto dall'agente `04_fitness`. Un valore che
+// manca e' "–", la card resta.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
+import { markdown } from "../markdown";
 import { CardHead, num, Stat } from "./Stat";
-
-// Il report non ha una sezione Fitness, quindi l'icona non viene dalle sue
-// sezioni come per le altre card: e' fissa, in `icons/` con le altre.
-const FITNESS_ICON = "fitness.png";
 
 /** "6:00", dai secondi al km dell'API. */
 function paceLabel(seconds: number): string {
@@ -29,7 +27,17 @@ function Change({ value, digits }: { value: number | null | undefined; digits: n
   );
 }
 
-export function FitnessCard({ data }: { data: DailyData }) {
+export function FitnessCard({
+  data,
+  text,
+  icon,
+  refresh,
+}: {
+  data: DailyData;
+  text: string | null;
+  icon: string | null;
+  refresh?: ReactNode;
+}) {
   const vo2 = data.fitness.vo2max;
   const endurance = data.fitness.endurance;
   const hill = data.fitness.hill;
@@ -37,7 +45,7 @@ export function FitnessCard({ data }: { data: DailyData }) {
   const threshold = data.fitness.threshold_hr;
   return (
     <section className="card" aria-label="Fitness">
-      <CardHead icon={FITNESS_ICON} title="Fitness" />
+      <CardHead icon={icon} title="Fitness" refresh={refresh} />
       <div className="stats two">
         <Stat
           label="VO2max"
@@ -95,6 +103,7 @@ export function FitnessCard({ data }: { data: DailyData }) {
           />
         )}
       </div>
+      {text && <div className="prose">{markdown(text)}</div>}
     </section>
   );
 }

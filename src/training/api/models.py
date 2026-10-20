@@ -142,16 +142,36 @@ class Report(BaseModel):
     sections: list[ReportSection]
 
 
-class RefreshStatus(BaseModel):
-    """The Refresh job of the Day page: download new data and rewrite a daily report."""
+class SectionRefresh(BaseModel):
+    """How the agent of one section fared in the latest job."""
 
     status: Literal["idle", "running", "done", "failed"] = Field(
-        description="idle until the first job since the API started."
+        description="idle until this section is rewritten for the first time since the API started."
+    )
+    started: datetime | None
+    finished: datetime | None
+    message: str | None = Field(
+        description="Why this section failed; it then kept the text it had. Null otherwise."
+    )
+
+
+class RefreshStatus(BaseModel):
+    """The Refresh job of the Day page: download new data and rewrite a daily report.
+
+    One agent per section, run one after another (todo 44), so a section can fail on its
+    own while the others are rewritten."""
+
+    status: Literal["idle", "running", "done", "failed"] = Field(
+        description="idle until the first job since the API started. failed when any section did."
     )
     day: date | None = Field(description="The day whose report the job rewrites.")
     started: datetime | None
     finished: datetime | None
     message: str | None = Field(description="Why the job failed. Null otherwise.")
+    sections: dict[str, SectionRefresh] = Field(
+        description="One entry per section of the report, by key: summary, training, recovery, "
+        "health, load, fitness, next."
+    )
 
 
 class Sport(BaseModel):

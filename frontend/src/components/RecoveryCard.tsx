@@ -23,12 +23,22 @@ function sleepValue(minutes: number | null): ReactNode {
   );
 }
 
-export function RecoveryCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
+export function RecoveryCard({
+  data,
+  text,
+  icon,
+  refresh,
+}: {
+  data: DailyData;
+  text: string | null;
+  icon: string | null;
+  refresh?: ReactNode;
+}) {
   const m = data.morning;
   const sleep = data.sleep_last_7;
   return (
     <section className="card" aria-label="Recovery">
-      <CardHead icon={icon} title="Recovery" />
+      <CardHead icon={icon} title="Recovery" refresh={refresh} />
       <div className="stats">
         <Stat label="Readiness" value={num(m.readiness.value)} sub={avgs(m.readiness)} />
         <Stat

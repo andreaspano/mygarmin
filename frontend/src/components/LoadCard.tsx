@@ -6,6 +6,8 @@
 // passato alla card Fitness (todo 37).
 import type { DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
+import type { ReactNode } from "react";
+
 import { markdown } from "../markdown";
 import { CardHead } from "./Stat";
 
@@ -78,13 +80,23 @@ function Balance({ data }: { data: DailyData }) {
   );
 }
 
-export function LoadCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
+export function LoadCard({
+  data,
+  text,
+  icon,
+  refresh,
+}: {
+  data: DailyData;
+  text: string | null;
+  icon: string | null;
+  refresh?: ReactNode;
+}) {
   const status = data.load.now?.acwr_status;
   const title = (status && STATUS_TITLES[status]) ?? "Load";
   const recent = data.recent;
   return (
     <section className="card load-card" aria-label="Load">
-      <CardHead icon={icon} title="Load" />
+      <CardHead icon={icon} title="Load" refresh={refresh} />
       <h2>{title}</h2>
       {text && <div className="prose">{markdown(text)}</div>}
       <Balance data={data} />

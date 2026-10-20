@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Un agente per card, piu' due che danno il verdetto
@@ -34,15 +34,23 @@ Prese con Andrea il 2026-10-20:
 - **Refresh per card**: il tasto generale rifa' tutto, e ogni card ha il suo
   tasto che rilancia solo il suo agente.
 - **Si costruisce tutta la macchina**, non un assaggio.
+- **In fila, non in parallelo** (deciso la sera del 2026-10-20, con Andrea
+  via): gli agenti girano uno dopo l'altro. A parita' di lavoro i gettoni
+  sono gli stessi, ma in fila un giro che va storto si ferma al primo
+  errore invece di bruciare cinque sessioni insieme, e non si rischiano i
+  limiti di frequenza con i loro tentativi ripetuti. Il refresh completo
+  dura di piu' (sette giri da circa un minuto), e non importa a nessuno:
+  lo lancia il tasto in background.
 
 ## Work
 
 ### La forma, in due fasi
 
 `make daily_data` una volta sola produce il JSON del giorno. Poi i cinque
-agenti di card girano **in parallelo**, ognuno sulla sua fetta, e scrivono il
-loro frammento. Quando hanno finito tutti, girano `01_next` e `02_summary`,
-che leggono i frammenti e non i numeri.
+agenti di card girano **in fila**, ognuno sulla sua fetta, e scrivono il loro
+frammento. Alla fine girano `01_next` e `02_summary`, che leggono i frammenti
+e non i numeri: quei due devono comunque venire dopo gli altri cinque, quindi
+l'ordine e' health, load, recovery, fitness, training, next, summary.
 
 ### 1. Dove scrivono: una cartella per giorno
 
@@ -72,11 +80,19 @@ gia' scritti devono continuare a vedersi.
 
 Oggi lancia un agente col nome cablato e tiene uno stato solo. Diventa:
 
-- `make -s daily_data DAY=<giorno>` **una volta**, su un file temporaneo; gli
-  agenti lo leggono, non lo rigenerano. Sette `make daily_data` vorrebbero
-  dire sette sincronizzazioni di `activities.db` e della salute.
-- Fase 1: i cinque agenti di card in parallelo, con i thread che il lavoro di
-  oggi usa gia'. Fase 2: `01_next` e `02_summary` quando la prima e' finita.
+- I fatti del giorno **una volta sola**, su un file temporaneo che gli agenti
+  leggono: sette letture per conto proprio vorrebbero dire sette
+  sincronizzazioni di `activities.db` e della salute.
+  **Non** il JSON di `make daily_data`: quello non ha il blocco `fitness`,
+  che l'API aggiunge sopra in `get_daily` (todo 37 e 38), e l'agente di
+  Fitness scriverebbe che i punteggi non ci sono mentre la card accanto li
+  mostra. I fatti sono quelli che riceve la pagina: la parte comune va in
+  `api/daily.py::daily_payload`, che usano sia l'endpoint sia
+  l'orchestratore. Dopo lo scaricamento la cache si invalida subito, se no i
+  fatti sono quelli di prima.
+- I sette agenti **in fila**, in un thread solo come il lavoro di oggi:
+  health, load, recovery, fitness, training, poi next e summary. Un errore
+  ferma il giro li' dove e' successo invece di sprecare le sessioni rimaste.
 - **Stato per sezione**: `_state` diventa una mappa
   `{sezione: {status, started, finished, message}}` piu' lo stato
   complessivo (`running` finche' almeno un agente gira). `RefreshStatus` nei
@@ -150,8 +166,9 @@ file dice che il lavoro e' passato ai sette.
 - **Sezioni che si contraddicono**: Recovery "ben recuperato" e Health
   "affaticato" nello stesso giorno. Lo scudo e' la proprieta' stretta dei
   dati piu' `02_summary`, che deve poterlo dire invece di nasconderlo.
-- **Tempo**: cinque in parallelo piu' due dopo sono due giri invece di uno;
-  oggi un refresh dura circa 60 secondi.
+- **Tempo**: sette agenti in fila sono circa sette minuti, contro i 60
+  secondi di oggi. E' il prezzo della scelta di non parallelizzare, e lo
+  paga un lavoro in background che nessuno guarda.
 - **Lo stato in memoria** si perde al riavvio dell'API, come oggi: con sette
   lavori la finestra in cui si perde qualcosa e' piu' larga.
 - **Il `claude` vero**: i permessi si provano solo lanciandolo davvero. Un
@@ -171,11 +188,38 @@ file dice che il lavoro e' passato ai sette.
 5. Un refresh di una sola sezione: cambia solo quel frammento, gli altri
    restano con il loro `mtime`.
 6. Un fallimento finto (un `claude` tolto dal `PATH`, o un agente che non
-   scrive): le altre sezioni escono, lo stato dice quale ha fallito, il
-   frammento vecchio resta al suo posto.
+   scrive): le sezioni gia' scritte restano, lo stato dice quale ha fallito,
+   il frammento vecchio resta al suo posto.
+   **Tutta la verifica dell'impianto si fa con un `claude` finto**, come il
+   todo 41: uno script in testa al `PATH` che scrive il frammento ed esce 0,
+   e uno che esce 1. Costa zero gettoni e prova orchestratore, stato,
+   endpoint, ricaduta e fallimento parziale. Solo alla fine un giro vero,
+   per guardare il testo.
 7. `make frontend_types`, poi `cd frontend && npm run typecheck` e
    `npm run build`: nessun errore.
 8. La pagina in Firefox headless (`--remote-debugging-port`, WebDriver BiDi:
    su questa macchina Chromium e' solo lo stub dello snap): la card Fitness
    col suo testo, il box Summary pieno, i tasti per card che girano mentre il
    loro agente lavora, nessun errore in console.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_44'$" --format=%H -1)
+```
+
+Effetti fuori dal repo:
+
+- **I frammenti gia' scritti restano.** La cartella
+  `summary/01.daily/2026-10-20/` con i sette file ci rimane, e dopo il revert
+  nessuno la legge piu': l'API torna al file unico `2026-10-20.md`, che e'
+  ancora al suo posto (scritto dall'agente di prima alle 18:16), quindi la
+  pagina del giorno continua a mostrare un report, quello vecchio. Le
+  cartelle dei giorni si possono cancellare a mano quando danno fastidio.
+- **I dati scaricati** dal `make update_activity` del giro di prova restano,
+  come dopo un Refresh qualunque.
+- **Gli agenti in `.claude/agents/`** tornano indietro col revert, compreso
+  `fitness-status`, che ridiventa quello che scrive il report intero.
+
+Dopo il revert, rifare il merge di `todo_44` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

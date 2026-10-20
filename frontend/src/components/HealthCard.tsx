@@ -1,6 +1,8 @@
 // "Health" (todo 37, prima un blocco di "This morning"): frequenza a riposo,
 // HRV, respiro e stress da `/api/daily/{day}`, sotto la sezione Health del
 // report. Il frontend non fa conti: medie e fasce vengono dall'API.
+import type { ReactNode } from "react";
+
 import type { Band, DailyData, Measure } from "../api/client";
 import { markdown } from "../markdown";
 import { CardHead, num, Stat } from "./Stat";
@@ -38,7 +40,17 @@ function MeasureBar({ measure }: { measure: Measure }) {
   return <RangeBar value={measure.value} band={measure.band} />;
 }
 
-export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
+export function HealthCard({
+  data,
+  text,
+  icon,
+  refresh,
+}: {
+  data: DailyData;
+  text: string | null;
+  icon: string | null;
+  refresh?: ReactNode;
+}) {
   const m = data.morning;
   // Sotto ogni numero solo la barra della sua fascia: dice da sola dove sta
   // il valore, e gli estremi sono scritti sulle tacche. Tutte e quattro le
@@ -47,7 +59,7 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
   // resta nei dati e la usano il report e l'allarme dell'HRV, non la card.
   return (
     <section className="card" aria-label="Health">
-      <CardHead icon={icon} title="Health" />
+      <CardHead icon={icon} title="Health" refresh={refresh} />
       <div className="stats two">
         <Stat
           label="Resting heart rate"
