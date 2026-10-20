@@ -136,12 +136,22 @@ The JSON:
     with its own averages; how many rest days and how long since the last hard session. Mention HRV, sleep
     and resting HR here only as readiness factors: their detail goes in Health.
   - `## Health` — Is my body OK, regardless of training? It catches early illness, accumulated
-    stress or poor sleep. Compare each measure with its own averages, never with population
-    norms. In this order: resting HR, HRV (the weekly average against `hrv_baseline`, not a
-    single night), breathing rate during sleep, sleep (hours, score, short nights), stress
-    and body battery, SpO2 (only if recorded; if it is in `missing`, one short clause). Every
-    entry in `alerts` must be mentioned, with its numbers. If `alerts` is empty and nothing
-    moved, say plainly "no warning signs".
+    stress or poor sleep. Compare each measure with its own averages and with its own band,
+    never with population norms. In this order:
+
+    - **resting HR**, against `resting_hr_band`: the range it usually sits in, worked out
+      from his own last 28 days, not Garmin's. Above the band is the direction that matters;
+      below it is a good sign, not a worry. When the band is `null` there were too few
+      measured days, so compare with the averages alone.
+    - **HRV**, the weekly average against `hrv_baseline` (Garmin's own balanced range), not a
+      single night.
+    - **breathing rate during sleep**, **sleep** (hours, score, short nights), **stress and
+      body battery**, **SpO2** (only if recorded; if it is in `missing`, one short clause).
+
+    Every entry in `alerts` must be mentioned, with its numbers — and note that an alert and
+    a band are different things: the alert fires on its own threshold, so a value can sit
+    outside the band without an alert, and that is worth saying plainly rather than dressing
+    up. If `alerts` is empty and nothing moved, say plainly "no warning signs".
   - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
     balance between easy, hard and anaerobic work in plain words, and VO2max only if
     `vo2max_change` is present.
