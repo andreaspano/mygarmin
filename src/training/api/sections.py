@@ -26,13 +26,13 @@ class Section:
 
 # Nell'ordine in cui si leggono nella pagina.
 SECTIONS: tuple[Section, ...] = (
-    Section("summary", "Summary", "02_summary", True),
+    Section("summary", "Summary", "07_summary", True),
     Section("training", "Training", "05_training", False),
     Section("recovery", "Recovery", "03_recovery", False),
     Section("health", "Health", "01_health", False),
     Section("load", "Load", "02_load", False),
     Section("fitness", "Fitness", "04_fitness", False),
-    Section("next", "Next", "01_next", True),
+    Section("next", "Next", "06_next", True),
 )
 
 BY_KEY = {section.key: section for section in SECTIONS}

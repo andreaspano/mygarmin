@@ -1,5 +1,5 @@
 ---
-name: 01_next
+name: 06_next
 description: Writes the Next part of the daily report — one concrete suggestion for the next session, decided from what the other sections concluded. Runs after the five section agents; the orchestrator in src/training/api/refresh.py runs it.
 tools: Read, Write
 ---

@@ -1,12 +1,12 @@
 ---
 name: fitness-status
-description: Points at the machinery that writes the daily report. Since todo 44 the report is written section by section by seven agents (01_health, 02_load, 03_recovery, 04_fitness, 05_training, then 01_next and 02_summary), run one after another by `make daily_report` or by the Refresh button on the Day page. Use when the user asks for their daily report, their fitness status, or what to train today.
+description: Points at the machinery that writes the daily report. Since todo 44 the report is written section by section by seven agents (01_health, 02_load, 03_recovery, 04_fitness, 05_training, then 06_next and 07_summary), run one after another by `make daily_report` or by the Refresh button on the Day page. Use when the user asks for their daily report, their fitness status, or what to train today.
 tools: Bash, Read
 ---
 
 The daily report is no longer written by one agent. Since todo 44 each
 section has its own — `01_health`, `02_load`, `03_recovery`, `04_fitness`,
-`05_training`, and then `01_next` and `02_summary`, which read what the
+`05_training`, and then `06_next` and `07_summary`, which read what the
 others concluded — and each writes its own file in
 `summary/01.daily/<day>/`. The rules they share are in `_style.md`.
 

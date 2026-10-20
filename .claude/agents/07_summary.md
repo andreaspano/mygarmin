@@ -1,5 +1,5 @@
 ---
-name: 02_summary
+name: 07_summary
 description: Writes the Summary of the daily report — the verdict on the whole day, decided from what the other sections concluded. Runs last; the orchestrator in src/training/api/refresh.py runs it.
 tools: Read, Write
 ---

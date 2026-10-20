@@ -117,7 +117,7 @@ dell'API, con l'API accesa, `make frontend_types` rigenera
 Il tasto **Refresh** nell'intestazione (todo 41) aggiorna i dati e rifa' il
 report del giorno mostrato. Dal todo 44 il report non lo scrive un agente
 solo: ogni sezione ha il suo (`01_health`, `02_load`, `03_recovery`,
-`04_fitness`, `05_training`, e poi `01_next` e `02_summary`, che leggono
+`04_fitness`, `05_training`, e poi `06_next` e `07_summary`, che leggono
 quello che hanno concluso gli altri), e ognuno scrive il suo file in
 `summary/01.daily/<giorno>/`. L'API li lancia **uno alla volta** con
 `claude -p` (il comando `claude` deve essere nel `PATH` di `make api`), dopo

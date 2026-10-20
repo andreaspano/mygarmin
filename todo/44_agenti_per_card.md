@@ -22,13 +22,15 @@ degli altri, non dei numeri: e' gia' quello che Next fa di fatto.
 Prese con Andrea il 2026-10-20:
 
 - **Sette agenti.** Per le card: `01_health`, `02_load`, `03_recovery`,
-  `04_fitness`, `05_training`. Per i verdetti: `01_next` e `02_summary`. I
-  prefissi delle due serie si ripetono, quindi in `.claude/agents/` i nomi si
-  mescolano in ordine alfabetico: va bene cosi', e' voluto.
+  `04_fitness`, `05_training`. Per i verdetti: `06_next` e `07_summary`.
+  Andrea li aveva chiamati `01_next` e `02_summary`; rinominati subito dopo il
+  merge, perche' con due serie che ripartono da uno i nomi si mescolavano in
+  ordine alfabetico in `.claude/agents/` e l'ordine di lancio non si leggeva
+  piu' dall'elenco.
 - **La card Fitness avra' un testo**, sul modello di Health. Cambia la scelta
   del todo 38 ("il report non ha una sezione Fitness"), e il report passa da
   cinque a sei sezioni piu' il Summary.
-- **`02_summary` e' il verdetto del giorno**: legge i giudizi di tutte le
+- **`07_summary` e' il verdetto del giorno**: legge i giudizi di tutte le
   sezioni e dice come sta la giornata, nel box accanto a Next. La frase di
   apertura di Health resta dov'e', come verdetto della sola salute.
 - **Refresh per card**: il tasto generale rifa' tutto, e ogni card ha il suo
@@ -48,7 +50,7 @@ Prese con Andrea il 2026-10-20:
 
 `make daily_data` una volta sola produce il JSON del giorno. Poi i cinque
 agenti di card girano **in fila**, ognuno sulla sua fetta, e scrivono il loro
-frammento. Alla fine girano `01_next` e `02_summary`, che leggono i frammenti
+frammento. Alla fine girano `06_next` e `07_summary`, che leggono i frammenti
 e non i numeri: quei due devono comunque venire dopo gli altri cinque, quindi
 l'ordine e' health, load, recovery, fitness, training, next, summary.
 
@@ -125,10 +127,10 @@ file dice che il lavoro e' passato ai sette.
   settimana. Il prompt punta sul **cambiamento** (le variazioni a 28 giorni
   sono gia' nel JSON) e deve poter essere molto corto quando non si e' mosso
   niente.
-- **`01_next`** legge i cinque frammenti piu' `hr_zones` (gli servono i bpm) e
+- **`06_next`** legge i cinque frammenti piu' `hr_zones` (gli servono i bpm) e
   scrive la seduta consigliata, con il formato a tre parti di oggi (titolo in
   grassetto, il perche', i passi come elenco).
-- **`02_summary`** legge i cinque frammenti e scrive il verdetto del giorno:
+- **`07_summary`** legge i cinque frammenti e scrive il verdetto del giorno:
   nessun numero, e **puo' dire che i giudizi non concordano**, che e' proprio
   il caso in cui cinque agenti ciechi l'uno all'altro sbagliano.
 - **Stile condiviso**: le regole comuni (inglese, niente gergo, i numeri
@@ -165,7 +167,7 @@ file dice che il lavoro e' passato ai sette.
   per card serve proprio a non pagare il conto pieno per un ritocco.
 - **Sezioni che si contraddicono**: Recovery "ben recuperato" e Health
   "affaticato" nello stesso giorno. Lo scudo e' la proprieta' stretta dei
-  dati piu' `02_summary`, che deve poterlo dire invece di nasconderlo.
+  dati piu' `07_summary`, che deve poterlo dire invece di nasconderlo.
 - **Tempo**: sette agenti in fila sono circa sette minuti, contro i 60
   secondi di oggi. E' il prezzo della scelta di non parallelizzare, e lo
   paga un lavoro in background che nessuno guarda.
