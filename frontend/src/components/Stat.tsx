@@ -34,12 +34,22 @@ export function Stat({
   );
 }
 
-/** Il titolo piccolo di un riquadro, con l'icona della sua sezione del report. */
-export function CardHead({ icon, title }: { icon: string | null; title: string }) {
+/** Il titolo piccolo di un riquadro, con l'icona della sua sezione del report
+ * e, in fondo a destra, il tasto che rifa' solo quella sezione (todo 44). */
+export function CardHead({
+  icon,
+  title,
+  refresh,
+}: {
+  icon: string | null;
+  title: string;
+  refresh?: ReactNode;
+}) {
   return (
     <div className="block-head">
       {icon && <img src={iconUrl(icon)} alt="" width={22} height={22} />}
       <span>{title}</span>
+      {refresh}
     </div>
   );
 }

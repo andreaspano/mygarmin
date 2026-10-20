@@ -329,6 +329,9 @@ h2 {
   font-weight: 700;
 }
 .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: var(--next-accent);
   font-size: 0.72rem;
   font-weight: 700;
@@ -396,6 +399,48 @@ h2 {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
   align-items: start;
+}
+/* Il tasto che rifa' una sola sezione (todo 44): in fondo all'intestazione
+   della card, zitto finche' non ci passi sopra. Mentre il suo agente scrive,
+   l'icona ruota come quella del Refresh grande. */
+.section-refresh {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  opacity: 0.4;
+  cursor: pointer;
+}
+.section-refresh:hover {
+  opacity: 1;
+  background: var(--track);
+}
+.section-refresh[aria-busy="true"] {
+  opacity: 1;
+  cursor: progress;
+}
+.section-refresh[aria-busy="true"] svg {
+  animation: spin 1s linear infinite;
+}
+/* Una sezione fallita tiene il testo di prima: il tasto lo dice, e il
+   tooltip porta il motivo. */
+.section-refresh.failed {
+  opacity: 1;
+  color: var(--warn-text);
+}
+/* Nei due riquadri scuri il grigio chiaro non si legge. */
+.next-card .section-refresh {
+  color: var(--next-muted);
+}
+.next-card .section-refresh:hover {
+  background: rgba(255, 255, 255, 0.14);
 }
 .block-head {
   display: flex;

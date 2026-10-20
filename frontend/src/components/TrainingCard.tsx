@@ -5,7 +5,7 @@
 // e, a richiesta, la mappa. Giorno senza attivita': "Rest day". Per le
 // attivita' a piedi il terreno (todo 35), per le corse il tipo (todo 36):
 // tutti e due stimati dall'API e correggibili.
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { api, iconUrl, isAbort, type Activity, type ActivityDetail, type DailyData, type RunType, type Terrain } from "../api/client";
 import { durationLabel, effectMinutesLabel, fixed, timeOf } from "../format";
@@ -338,12 +338,14 @@ export function TrainingCard({
   restIcon,
   sport,
   theme,
+  refresh,
 }: {
   activities: Activity[];
   data: DailyData | null;
   comment: string | null;
   icon: string | null;
   restIcon: string | null;
+  refresh?: ReactNode;
   sport: Sport;
   theme: ColorScheme;
 }) {
@@ -353,7 +355,7 @@ export function TrainingCard({
 
   return (
     <section className="card training-card" aria-label="Training">
-      <CardHead icon={icon} title="Training" />
+      <CardHead icon={icon} title="Training" refresh={refresh} />
       {activities.length > 1 && (
         <div className="tabs" role="tablist" aria-label="Activities of the day">
           {activities.map((a) => {

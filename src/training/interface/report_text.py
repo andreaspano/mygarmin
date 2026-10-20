@@ -20,6 +20,7 @@ REPORT_SECTION_ICONS = {
     "trend": "trend.png",
     "load": "trend.png",
     "health": "health.png",
+    "fitness": "fitness.png",
     "next": "next.png",
 }
 

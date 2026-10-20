@@ -114,11 +114,31 @@ I tipi delle risposte vengono dall'OpenAPI: dopo un cambio ai modelli
 dell'API, con l'API accesa, `make frontend_types` rigenera
 `frontend/src/api/schema.ts` (che non si modifica a mano).
 
-Il tasto **Refresh** nell'intestazione (todo 41) aggiorna i dati e riscrive il
-report del giorno mostrato: l'API lancia in background l'agente
-`fitness-status` con `claude -p` (il comando `claude` deve essere nel `PATH`
-di `make api`), che fa `make update_activity` e poi scrive il report. Ci
-vogliono qualche minuto, un lavoro alla volta; alla fine la pagina si
-ricarica. Il login a Garmin non si chiede mai dal tasto: con il token
-scaduto il report si scrive sui dati locali e lo dice, e il login si rifa'
-da terminale con `make update_activity`.
+Il tasto **Refresh** nell'intestazione (todo 41) aggiorna i dati e rifa' il
+report del giorno mostrato. Dal todo 44 il report non lo scrive un agente
+solo: ogni sezione ha il suo (`01_health`, `02_load`, `03_recovery`,
+`04_fitness`, `05_training`, e poi `01_next` e `02_summary`, che leggono
+quello che hanno concluso gli altri), e ognuno scrive il suo file in
+`summary/01.daily/<giorno>/`. L'API li lancia **uno alla volta** con
+`claude -p` (il comando `claude` deve essere nel `PATH` di `make api`), dopo
+aver scaricato i dati e preparato i fatti una volta sola: circa due minuti in
+tutto. Le regole che gli agenti condividono stanno in
+`.claude/agents/_style.md`.
+
+Ogni card ha anche **un tasto suo**, che rifa' solo quella sezione: una
+sessione invece di sette quando si vuole ritoccare un testo. Una sezione che
+fallisce tiene il testo che aveva e le altre si riscrivono lo stesso; il
+tasto di quella sezione lo segnala.
+
+Lo stesso lavoro si fa da terminale, senza l'API:
+
+```bash
+make daily_report                   # oggi, tutte le sezioni
+make daily_report DAY=2026-10-07    # un giorno a scelta
+make daily_report SECTION=health    # solo una sezione
+```
+
+Il login a Garmin non si chiede mai dal tasto: con il token scaduto il
+report si scrive sui dati locali, e il login si rifa' da terminale con
+`make update_activity`. I report scritti prima del todo 44 stanno ancora nel
+file unico `summary/01.daily/<giorno>.md` e si continuano a leggere da li'.

@@ -10,6 +10,7 @@ export type ActivityDetail = Schemas["ActivityDetail"];
 export type DailyData = Schemas["DailyData"];
 export type Measure = Schemas["Measure"];
 export type RefreshStatus = Schemas["RefreshStatus"];
+export type SectionRefresh = Schemas["SectionRefresh"];
 export type Report = Schemas["Report"];
 export type ReportSection = Schemas["ReportSection"];
 export type Route = Schemas["Route"];
@@ -107,6 +108,10 @@ export const api = {
   // Aggiorna i dati e riscrive il report del giorno, in background: lo stato
   // si segue con `refresh()`.
   startRefresh: (day: string) => postJson<RefreshStatus>(`/api/reports/daily/${day}/refresh`),
+
+  // Una sezione sola: gira il suo agente, le altre tengono il testo che hanno.
+  startSectionRefresh: (day: string, section: string) =>
+    postJson<RefreshStatus>(`/api/reports/daily/${day}/refresh/${section}`),
 
   refresh: (signal?: AbortSignal) => getJson<RefreshStatus>("/api/refresh", signal),
 };
