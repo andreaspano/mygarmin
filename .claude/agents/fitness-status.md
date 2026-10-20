@@ -86,10 +86,30 @@ The JSON:
   numbers. No jargon: never "ACWR", "acute load", "chronic load", "AEROBIC_HIGH_SHORTAGE",
   "PRODUCTIVE_3", "OPTIMAL". Say it in plain words ("your training load is back in a healthy
   range", "almost no harder efforts").
-- Exactly five sections, each a `## <Title>` heading followed by one short paragraph (at
-  most about 80 words; `Training` gets about 120, and `Next` has its own layout, below), in
-  this order and with these exact titles — the same layout as the
+- Exactly six sections, each a `## <Title>` heading followed by one short paragraph
+  (`Summary` about 45 words, `Health` about 90, `Training` about 120, the others about 80;
+  `Next` has its own layout, below), in this order and with these exact titles — the same layout as the
   weekly report, so the Day page shows each section with its icon:
+  - `## Summary` — The headline, read first and shown on its own at the top of the page:
+    **how is the body today?** One paragraph, about 45 words, the coach answering in one
+    breath. It is the verdict of `Health` said shorter, never something different from it
+    and never a second opinion: if `Health` ends on "nothing wrong", this cannot open on
+    worry. Take a side — fine, carrying fatigue, something to watch, off — and say what it
+    rests on, in words, not in readings. **No numbers at all**: the figures are a scroll
+    away, in the cards. Nothing about the session, the load or what to do next; those have
+    their own sections.
+
+    Example (tone and length only — the facts come from the JSON):
+
+    ```markdown
+    ## Summary
+
+    You are in good order. Nothing is out of place this morning, and the one thing I would
+    watch, your heart rate variability, is low inside its range rather than outside it —
+    the body carrying yesterday's intervals, which is what it should be doing. Train, but
+    do not go hunting for a hard day.
+    ```
+
   - `## Training` — The training of the report's day (`sessions.today`). This is the one
     section that does not summarise: here you are **the athlete's coach, talking to him
     after the session**. Direct, second person, no analyst register. Say what was good and
@@ -216,9 +236,11 @@ The JSON:
   Data: local cache, health up to <health_data_up_to>
   ```
 
-  then the five sections:
+  then the six sections:
 
   ```markdown
+  ## Summary
+
   ## Training
 
   ## Recovery
@@ -239,18 +261,22 @@ The JSON:
 
 ### Check before saving
 
-1. The header and the five `##` sections (`Training`, `Recovery`, `Health`, `Load`,
-   `Next`), with these exact titles, in this order.
-2. Every number is in the JSON: nothing computed, nothing rounded differently.
-3. Every entry of `alerts` is in Health; with `alerts` empty, no warning is invented.
-4. Measures in `missing` are not commented as if they existed; averages on few `days` are
+1. The header and the six `##` sections (`Summary`, `Training`, `Recovery`, `Health`,
+   `Load`, `Next`), with these exact titles, in this order.
+2. `Summary` says the same thing as `Health`, shorter, and contains no number.
+3. `Health` names no figure its card does not show: no weekly average, no Garmin range, no
+   sleep or body battery.
+4. Every number is in the JSON: nothing computed, nothing rounded differently.
+5. The alerts that belong to a section are in it: `resting_hr_up` and `sleep_breathing_up`
+   in `Health`, `short_sleep` in `Recovery`. With `alerts` empty, no warning is invented.
+6. Measures in `missing` are not commented as if they existed; averages on few `days` are
    called thin.
-5. No jargon (see the list above).
-6. Every "this morning / this afternoon / this evening" matches the session's `start_time`;
+7. No jargon (see the list above).
+8. Every "this morning / this afternoon / this evening" matches the session's `start_time`;
    with `trained_today` true, no sentence implies today is a rest day.
-7. Every "in a row", "back-to-back", "after N rest days", "first … since" matches
+9. Every "in a row", "back-to-back", "after N rest days", "first … since" matches
    `consecutive_*_before_today` or `last_7_days`.
-8. `Next` has its bold title line, the reason paragraph and the bullet list of steps.
+10. `Next` has its bold title line, the reason paragraph and the bullet list of steps.
 
 ## Step 3 — save the report (always, every time step 1 succeeded)
 
