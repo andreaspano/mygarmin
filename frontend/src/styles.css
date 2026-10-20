@@ -21,6 +21,9 @@
   --warn-text: #8a6100;
   --up: #1f7a3a;
   --low: rgb(170, 162, 222);
+  /* La fascia larga (due scarti tipo) sotto quella stretta: lo stesso viola
+     dell'accento, molto piu' leggero, cosi' si legge come la stessa cosa. */
+  --band-wide: rgba(74, 58, 167, 0.16);
   --high: rgb(74, 58, 167);
   --anaerobic: #e87ba4;
   --track: rgba(23, 23, 28, 0.08);
@@ -47,6 +50,7 @@
     --warn-text: #ffe89a;
     --up: #6fd08f;
     --low: rgb(92, 85, 158);
+    --band-wide: rgba(144, 133, 233, 0.22);
     --high: rgb(144, 133, 233);
     --anaerobic: #d55181;
     --track: rgba(244, 244, 246, 0.1);
@@ -477,12 +481,18 @@ h2 {
   border-radius: 4px;
   background: var(--track);
 }
-.range-band {
+.range-band,
+.range-wide {
   position: absolute;
   top: 0;
   bottom: 0;
   border-radius: 4px;
+}
+.range-band {
   background: var(--low);
+}
+.range-wide {
+  background: var(--band-wide);
 }
 .range-marker {
   position: absolute;

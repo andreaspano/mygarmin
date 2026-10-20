@@ -442,6 +442,26 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * Band
+         * @description Where a measure usually sits: one standard deviation around its average, and two.
+         */
+        Band: {
+            /** Low */
+            low: number;
+            /** High */
+            high: number;
+            /**
+             * Outer Low
+             * @description Two standard deviations below the average.
+             */
+            outer_low: number;
+            /**
+             * Outer High
+             * @description Two standard deviations above the average.
+             */
+            outer_high: number;
+        };
+        /**
          * ChartBin
          * @description One 30-second interval of the activity chart. Times in minutes from the start.
          */
@@ -716,8 +736,8 @@ export interface components {
             avg_28d: components["schemas"]["Mean"];
             /** Delta Vs 28D */
             delta_vs_28d: number | null;
-            /** @description Where the measure usually sits: the 28-day average plus and minus one standard deviation. Computed here, not Garmin's. Null under 14 measured days. */
-            band: components["schemas"]["Range"] | null;
+            /** @description Where the measure usually sits, from the 28 days before it. Computed here, not Garmin's. Null under 14 measured days. */
+            band: components["schemas"]["Band"] | null;
         };
         /**
          * Morning

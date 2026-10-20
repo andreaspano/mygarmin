@@ -143,8 +143,10 @@ The JSON:
 
     What to read, in `morning`:
 
-    - Each measure against its own `band`, the range it usually sits in, worked out from his
-      own last 28 days (the average plus and minus one standard deviation). What matters is
+    - Each measure against its own `band`, worked out from his own last 28 days: `low` and
+      `high` are one standard deviation around the average, the range it usually sits in,
+      and `outer_low`/`outer_high` are two. Outside the first is worth a remark; outside the
+      second is not a quibble, and say so in those words. What matters is
       the direction that is bad for that measure: a resting HR or a breathing rate **above**
       its band, an HRV **below** it, stress up, a body battery that empties. Below its band
       is a good sign for the resting HR, not a worry. A `null` band means too few measured

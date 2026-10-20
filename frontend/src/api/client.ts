@@ -5,6 +5,7 @@ import type { components } from "./schema";
 
 type Schemas = components["schemas"];
 export type Activity = Schemas["Activity"];
+export type Band = Schemas["Band"];
 export type ActivityDetail = Schemas["ActivityDetail"];
 export type DailyData = Schemas["DailyData"];
 export type Measure = Schemas["Measure"];

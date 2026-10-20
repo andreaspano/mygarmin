@@ -90,7 +90,9 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
 
 def _band(window: pd.Series) -> dict[str, Any] | None:
     """Dove sta di solito una misura: la media della finestra piu' e meno uno
-    scarto tipo. La finestra e' quella di `avg_28d`, cosi' la media e la
+    scarto tipo (`low`, `high`) e piu' e meno due (`outer_low`,
+    `outer_high`). Dentro la prima sta la normalita', fuori dalla seconda c'e'
+    poco da discutere. La finestra e' quella di `avg_28d`, cosi' la media e la
     fascia raccontano lo stesso periodo.
 
     Garmin una fascia la manda solo per l'HRV (`_hrv_baseline`); queste si
@@ -104,7 +106,12 @@ def _band(window: pd.Series) -> dict[str, Any] | None:
     mean, sd = values.mean(), values.std()
     if pd.isna(mean) or pd.isna(sd):
         return None
-    return {"low": _value(mean - sd, 1), "high": _value(mean + sd, 1)}
+    return {
+        "low": _value(mean - sd, 1),
+        "high": _value(mean + sd, 1),
+        "outer_low": _value(mean - 2 * sd, 1),
+        "outer_high": _value(mean + 2 * sd, 1),
+    }
 
 
 def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:

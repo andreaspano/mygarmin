@@ -1,7 +1,7 @@
 // "Health" (todo 37, prima un blocco di "This morning"): frequenza a riposo,
 // HRV, respiro e stress da `/api/daily/{day}`, sotto la sezione Health del
 // report. Il frontend non fa conti: medie e fasce vengono dall'API.
-import type { DailyData, Measure } from "../api/client";
+import type { Band, DailyData, Measure } from "../api/client";
 import { markdown } from "../markdown";
 import { CardHead, num, Stat } from "./Stat";
 
@@ -9,15 +9,18 @@ import { CardHead, num, Stat } from "./Stat";
  * equilibrata dell'HRV secondo Garmin, e la fascia d'abitudine del battito a
  * riposo che calcola l'API. La scala va un po' oltre la fascia, per vedere
  * anche un valore fuori. */
-function RangeBar({ value, low, high }: { value: number | null; low: number; high: number }) {
-  const pad = (high - low) * 0.6;
-  const min = Math.min(low - pad, value ?? low);
-  const max = Math.max(high + pad, value ?? high);
+function RangeBar({ value, band }: { value: number | null; band: Band }) {
+  const { low, high, outer_low: outerLow, outer_high: outerHigh } = band;
+  const pad = (outerHigh - outerLow) * 0.12;
+  const min = Math.min(outerLow - pad, value ?? outerLow);
+  const max = Math.max(outerHigh + pad, value ?? outerHigh);
   const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+  const span = (a: number, b: number) => ({ left: at(a), width: `calc(${at(b)} - ${at(a)})` });
   return (
     <div className="range-bar" aria-hidden="true">
       <div className="range-track">
-        <div className="range-band" style={{ left: at(low), width: `calc(${at(high)} - ${at(low)})` }} />
+        <div className="range-wide" style={span(outerLow, outerHigh)} />
+        <div className="range-band" style={span(low, high)} />
         {value != null && <div className="range-marker" style={{ left: at(value) }} />}
       </div>
       <div className="range-ticks">
@@ -32,7 +35,7 @@ function RangeBar({ value, low, high }: { value: number | null; low: number; hig
  * (pochi giorni misurati). */
 function MeasureBar({ measure }: { measure: Measure }) {
   if (!measure.band) return null;
-  return <RangeBar value={measure.value} low={measure.band.low} high={measure.band.high} />;
+  return <RangeBar value={measure.value} band={measure.band} />;
 }
 
 export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {

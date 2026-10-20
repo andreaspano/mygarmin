@@ -194,15 +194,22 @@ class Measure(BaseModel):
     avg_7d: Mean
     avg_28d: Mean
     delta_vs_28d: float | None
-    band: "Range | None" = Field(
-        description="Where the measure usually sits: the 28-day average plus and minus one "
-        "standard deviation. Computed here, not Garmin's. Null under 14 measured days."
+    band: "Band | None" = Field(
+        description="Where the measure usually sits, from the 28 days before it. Computed "
+        "here, not Garmin's. Null under 14 measured days."
     )
 
 
 class Range(BaseModel):
     low: float
     high: float
+
+
+class Band(Range):
+    """Where a measure usually sits: one standard deviation around its average, and two."""
+
+    outer_low: float = Field(description="Two standard deviations below the average.")
+    outer_high: float = Field(description="Two standard deviations above the average.")
 
 
 Measure.model_rebuild()
