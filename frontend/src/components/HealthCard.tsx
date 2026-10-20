@@ -38,10 +38,10 @@ function MeasureBar({ measure }: { measure: Measure }) {
 export function HealthCard({ data, text, icon }: { data: DailyData; text: string | null; icon: string | null }) {
   const m = data.morning;
   // Sotto ogni numero solo la barra della sua fascia: dice da sola dove sta
-  // il valore, e gli estremi sono scritti sulle tacche. Quella dell'HRV e'
-  // di Garmin (`hrv_baseline`), le altre le calcola l'API dai 28 giorni
-  // prima e stanno dentro la misura (`band`).
-  const baseline = m.hrv_baseline;
+  // il valore, e gli estremi sono scritti sulle tacche. Tutte e quattro le
+  // fasce sono quelle dell'API (`band`): media dei 28 giorni prima piu' e
+  // meno uno scarto tipo. La fascia equilibrata di Garmin (`hrv_baseline`)
+  // resta nei dati e la usano il report e l'allarme dell'HRV, non la card.
   return (
     <section className="card" aria-label="Health">
       <CardHead icon={icon} title="Health" />
@@ -58,7 +58,7 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           label="HRV, weekly average"
           value={num(m.hrv_weekly_avg.value)}
           unit="ms"
-          sub={baseline && <RangeBar value={m.hrv_weekly_avg.value} low={baseline.low} high={baseline.high} />}
+          sub={<MeasureBar measure={m.hrv_weekly_avg} />}
         />
         <Stat
           label="Breathing in sleep"
