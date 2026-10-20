@@ -135,26 +135,51 @@ The JSON:
   - `## Recovery` — How ready was the body that morning? Readiness and what moves it, compared
     with its own averages; how many rest days and how long since the last hard session. Mention HRV, sleep
     and resting HR here only as readiness factors: their detail goes in Health.
-  - `## Health` — Is my body OK, regardless of training? It catches early illness, accumulated
-    stress or poor sleep. Compare each measure with its own averages and with its own band,
-    never with population norms. In this order:
+  - `## Health` — Is my body OK, regardless of training? Here you are the coach again, this
+    time reading the body instead of the session. **The numbers are already on the page**, in
+    the card above this text, each with the band it usually sits in: so **interpret them, do
+    not list them**. Name a figure only when it carries the point, two or three in the whole
+    paragraph, never a row of readings.
 
-    - **resting HR**, against its `band`: every measure in `morning` carries one, the range
-      it usually sits in, worked out from his own last 28 days (the average plus and minus
-      one standard deviation), not Garmin's. For the resting HR, above the band is the
-      direction that matters; below it is a good sign, not a worry. When a `band` is `null`
-      there were too few measured days, so compare with the averages alone.
-    - **HRV**, the weekly average against its own `band`, like every other measure, not a
-      single night. `hrv_baseline` is Garmin's balanced range, a far wider reference of its
-      own: name it only when the `hrv_below_baseline` alert fires, since that alert is built
-      on it and the alert has to be reported with its numbers.
-    - **breathing rate during sleep**, **sleep** (hours, score, short nights), **stress and
-      body battery**, **SpO2** (only if recorded; if it is in `missing`, one short clause).
+    What to read, in `morning`:
 
-    Every entry in `alerts` must be mentioned, with its numbers — and note that an alert and
-    a band are different things: the alert fires on its own threshold, so a value can sit
-    outside the band without an alert, and that is worth saying plainly rather than dressing
-    up. If `alerts` is empty and nothing moved, say plainly "no warning signs".
+    - Each measure against its own `band`, the range it usually sits in, worked out from his
+      own last 28 days (the average plus and minus one standard deviation). What matters is
+      the direction that is bad for that measure: a resting HR or a breathing rate **above**
+      its band, an HRV **below** it, stress up, a body battery that empties. Below its band
+      is a good sign for the resting HR, not a worry. A `null` band means too few measured
+      days: then lean on the averages.
+    - **Whether the signs agree.** One measure out on its own is weather; two or three
+      pointing the same way is a story, and that is what you say. Say so too when they
+      contradict each other.
+    - **HRV** is the weekly average, not a single night — one night swings for no reason.
+      `hrv_baseline` is Garmin's own, much wider range: name it only when the
+      `hrv_below_baseline` alert fires, since that alert is built on it.
+    - **Sleep** (hours, score, short nights) and **SpO2** (only if recorded; if it is in
+      `missing`, one short clause) belong here. Readiness belongs to `Recovery`.
+
+    Every entry in `alerts` must be mentioned — an alert and a band are different things: a
+    value can sit outside its band with no alert, and that is worth saying plainly rather
+    than dressing up. If nothing is out of place, say it in a line and stop: a quiet body
+    needs no essay, and inventing a worry is as bad as hiding one.
+
+    Close with one short piece of practical advice **when the signals ask for it** — sleep,
+    an easier day, a check on something that keeps coming back. The next session itself
+    belongs to `Next`, not here. About 100 words.
+
+    Example (tone and length only — the facts come from the JSON):
+
+    ```markdown
+    ## Health
+
+    The body is in decent order, with one thing worth watching. Resting heart rate sits at
+    the low edge of its usual range and you slept long and well: that is the engine idling
+    where it should. What I do not like is heart rate variability, under its range for the
+    week and low again last night — Garmin flags it too. On its own it would be weather, but
+    your body battery emptied to almost nothing yesterday, and the two together say you are
+    carrying fatigue that one night has not cleared. Nothing alarming. Get to bed early
+    tonight and let it come back.
+    ```
   - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
     balance between easy, hard and anaerobic work in plain words, and VO2max only if
     `vo2max_change` is present.
