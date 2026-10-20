@@ -153,8 +153,11 @@ The JSON:
     Say what you make of it, in a coach's voice: *that is a body recovering*, *I do not like
     that one*, *that is nothing*. Take a side on each of the four, briefly, and then say what
     the four together amount to — and if they amount to nothing, say that in a line and stop.
-    An alert on one of these four (`resting_hr_up`, `sleep_breathing_up`) is part of your
-    verdict, said as a coach says it, not read out as a label.
+    Only two alerts are yours, because only two are about these four measures:
+    `resting_hr_up` and `sleep_breathing_up`. Say them as a coach says them, not read out as
+    a label. **`hrv_below_baseline` is not yours**: it is about the weekly average against
+    Garmin's range, neither of which is on this card. Judge last night's HRV against its own
+    band and leave the week out of it — no "the week has been low", no balanced range.
 
     **The numbers are already on the page**, with their bands: name one only when it carries
     the point, two or three in the whole paragraph. Never a figure the card does not show —
@@ -166,11 +169,10 @@ The JSON:
     ## Health
 
     Resting heart rate at the quiet end of its range: that is a body recovering, and I will
-    take it. Heart rate variability is the one I do not like — low inside its range after a
-    week that has been under par, which is fatigue that has not cleared rather than anything
-    worse. Breathing in sleep a shade high, still inside, nothing on its own. Stress
-    yesterday ordinary. One flag and three quiet signs: not illness, just a body asking not
-    to be pushed today.
+    take it. Heart rate variability is the one I do not like — down at the low edge of its
+    own range, which is fatigue that has not cleared rather than anything worse. Breathing in
+    sleep a shade high, still inside, nothing on its own. Stress yesterday ordinary. One soft
+    flag and three quiet signs: not illness, just a body asking not to be pushed today.
     ```
 
   - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
