@@ -337,6 +337,7 @@ def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, A
     day = activity["start_time"].date()
     days = activities["start_time"].dt.date
     run_type = _value(activity["run_type"])
+    indoor = activity["sub_sport"] == "treadmill"
     similar = activities[
         (activities["sport"] == activity["sport"])
         & (days >= day - timedelta(days=COMPARE_WINDOW_DAYS))
@@ -344,6 +345,10 @@ def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, A
     ]
     if run_type is not None:
         similar = similar[similar["run_type"] == run_type]
+    # Il nastro con il nastro, la strada con la strada: una corsa sul tapis
+    # roulant accanto alla mediana delle uscite all'aperto non dice niente,
+    # ne' sulla distanza ne' sul passo.
+    similar = similar[(similar["sub_sport"] == "treadmill") == indoor]
     median = None
     if len(similar) >= MIN_COMPARABLE:
         median = {
@@ -355,10 +360,23 @@ def _compared_with(activities: pd.DataFrame, activity: pd.Series) -> dict[str, A
     return {
         "sport": _value(activity["sport"]),
         "run_type": run_type,
+        "indoor": bool(indoor),
         "window_days": COMPARE_WINDOW_DAYS,
         "count": int(len(similar)),
         "median": median,
     }
+
+
+def _power(records: pd.DataFrame) -> dict[str, Any]:
+    """La potenza di corsa, media e massima, quando l'orologio la registra.
+    Sul tapis roulant e' la misura di sforzo che non dipende da quanto bene
+    il polso indovina la distanza."""
+    if records.empty or "power" not in records:
+        return {"avg_power": None, "max_power": None}
+    power = records["power"].dropna()
+    if power.empty:
+        return {"avg_power": None, "max_power": None}
+    return {"avg_power": _value(power.mean(), 0), "max_power": _value(power.max(), 0)}
 
 
 def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> dict[str, Any]:
@@ -371,12 +389,22 @@ def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> d
         "weekday": WEEKDAYS[start.weekday()],
         "start_time": start.strftime("%H:%M"),
         "sport": activity["sport"],
+        # Il tapis roulant cambia come si racconta la seduta (non si "esce",
+        # non c'e' terreno, il passo e' quello del nastro) e con cosa si
+        # confronta: senza questo l'agente vede solo "running".
+        "sub_sport": _value(activity["sub_sport"]),
+        "indoor": bool(activity["sub_sport"] == "treadmill"),
         "name": activity["activity_name"],
         "distance_km": _value(activity["total_distance_km"], 2),
         "duration_min": _value(activity["total_time_min"], 0),
         "ascent_m": _value(activity["total_ascent_m"], 0),
         "avg_hr": _value(activity["avg_heart_rate"], 0),
         "max_hr": _value(activity["max_heart_rate"], 0),
+        # Calorie e potenza: su un tapis roulant sono i segnali onesti, dove
+        # distanza e velocita' le stima il polso e in salita sbagliano di
+        # molto. Garmin le calorie le da' per tutte le sedute.
+        "calories": _value(activity["total_calories"], 0),
+        **_power(records),
         "aerobic_te": _value(activity["aerobic_te"], 1),
         "anaerobic_te": _value(activity["anaerobic_te"], 1),
         "grade_adjusted_speed_kmh": _value(activity["equiv_speed_kmh"], 1),

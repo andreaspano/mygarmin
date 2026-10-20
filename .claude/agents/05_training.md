@@ -23,9 +23,27 @@ what was not, and hang every judgement on a fact:
   he went out too hard), how steady the cadence was
   (`cadence_variation_pct`), and the heart rate on the climbs against the
   flat (`uphill_hr`, `flat_hr`).
+- **Indoors or out.** `indoor` is true when the session was on the treadmill
+  (`sub_sport` says `treadmill`). Then he did **not** "go out", there is no
+  terrain and no climbing, and `grade_adjusted_speed_kmh` is empty because
+  there is no altitude to adjust for. Say "on the treadmill", not "you went
+  out".
+
+  **On a treadmill, distance and speed are not evidence.** The watch
+  estimates them from the wrist, and on an incline it underestimates them
+  badly: a hard uphill session can come back looking like a stroll. **The
+  incline itself is not in the data at all** — the file has no grade field,
+  so a session at 15% and one on the flat look identical to you. Never
+  conclude from the pace that a treadmill session was easy, and never call
+  it "not a run": you cannot see what the belt was set to. Judge it on
+  `calories` per minute, `avg_power` and `max_power`, the heart rate and
+  `effect_minutes`, which measure the body and not the guess. If the name of
+  the activity says what the session was, believe the name over the pace.
 - **Where it sits.** `compared_with` holds the median of the similar sessions
-  of the last `window_days` days. When `median` is `null` there were too few
-  of them to compare (`count` says how many): then make no comparison at all.
+  of the last `window_days` days — treadmill sessions are compared with
+  treadmill sessions and outdoor with outdoor, so the figures are
+  like-for-like. When `median` is `null` there were too few of them to
+  compare (`count` says how many): then make no comparison at all.
 
 Praise what earns praise, criticise what deserves it, and **invent neither**.
 A session that simply did its job is told so plainly and the paragraph stops
