@@ -17,6 +17,7 @@ ogni media dice su quanti giorni e' fatta.
 import argparse
 import contextlib
 import json
+import math
 import sys
 from datetime import date, timedelta
 from pathlib import Path
@@ -51,6 +52,21 @@ MORNING_METRICS: dict[str, tuple[str, int]] = {
     "body_battery_morning": ("body_battery_high", 0),
     "body_battery_low_yesterday": ("body_battery_low", -1),
     "spo2_avg": ("spo2_avg", 0),
+}
+
+# Le misure che vivono dentro un intervallo chiuso: punteggi e percentuali
+# che Garmin da' da 0 a 100. La fascia di `_band` si ferma li' invece di
+# promettere un valore che la misura non puo' avere (todo 46).
+MORNING_LIMITS: dict[str, tuple[float, float]] = {
+    name: (0, 100)
+    for name in (
+        "readiness",
+        "sleep_score",
+        "stress_avg_yesterday",
+        "body_battery_morning",
+        "body_battery_low_yesterday",
+        "spo2_avg",
+    )
 }
 
 # Le soglie degli allarmi della sezione Health. Sono qui e non nel testo
@@ -89,12 +105,17 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
     return health.reindex(index)[column]
 
 
-def _band(window: pd.Series) -> dict[str, Any] | None:
+def _band(window: pd.Series, limits: tuple[float, float] | None = None) -> dict[str, Any] | None:
     """Dove sta di solito una misura: la media della finestra piu' e meno uno
     scarto tipo (`low`, `high`) e piu' e meno due (`outer_low`,
     `outer_high`). Dentro la prima sta la normalita', fuori dalla seconda c'e'
     poco da discutere. La finestra e' quella di `avg_28d`, cosi' la media e la
     fascia raccontano lo stesso periodo.
+
+    Con `limits` la fascia si ferma dove si ferma la misura: il body battery
+    al risveglio ha una media alta e uno scarto largo, e due scarti sopra
+    portavano la fascia a 118 su una batteria che arriva a 100 (todo 46). La
+    barra ci costruiva sopra una scala piu' lunga del possibile.
 
     Garmin una fascia la manda solo per l'HRV (`_hrv_baseline`); queste si
     calcolano dallo storico. Non sono soglie d'allarme - quello del battito
@@ -107,11 +128,16 @@ def _band(window: pd.Series) -> dict[str, Any] | None:
     mean, sd = values.mean(), values.std()
     if pd.isna(mean) or pd.isna(sd):
         return None
+    floor, ceiling = limits or (-math.inf, math.inf)
+
+    def edge(value: float) -> Any:
+        return _value(min(max(value, floor), ceiling), 1)
+
     return {
-        "low": _value(mean - sd, 1),
-        "high": _value(mean + sd, 1),
-        "outer_low": _value(mean - 2 * sd, 1),
-        "outer_high": _value(mean + 2 * sd, 1),
+        "low": edge(mean - sd),
+        "high": edge(mean + sd),
+        "outer_low": edge(mean - 2 * sd),
+        "outer_high": edge(mean + 2 * sd),
     }
 
 
@@ -137,7 +163,7 @@ def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
             "avg_7d": short,
             "avg_28d": long,
             "delta_vs_28d": delta,
-            "band": _band(long_window),
+            "band": _band(long_window, MORNING_LIMITS.get(name)),
         }
     result["hrv_status"] = _value(_health_row(health, day)["hrv_status"])
     result["hrv_baseline"] = _hrv_baseline(day)

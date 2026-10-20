@@ -1,15 +1,13 @@
-// "Recovery" (todo 37, prima un blocco di "This morning"): readiness, sonno e
-// body battery della mattina da `/api/daily/{day}`, sotto la sezione Recovery
-// del report. Il frontend non fa conti: medie e conteggi vengono dall'API.
+// "Recovery" (todo 37, rifatta dal todo 46 sullo stampo di Health):
+// readiness, sonno e body battery da `/api/daily/{day}`, ognuno con la barra
+// della sua fascia, e sotto la sezione Recovery del report. Il frontend non
+// fa conti: valori e fasce vengono dall'API.
 import type { ReactNode } from "react";
 
-import type { DailyData, Measure } from "../api/client";
+import type { DailyData } from "../api/client";
+import { durationLabel } from "../format";
 import { markdown } from "../markdown";
-import { CardHead, num, Stat } from "./Stat";
-
-function avgs(m: Measure, digits = 1): string {
-  return `7-day avg ${num(m.avg_7d.mean, digits)} · 28-day avg ${num(m.avg_28d.mean, digits)}`;
-}
+import { CardHead, MeasureBar, num, Stat } from "./Stat";
 
 /** "8h04", dai minuti dell'API. */
 function sleepValue(minutes: number | null): ReactNode {
@@ -35,21 +33,41 @@ export function RecoveryCard({
   refresh?: ReactNode;
 }) {
   const m = data.morning;
-  const sleep = data.sleep_last_7;
+  // Sotto ogni numero solo la barra della sua fascia, come in Health: dice da
+  // sola dove sta il valore, e gli estremi sono scritti sulle tacche. Le due
+  // barre del body battery raccontano cose diverse — la prima quanto si e'
+  // ricaricato, la seconda quanto gli ha chiesto la giornata di ieri.
   return (
     <section className="card" aria-label="Recovery">
       <CardHead icon={icon} title="Recovery" refresh={refresh} />
-      <div className="stats">
-        <Stat label="Readiness" value={num(m.readiness.value)} sub={avgs(m.readiness)} />
+      <div className="stats two">
+        <Stat
+          label="Readiness"
+          value={num(m.readiness.value)}
+          sub={<MeasureBar measure={m.readiness} />}
+        />
         <Stat
           label="Sleep"
           value={sleepValue(data.sleep_minutes)}
-          sub={`Score ${num(m.sleep_score.value)} · ${sleep.short_nights} of ${sleep.nights_measured} nights under 7 h`}
+          // La fascia e' in ore e il numero grande in ore e minuti: le tacche
+          // seguono il numero, cosi' le due letture si confrontano a occhio.
+          sub={
+            <MeasureBar
+              measure={m.sleep_hours}
+              value={data.sleep_minutes != null ? data.sleep_minutes / 60 : null}
+              tick={(hours) => durationLabel(hours * 60)}
+            />
+          }
         />
         <Stat
-          label="Body battery at wake-up"
+          label="Body battery, wake-up"
           value={num(m.body_battery_morning.value)}
-          sub={`Yesterday's low ${num(m.body_battery_low_yesterday.value)}`}
+          sub={<MeasureBar measure={m.body_battery_morning} />}
+        />
+        <Stat
+          label="Body battery, yesterday's low"
+          value={num(m.body_battery_low_yesterday.value)}
+          sub={<MeasureBar measure={m.body_battery_low_yesterday} />}
         />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
