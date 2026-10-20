@@ -55,10 +55,10 @@ export function HealthCard({ data, text, icon }: { data: DailyData; text: string
           sub={<MeasureBar measure={m.resting_hr} />}
         />
         <Stat
-          label="HRV, weekly average"
-          value={num(m.hrv_weekly_avg.value)}
+          label="HRV, last night"
+          value={num(m.hrv_last_night.value)}
           unit="ms"
-          sub={<MeasureBar measure={m.hrv_weekly_avg} />}
+          sub={<MeasureBar measure={m.hrv_last_night} />}
         />
         <Stat
           label="Breathing in sleep"
