@@ -15,7 +15,6 @@ import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type R
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon } from "../markdown";
 import { useColorScheme } from "../useColorScheme";
-import { Alerts } from "./Alerts";
 import { DayHeader } from "./DayHeader";
 import { FitnessCard } from "./FitnessCard";
 import { HealthCard } from "./HealthCard";
@@ -212,7 +211,6 @@ export function DayPage() {
         </div>
         {data ? (
           <>
-            <Alerts alerts={data.alerts} />
             <div className="cards-grid">
               <HealthCard data={data} text={sectionBody(report, "Health")} icon={sectionIcon(report, "Health")} />
               <LoadCard data={data} text={sectionBody(report, "Load")} icon={sectionIcon(report, "Load")} />
