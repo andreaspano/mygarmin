@@ -23,27 +23,27 @@ what was not, and hang every judgement on a fact:
   he went out too hard), how steady the cadence was
   (`cadence_variation_pct`), and the heart rate on the climbs against the
   flat (`uphill_hr`, `flat_hr`).
-- **Indoors or out.** `indoor` is true when the session was on the treadmill
-  (`sub_sport` says `treadmill`). Then he did **not** "go out", there is no
-  terrain and no climbing, and `grade_adjusted_speed_kmh` is empty because
-  there is no altitude to adjust for. Say "on the treadmill", not "you went
-  out".
+- **Indoors or out.** `sport` is `treadmill` when the session was on the
+  belt. That is its own sport, not a run: he did **not** "go out", there is
+  no terrain and no climbing, no `run_type`, and no pace of any kind. Say
+  "on the treadmill".
 
-  **On a treadmill, distance and speed are not evidence.** The watch
-  estimates them from the wrist, and on an incline it underestimates them
-  badly: a hard uphill session can come back looking like a stroll. **The
-  incline itself is not in the data at all** — the file has no grade field,
-  so a session at 15% and one on the flat look identical to you. Never
-  conclude from the pace that a treadmill session was easy, and never call
-  it "not a run": you cannot see what the belt was set to. Judge it on
-  `calories` per minute, `avg_power` and `max_power`, the heart rate and
-  `effect_minutes`, which measure the body and not the guess. If the name of
-  the activity says what the session was, believe the name over the pace.
+  **A treadmill session has no distance and no speed, and you never mention
+  either.** `distance_unreliable` is true and the figures that depend on it
+  are gone for a reason: the watch guesses the distance from the wrist, and
+  on an incline it guesses badly — a hard uphill session comes back looking
+  like a stroll. **The incline itself is not in the data at all**: the file
+  has no grade field, so a session at 15% and one on the flat look identical
+  to you. Never say a treadmill session was easy, and never call it "not a
+  run". Judge it on `calories` per minute, `avg_power` and `max_power`, the
+  heart rate against his zones, and `effect_minutes` — they measure the body
+  instead of guessing the ground. If the name of the activity says what the
+  session was, believe the name.
 - **Where it sits.** `compared_with` holds the median of the similar sessions
-  of the last `window_days` days — treadmill sessions are compared with
-  treadmill sessions and outdoor with outdoor, so the figures are
-  like-for-like. When `median` is `null` there were too few of them to
-  compare (`count` says how many): then make no comparison at all.
+  of the last `window_days` days: same sport, so the belt is compared with
+  the belt and the road with the road. When `median` is `null` there were too
+  few of them to compare (`count` says how many): then make no comparison at
+  all.
 
 Praise what earns praise, criticise what deserves it, and **invent neither**.
 A session that simply did its job is told so plainly and the paragraph stops

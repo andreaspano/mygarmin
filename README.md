@@ -42,17 +42,30 @@ rebuild non le perde.
 
 ### Il tipo delle corse
 
-Le corse (tapis roulant compreso) hanno un tipo: `race`, `intervals`,
-`long`, `tempo` o `easy`. L'API lo stima dall'allenamento pianificato
-salvato nel FIT e dalla durata (`src/training/interface/run_type.py`):
-almeno due passi attivi sono ripetute, un solo passo attivo di almeno 10
-minuti e' un tempo, senza allenamento da 100 minuti in su e' una lunga,
-altrimenti facile. Gara non si stima mai. Lo si corregge dalla scheda
-Training della Day in React; le correzioni stanno in `activity_run_type.json`
-nella cartella dati, accanto a `activity_terrain.json`, e un rebuild non le
-perde. Il report giornaliero lo usa nella sezione Training (todo 43): e' il
-metro con cui l'allenatore giudica la seduta, perche' dice che seduta voleva
-essere.
+Le corse hanno un tipo: `race`, `intervals`, `long`, `tempo` o `easy`. L'API
+lo stima dall'allenamento pianificato salvato nel FIT e dalla durata
+(`src/training/interface/run_type.py`): almeno due passi attivi sono ripetute,
+un solo passo attivo di almeno 10 minuti e' un tempo, senza allenamento da 100
+minuti in su e' una lunga, altrimenti facile. Gara non si stima mai. Lo si
+corregge dalla scheda Training della Day in React; le correzioni stanno in
+`activity_run_type.json` nella cartella dati, accanto a
+`activity_terrain.json`, e un rebuild non le perde. Il report giornaliero lo
+usa nella sezione Training (todo 43): e' il metro con cui l'allenatore giudica
+la seduta, perche' dice che seduta voleva essere.
+
+### Il tapis roulant e' uno sport, non una corsa
+
+Dal todo 45 una seduta sul nastro ha `sport = treadmill`: si misurano tempo,
+battito, potenza e calorie, e **non ha un concetto di distanza**. La distanza
+che l'orologio registra la stima dal polso e in salita sbaglia di molto (una
+seduta a 15% di pendenza torna con tre chilometri e una media da
+passeggiata), quindi resta in `activities.db` ma non la mostra ne' la somma
+nessuno: l'API la manda a `null` insieme alla velocita' media, i fatti del
+giorno la marcano `distance_unreliable`, e il prompt dell'agente Training ha
+l'ordine di non nominare ne' distanza ne' passo. Niente terreno e niente tipo
+di corsa, per lo stesso motivo. Lo sport si riconosce dal `sub_sport` del FIT
+(lo scrive il profilo dell'orologio) prima che dal tipo di Garmin Connect:
+delle 23 sedute dello storico una sola ha un tipo su Connect.
 
 ### I file di salute di un giorno
 

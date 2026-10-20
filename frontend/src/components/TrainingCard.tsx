@@ -225,6 +225,9 @@ function ActivityView({
   const icon = sport.icon(activity.sport);
   const after = first ? context(data) : null;
   const a = detail ?? activity;
+  // Gli sport senza distanza arrivano con la distanza (e la velocita') a
+  // null dall'API: vedi `_activity_fields` in api/app.py.
+  const measured = a.total_distance_km != null;
   return (
     <>
       <div className="training-grid">
@@ -247,11 +250,19 @@ function ActivityView({
               </div>
             </div>
           </div>
-          <div className="stats five">
+          {/* Senza distanza (il tapis roulant: l'API non la manda, perche' la
+              stima il polso) al suo posto vanno le calorie, e la velocita'
+              media sparisce invece di mostrare un trattino: era la stessa
+              stima, divisa per il tempo. */}
+          <div className={`stats ${measured ? "five" : "four"}`}>
             <Stat
-              label="Distance"
-              value={fixed(a.total_distance_km, 1, " km")}
-              help="Total distance recorded by the watch, in km."
+              label={measured ? "Distance" : "Calories"}
+              value={measured ? fixed(a.total_distance_km, 1, " km") : fixed(a.total_calories, 0, " kcal")}
+              help={
+                measured
+                  ? "Total distance recorded by the watch, in km."
+                  : "Calories burned over the activity, as the watch counts them."
+              }
             />
             <Stat
               label="Duration"
@@ -263,11 +274,13 @@ function ActivityView({
               value={a.total_ascent_m != null ? `+${a.total_ascent_m.toFixed(0)} / -${fixed(a.total_descent_m, 0)} m` : "-"}
               help="Total ascent and descent recorded by the watch, in metres."
             />
-            <Stat
-              label="Average speed"
-              value={fixed(a.avg_speed_kmh, 1, " km/h")}
-              help="Average speed, over moving time (the duration is elapsed time, stops included)."
-            />
+            {measured && (
+              <Stat
+                label="Average speed"
+                value={fixed(a.avg_speed_kmh, 1, " km/h")}
+                help="Average speed, over moving time (the duration is elapsed time, stops included)."
+              />
+            )}
             <Stat
               label="Average heart rate"
               value={fixed(a.avg_heart_rate, 0, " bpm")}

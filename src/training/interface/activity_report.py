@@ -9,6 +9,7 @@ import pandas as pd
 
 from training.garmin.config import DATA_DIR
 from training.interface.db import list_activities, load_activity_records
+from training.interface.sports import has_distance
 
 OUT_DIR = Path("summary/00.activity")
 
@@ -29,6 +30,13 @@ _NUMBER_KEYS = (
     "uphill_hr",
     "flat_hr",
 )
+
+
+# Le sole grandezze qui sopra che la distanza non la toccano: le due meta'
+# sono meta' *di distanza*, quindi dove la distanza e' una stima del polso
+# (il tapis roulant, todo 45) cade anche il confronto dei battiti, che non
+# sarebbe fatto a meta' seduta ma in un punto deciso dalla stima.
+NUMBERS_WITHOUT_DISTANCE = ("cadence_mean", "cadence_variation_pct")
 
 
 def activity_numbers(records: pd.DataFrame) -> dict[str, float | None]:
@@ -85,15 +93,22 @@ def activity_numbers(records: pd.DataFrame) -> dict[str, float | None]:
     return out
 
 
-def activity_comments(records: pd.DataFrame) -> list[str]:
+def activity_comments(records: pd.DataFrame, sport: str | None = None) -> list[str]:
     """Commento automatico rule-based sulla singola attivita', basato solo
     sui dati campionati (nessuna chiamata esterna): confronta prima e
     seconda meta' per ritmo/FC, mette in relazione FC e pendenza, e
     valuta la regolarita' della cadenza.
 
     I numeri li da' `activity_numbers()`; qui si scelgono le soglie e le
-    parole."""
+    parole. Degli sport senza distanza (il tapis roulant, todo 45) resta la
+    sola cadenza: le due meta' sono meta' di distanza, e li' la distanza la
+    indovina il polso."""
     numbers = activity_numbers(records)
+    if not has_distance(sport):
+        numbers = {
+            name: (value if name in NUMBERS_WITHOUT_DISTANCE else None)
+            for name, value in numbers.items()
+        }
     comments = []
 
     delta_pct = numbers["speed_change_pct"]
@@ -163,7 +178,14 @@ def build_activity_report_markdown(activity: pd.Series, records: pd.DataFrame) -
         f"# {activity.sport or '?'} — {activity.start_time:%d %b %Y, %H:%M}",
         "",
         f"- Activity ID: {activity.activity_id}",
-        f"- Distance: {activity.total_distance_km:.1f} km",
+    ]
+    # Gli sport senza distanza (il tapis roulant) non la dichiarano: al suo
+    # posto le calorie, che li' sono la misura onesta dello sforzo.
+    if has_distance(activity.sport):
+        lines.append(f"- Distance: {activity.total_distance_km:.1f} km")
+    elif pd.notna(activity.total_calories):
+        lines.append(f"- Calories: {activity.total_calories:.0f} kcal")
+    lines += [
         f"- Duration: {activity.total_time_min:.0f} min",
         f"- Avg HR: {activity.avg_heart_rate or '-'} bpm",
         f"- Elevation: {ascent}",
@@ -171,7 +193,7 @@ def build_activity_report_markdown(activity: pd.Series, records: pd.DataFrame) -
         "## Comment",
         "",
     ]
-    lines.extend(f"- {comment}" for comment in activity_comments(records))
+    lines.extend(f"- {comment}" for comment in activity_comments(records, activity.sport))
     return "\n".join(lines) + "\n"
 
 

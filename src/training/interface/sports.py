@@ -7,11 +7,19 @@ icone stanno nella cartella `icons/` della radice del repo."""
 SPORT_ICON_FILES = {
     "walking": "walking.png",
     "running": "running.png",
+    "treadmill": "treadmill.png",
     "cycling": "cycling.png",
     "hiking": "trekking.png",
     "cross_country_skiing": "backcountry_ski.png",
     "rock_climbing": "climbing.png",
 }
+
+# Gli sport senza un concetto di distanza (todo 45). Sul tapis roulant la
+# distanza la stima il polso dal movimento del braccio, e in salita sbaglia
+# di molto: una seduta a 15% di pendenza torna con tre chilometri e una media
+# da passeggiata. Il dato resta nel database, ma non si mostra e non si somma;
+# di quelle sedute si guardano tempo, battito, potenza e calorie.
+DISTANCELESS_SPORTS = {"treadmill"}
 
 # L'icona dei giorni di riposo: la striscia della settimana la mette nei
 # giorni senza attivita', e la scheda Training nei "Rest day". Grigia, per
@@ -29,3 +37,8 @@ def sport_label(value: str | None) -> str:
     if not value:
         return "?"
     return value.replace("_", " ").capitalize()
+
+
+def has_distance(sport: str | None) -> bool:
+    """Se di questo sport la distanza si puo' mostrare e sommare."""
+    return sport not in DISTANCELESS_SPORTS
