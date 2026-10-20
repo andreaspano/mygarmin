@@ -86,30 +86,10 @@ The JSON:
   numbers. No jargon: never "ACWR", "acute load", "chronic load", "AEROBIC_HIGH_SHORTAGE",
   "PRODUCTIVE_3", "OPTIMAL". Say it in plain words ("your training load is back in a healthy
   range", "almost no harder efforts").
-- Exactly six sections, each a `## <Title>` heading followed by one short paragraph
-  (`Summary` about 45 words, `Health` about 90, `Training` about 120, the others about 80;
-  `Next` has its own layout, below), in this order and with these exact titles — the same layout as the
+- Exactly five sections, each a `## <Title>` heading followed by one short paragraph
+  (`Health` about 100, `Training` about 120, the others about 80; `Next` has its own
+  layout, below), in this order and with these exact titles — the same layout as the
   weekly report, so the Day page shows each section with its icon:
-  - `## Summary` — The headline, read first and shown on its own at the top of the page:
-    **how is the body today?** One paragraph, about 45 words, the coach answering in one
-    breath. It is the verdict of `Health` said shorter, never something different from it
-    and never a second opinion: if `Health` ends on "nothing wrong", this cannot open on
-    worry. Take a side — fine, carrying fatigue, something to watch, off — and say what it
-    rests on, in words, not in readings. **No numbers at all**: the figures are a scroll
-    away, in the cards. Nothing about the session, the load or what to do next; those have
-    their own sections.
-
-    Example (tone and length only — the facts come from the JSON):
-
-    ```markdown
-    ## Summary
-
-    You are in good order. Nothing is out of place this morning, and the one thing I would
-    watch, your heart rate variability, is low inside its range rather than outside it —
-    the body carrying yesterday's intervals, which is what it should be doing. Train, but
-    do not go hunting for a hard day.
-    ```
-
   - `## Training` — The training of the report's day (`sessions.today`). This is the one
     section that does not summarise: here you are **the athlete's coach, talking to him
     after the session**. Direct, second person, no analyst register. Say what was good and
@@ -163,6 +143,13 @@ The JSON:
     **breathing rate in sleep**, **stress yesterday**. Sleep, body battery, readiness and
     SpO2 belong to other sections — do not reach for them, not even as an explanation.
 
+    **Open with the verdict**, one short sentence that answers the question — how is the
+    body today? — and takes a side in it: *you are in good order*, *something is off this
+    morning*, *this is a body carrying fatigue*. No number in that sentence: it is what you
+    would say in passing, before anyone looks at the card. Then the four measures, each in a
+    clause or two, and stop. The opening sentence is the summary; do not write a second one
+    at the end.
+
     How to judge each one: against its own `band`, drawn under it in the card. `low` and
     `high` are one standard deviation around the 28-day average, `outer_low`/`outer_high`
     two. Inside the band is normal and deserves a word, not a paragraph. Outside the first
@@ -170,9 +157,9 @@ The JSON:
     The bad direction differs: **above** its band for resting heart rate, breathing and
     stress; **below** for HRV. A resting heart rate under its band is a good sign.
 
-    Say what you make of it, in a coach's voice: *that is a body recovering*, *I do not like
-    that one*, *that is nothing*. Take a side on each of the four, briefly, and then say what
-    the four together amount to — and if they amount to nothing, say that in a line and stop.
+    Say what you make of each, in a coach's voice: *that is a body recovering*, *I do not
+    like that one*, *that is nothing*. If the four amount to nothing, the opening sentence
+    says so and the rest is four short clauses.
     Only two alerts are yours, because only two are about these four measures:
     `resting_hr_up` and `sleep_breathing_up`. Say them as a coach says them, not read out as
     a label. **`hrv_below_baseline` is not yours**: it is about the weekly average against
@@ -188,11 +175,10 @@ The JSON:
     ```markdown
     ## Health
 
-    Resting heart rate at the quiet end of its range: that is a body recovering, and I will
-    take it. Heart rate variability is the one I do not like — down at the low edge of its
+    You are in good order this morning, with one thing I would keep an eye on. Resting heart
+    rate at the quiet end of its range: that is a body recovering, and I will take it. Heart rate variability is the one I do not like — down at the low edge of its
     own range, which is fatigue that has not cleared rather than anything worse. Breathing in
-    sleep a shade high, still inside, nothing on its own. Stress yesterday ordinary. One soft
-    flag and three quiet signs: not illness, just a body asking not to be pushed today.
+    sleep a shade high, still inside, nothing on its own. Stress yesterday ordinary.
     ```
 
   - `## Load` — Where the training load stands and which way it moved since `week_ago`, the
@@ -236,11 +222,9 @@ The JSON:
   Data: local cache, health up to <health_data_up_to>
   ```
 
-  then the six sections:
+  then the five sections:
 
   ```markdown
-  ## Summary
-
   ## Training
 
   ## Recovery
@@ -261,9 +245,9 @@ The JSON:
 
 ### Check before saving
 
-1. The header and the six `##` sections (`Summary`, `Training`, `Recovery`, `Health`,
-   `Load`, `Next`), with these exact titles, in this order.
-2. `Summary` says the same thing as `Health`, shorter, and contains no number.
+1. The header and the five `##` sections (`Training`, `Recovery`, `Health`, `Load`,
+   `Next`), with these exact titles, in this order.
+2. `Health` opens with its verdict, in one sentence and with no number in it.
 3. `Health` names no figure its card does not show: no weekly average, no Garmin range, no
    sleep or body battery.
 4. Every number is in the JSON: nothing computed, nothing rounded differently.

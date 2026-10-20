@@ -207,7 +207,7 @@ export function DayPage() {
         )}
         <div className="head-row">
           <NextCard body={sectionBody(report, "Next")} tomorrow={data?.recent.trained_today ?? true} />
-          <SummaryCard body={sectionBody(report, "Summary")} />
+          <SummaryCard body={null} />
         </div>
         {data ? (
           <>
