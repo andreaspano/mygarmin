@@ -144,8 +144,10 @@ The JSON:
       one standard deviation), not Garmin's. For the resting HR, above the band is the
       direction that matters; below it is a good sign, not a worry. When a `band` is `null`
       there were too few measured days, so compare with the averages alone.
-    - **HRV**, the weekly average against `hrv_baseline` (Garmin's own balanced range), not a
-      single night.
+    - **HRV**, the weekly average against its own `band`, like every other measure, not a
+      single night. `hrv_baseline` is Garmin's balanced range, a far wider reference of its
+      own: name it only when the `hrv_below_baseline` alert fires, since that alert is built
+      on it and the alert has to be reported with its numbers.
     - **breathing rate during sleep**, **sleep** (hours, score, short nights), **stress and
       body battery**, **SpO2** (only if recorded; if it is in `missing`, one short clause).
 
