@@ -105,7 +105,9 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
     return health.reindex(index)[column]
 
 
-def _band(window: pd.Series, limits: tuple[float, float] | None = None) -> dict[str, Any] | None:
+def _band(
+    window: pd.Series, limits: tuple[float, float] | None = None, digits: int = 1
+) -> dict[str, Any] | None:
     """Dove sta di solito una misura: la media della finestra piu' e meno uno
     scarto tipo (`low`, `high`) e piu' e meno due (`outer_low`,
     `outer_high`). Dentro la prima sta la normalita', fuori dalla seconda c'e'
@@ -116,6 +118,10 @@ def _band(window: pd.Series, limits: tuple[float, float] | None = None) -> dict[
     al risveglio ha una media alta e uno scarto largo, e due scarti sopra
     portavano la fascia a 118 su una batteria che arriva a 100 (todo 46). La
     barra ci costruiva sopra una scala piu' lunga del possibile.
+
+    `digits` sono quelli della misura, non della media: il punteggio di
+    resistenza e' un intero a quattro cifre, e una fascia "4841.8 - 5010.7"
+    prometteva una precisione che il dato non ha (todo 48).
 
     Garmin una fascia la manda solo per l'HRV (`_hrv_baseline`); queste si
     calcolano dallo storico. Non sono soglie d'allarme - quello del battito
@@ -131,7 +137,7 @@ def _band(window: pd.Series, limits: tuple[float, float] | None = None) -> dict[
     floor, ceiling = limits or (-math.inf, math.inf)
 
     def edge(value: float) -> Any:
-        return _value(min(max(value, floor), ceiling), 1)
+        return _value(min(max(value, floor), ceiling), digits)
 
     return {
         "low": edge(mean - sd),
@@ -467,10 +473,25 @@ def _session(activity: pd.Series, data_dir: Path, activities: pd.DataFrame) -> d
     }
 
 
+# Le misure di forma che vivono dentro un intervallo chiuso, come
+# `MORNING_LIMITS` per quelle della mattina (todo 46 e 48). Il punteggio di
+# salita Garmin lo da' da 0 a 100.
+FITNESS_LIMITS: dict[str, tuple[float, float]] = {"hill_score": (0, 100)}
+
+
 def _latest_with_change(health: pd.DataFrame, day: date, column: str, digits: int = 1) -> dict[str, Any] | None:
     """Il valore piu' recente di `column` fino a `day`, il giorno della riga
-    da cui viene, e la variazione rispetto al valore piu' recente di 28
-    giorni prima (None se allora non c'era). None se non c'e' nessun valore."""
+    da cui viene, la variazione rispetto al valore piu' recente di 28 giorni
+    prima (None se allora non c'era) e la fascia in cui si e' mosso nelle
+    ultime quattro settimane. None se non c'e' nessun valore.
+
+    La fascia e' quella di `_band`, la stessa delle misure della mattina:
+    stessa finestra, stesso minimo di giorni misurati. **Si legge pero' al
+    contrario** (todo 48): qui sopra la fascia vuol dire che la misura sta
+    ancora salendo, non che c'e' qualcosa da guardare. E siccome e' una media
+    mobile, si muove anche nei giorni in cui il valore sta fermo: un VO2max
+    che non cambia mentre la fascia lo raggiunge racconta che la salita si e'
+    fermata."""
     values = health.loc[: pd.Timestamp(day), column].dropna()
     if values.empty:
         return None
@@ -482,6 +503,9 @@ def _latest_with_change(health: pd.DataFrame, day: date, column: str, digits: in
         "as_of": values.index[-1].date().isoformat(),
         "days_ago_28": _value(then, digits),
         "change": _value(now - then, digits) if then is not None else None,
+        "band": _band(
+            _window(health, column, day, BASELINE_LONG), FITNESS_LIMITS.get(column), digits
+        ),
     }
 
 

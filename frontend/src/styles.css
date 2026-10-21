@@ -581,6 +581,21 @@ h2 {
   margin-top: 8px;
 }
 
+/* Le barre di Fitness prendono il blu della sua icona (#2563c8). Attenzione:
+   qui la stessa barra si legge al contrario delle altre card — sopra la
+   fascia vuol dire che la misura sta ancora salendo, ed e' una buona
+   notizia. Lo dice il testo sotto, non il colore. */
+.fitness-card {
+  --range-fill: rgb(154, 184, 232);
+  --range-wide-fill: rgba(37, 99, 200, 0.16);
+}
+@media (prefers-color-scheme: dark) {
+  .fitness-card {
+    --range-fill: rgb(70, 108, 166);
+    --range-wide-fill: rgba(130, 170, 230, 0.22);
+  }
+}
+
 /* Load */
 .load-card h2 {
   margin-bottom: 4px;

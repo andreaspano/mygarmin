@@ -634,6 +634,8 @@ export interface components {
              * @description Null when there is no value 28 days before.
              */
             change: number | null;
+            /** @description Where it has sat over the last 28 days. Read the other way round from the bands of `morning`: above the band means it is still climbing. Null with too few measured days. */
+            band?: components["schemas"]["Band"] | null;
             /**
              * Level
              * @description Garmin's level for the score (Recreational, Intermediate, Trained, Well-trained, Expert, Superior, Elite), from the limits in the same answer.
@@ -993,6 +995,8 @@ export interface components {
              * @description Null when there is no value 28 days before.
              */
             change: number | null;
+            /** @description Where it has sat over the last 28 days. Read the other way round from the bands of `morning`: above the band means it is still climbing. Null with too few measured days. */
+            band?: components["schemas"]["Band"] | null;
         };
         /**
          * SectionRefresh
@@ -1146,6 +1150,8 @@ export interface components {
              * @description Null when there is no value 28 days before.
              */
             change: number | null;
+            /** @description Where it has sat over the last 28 days. Read the other way round from the bands of `morning`: above the band means it is still climbing. Null with too few measured days. */
+            band?: components["schemas"]["Band"] | null;
         };
         /**
          * ZoneBand
