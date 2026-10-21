@@ -264,20 +264,23 @@ def get_daily(day: date, ctx: Context) -> DailyData:
 
 def _fragment_sections(folder: Path) -> list[tuple[str | None, str]]:
     """Le sezioni dai frammenti di una cartella (todo 44): un file per
-    sezione, nell'ordine in cui si leggono. Il file manca quando il suo
-    agente non ha ancora scritto o e' fallito: quella sezione non c'e' e le
-    altre si vedono lo stesso.
+    sezione, nell'ordine in cui si leggono.
+
+    **Le sezioni ci sono tutte, anche quelle senza frammento**, con il corpo
+    vuoto. Il file manca quando il suo agente non ha ancora scritto o e'
+    fallito, e quella e' una card senza testo, non una card senza nome: la
+    pagina prende da qui anche il titolo e l'icona di ogni riquadro, e
+    saltando la sezione le toglieva tutte e due. Si vedeva rifacendo una
+    sola card su un giorno mai scritto: restava la sua, e le altre sei
+    perdevano l'icona.
 
     Niente testo senza titolo: la riga "Data: ..." del file unico la scartava
     gia' `parse_report`, quindi alla pagina non e' mai arrivata."""
     found: list[tuple[str | None, str]] = []
     for section in SECTIONS:
         path = folder / f"{section.key}.md"
-        if not path.exists():
-            continue
-        body = path.read_text(encoding="utf-8").strip()
-        if body:
-            found.append((section.title, body))
+        body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
+        found.append((section.title, body))
     return found
 
 
@@ -296,7 +299,9 @@ def get_daily_report(day: date, ctx: Context) -> Report:
         found = parse_report(path)
     else:
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
-    if not found:
+    # Una cartella che esiste ma non ha ancora un frammento scritto vale come
+    # un report che non c'e': le sezioni vuote da sole non sono un report.
+    if not any(body for _, body in found):
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
     sections = [
         ReportSection(title=title, body=body, icon=section_icon(title) if title else None)
