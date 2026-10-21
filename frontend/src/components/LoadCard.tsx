@@ -1,10 +1,12 @@
-// "Load" (todo 34, rifatta sullo stampo di Health): il carico di Garmin. Il
-// titolo e' lo stato del carico detto a parole (la prima frase del report era
-// troppo lunga per un titolo), poi le tre parti del carico mensile, ognuna
-// con la barra della **fascia obiettivo di Garmin** e il valore di oggi come
-// tacca, e il rapporto fra carico recente e abituale, che una fascia non ce
-// l'ha. Sotto, il testo della sezione Load del report. Il VO2max e' passato
-// alla card Fitness (todo 37).
+// "Load" (todo 34, rifatta sullo stampo di Health): il carico di Garmin. Le
+// tre parti del carico mensile, ognuna con la barra della **fascia obiettivo
+// di Garmin** e il valore di oggi come tacca, e il rapporto fra carico
+// recente e abituale, che una fascia non ce l'ha. Sotto, il testo della
+// sezione Load del report. Il VO2max e' passato alla card Fitness (todo 37).
+//
+// Niente titolo sopra i numeri: lo stato del carico secondo Garmin
+// ("In a healthy range") diceva a mezze parole quello che la prima riga del
+// testo dice per intero, e nessuna delle altre tre card ha un titolo.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
@@ -31,14 +33,6 @@ const ROWS: { key: Key; label: string; help: string }[] = [
   },
 ];
 
-// Lo stato del carico di Garmin (`acwr_status`), come titolo del riquadro.
-const STATUS_TITLES: Record<string, string> = {
-  LOW: "Below your usual load",
-  OPTIMAL: "In a healthy range",
-  HIGH: "Above your usual load",
-  VERY_HIGH: "Well above your usual load",
-};
-
 /** Dove sta il carico rispetto alla fascia obiettivo, accanto al numero come
  * il "+1.2 in 28 days" di Fitness. */
 function Against({ value, min, max }: { value: number; min: number; max: number }): ReactNode {
@@ -63,11 +57,9 @@ export function LoadCard({
 }) {
   const now = data.load.now;
   const targets = data.load.targets;
-  const title = (now?.acwr_status && STATUS_TITLES[now.acwr_status]) ?? "Load";
   return (
     <section className="card load-card" aria-label="Load">
       <CardHead icon={icon} title="Load" refresh={refresh} />
-      <h2>{title}</h2>
       {/* La fascia e' il bersaglio di Garmin, non una media nostra: ha un
           livello solo, quindi `outer` coincide con gli estremi e la barra
           non ha la tinta piu' chiara delle altre card. */}
