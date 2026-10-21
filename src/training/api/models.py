@@ -387,6 +387,17 @@ class LactateThreshold(BaseModel):
     as_of: date = Field(description="The day Garmin detected it.")
 
 
+class AltitudeAcclimation(BaseModel):
+    """How high the body is acclimatised to, as Garmin works it out from where the
+    activities happened. Built over days spent high up and lost just as fast."""
+
+    metres: int = Field(description="Zero when there is no acclimatisation.")
+    trend: str | None = Field(
+        description="Garmin's word for the direction: ACCLIMATIZING, ACCLIMATIZED, "
+        "DEACCLIMATIZING. Null when it has nothing to say."
+    )
+
+
 class Fitness(BaseModel):
     """What the athlete can do, changing slowly over weeks (the Fitness card, todos 37 and 38).
     Only in the API: the daily report's JSON does not have it."""
@@ -399,6 +410,11 @@ class Fitness(BaseModel):
     )
     threshold_hr: ThresholdHr | None = Field(
         description="Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold."
+    )
+    altitude_acclimation: AltitudeAcclimation | None = Field(
+        default=None,
+        description="Null for the days whose training status file does not carry the block, "
+        "which is everything before 2025.",
     )
 
 

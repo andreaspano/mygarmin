@@ -509,6 +509,26 @@ def _latest_with_change(health: pd.DataFrame, day: date, column: str, digits: in
     }
 
 
+def _altitude_acclimation(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
+    """A che quota il corpo e' acclimatato, dal JSON del training status di
+    quel giorno: `health_daily` non lo tiene, come la fascia HRV.
+
+    Garmin lo da' in metri, annidato dentro il VO2max piu' recente, insieme
+    all'acclimatamento al caldo che per ora non leggiamo. Si costruisce in
+    giorni di permanenza in quota e si perde altrettanto in fretta: nello
+    storico di Andrea sale a 1400 m nelle estati in montagna e sta a zero
+    tutto il resto dell'anno. `None` se il file non c'e' o non porta il
+    blocco (i giorni prima del 2025 non ce l'hanno)."""
+    path = _day_paths(Path(data_dir) / "health", day.isoformat())["training_status"]
+    block = _dig(_read_json(path), "mostRecentVO2Max", "heatAltitudeAcclimation")
+    if not isinstance(block, dict):
+        return None
+    metres = block.get("altitudeAcclimation")
+    if metres is None:
+        return None
+    return {"metres": int(metres), "trend": _value(block.get("altitudeTrend"))}
+
+
 def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
     """La card Fitness della Day in React (todo 37 e 38): VO2max, endurance e
     hill score piu' recenti fino a `day`, sempre, con la data e la variazione
@@ -532,6 +552,7 @@ def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
         "vo2max": vo2max,
         "endurance": endurance,
         "hill": _latest_with_change(health, day, "hill_score", digits=0),
+        "altitude_acclimation": _altitude_acclimation(day),
     }
 
 

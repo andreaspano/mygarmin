@@ -8,6 +8,10 @@
 // Accanto al numero non va niente: la variazione in 28 giorni ("+1.2 in 28
 // days") raccontava un andamento, e queste card dicono com'e' oggi. Dove sta
 // la misura lo fa vedere la barra.
+//
+// L'acclimatamento alla quota sta in fondo accanto alla soglia: non e' una
+// capacita' che cresce, e' dove il corpo si trova adesso. Zero per quasi
+// tutto l'anno, 1400 m nelle estati in montagna.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
@@ -34,6 +38,7 @@ export function FitnessCard({
   const hill = data.fitness.hill;
   const lactate = data.fitness.lactate_threshold;
   const threshold = data.fitness.threshold_hr;
+  const altitude = data.fitness.altitude_acclimation;
   // Sotto ogni numero solo la barra della sua fascia, come in Health e
   // Recovery. Qui pero' **sopra la fascia e' buono**: queste misure si
   // muovono in settimane, e stare sopra l'ultimo mese vuol dire che stanno
@@ -42,7 +47,10 @@ export function FitnessCard({
   return (
     <section className="card fitness-card" aria-label="Fitness">
       <CardHead icon={icon} title="Fitness" refresh={refresh} />
-      <div className="stats two">
+      {/* Tre colonne e non due: i punteggi con la loro barra sulla prima
+          riga, e sulla seconda la soglia e la quota a cui il corpo e'
+          acclimatato, i due numeri nudi. */}
+      <div className="stats">
         <Stat
           label="VO2max"
           value={num(vo2?.now, 1)}
@@ -63,6 +71,12 @@ export function FitnessCard({
         ) : (
           <Stat label="Threshold heart rate" value={num(threshold?.value)} unit="bpm" />
         )}
+        <Stat
+          label="Altitude acclimation"
+          value={num(altitude?.metres)}
+          unit="m"
+          help="How high Garmin reckons your body is acclimatised to, from where you have been training. It builds over days spent high up and is lost just as fast; zero at home."
+        />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
       <WrittenAt when={writtenAt} day={day} />

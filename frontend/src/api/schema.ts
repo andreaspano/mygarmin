@@ -468,6 +468,23 @@ export interface components {
             [key: string]: unknown;
         };
         /**
+         * AltitudeAcclimation
+         * @description How high the body is acclimatised to, as Garmin works it out from where the
+         *     activities happened. Built over days spent high up and lost just as fast.
+         */
+        AltitudeAcclimation: {
+            /**
+             * Metres
+             * @description Zero when there is no acclimatisation.
+             */
+            metres: number;
+            /**
+             * Trend
+             * @description Garmin's word for the direction: ACCLIMATIZING, ACCLIMATIZED, DEACCLIMATIZING. Null when it has nothing to say.
+             */
+            trend: string | null;
+        };
+        /**
          * Band
          * @description Where a measure usually sits: one standard deviation around its average, and two.
          */
@@ -658,6 +675,8 @@ export interface components {
             lactate_threshold: components["schemas"]["LactateThreshold"] | null;
             /** @description Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold. */
             threshold_hr: components["schemas"]["ThresholdHr"] | null;
+            /** @description Null for the days whose training status file does not carry the block, which is everything before 2025. */
+            altitude_acclimation?: components["schemas"]["AltitudeAcclimation"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
