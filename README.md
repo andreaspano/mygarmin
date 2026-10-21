@@ -97,13 +97,14 @@ per ora la sola pagina Day, che chiede i dati all'API; le altre voci della
 barra in alto arriveranno. Mostra un giorno alla volta (todo 34): la striscia
 della settimana, la seduta suggerita e il verdetto del giorno, una griglia 2x2
 con Health e Load sopra, Recovery e Fitness sotto (todo 37), e l'allenamento
-con grafico e mappa. Health, Recovery e Fitness mostrano quattro misure
-ciascuna, ognuna con la barra della sua fascia (la media dei 28 giorni prima
-piu' e meno uno scarto tipo, in tinta chiara piu' e meno due) e niente testo
-sotto il numero: todo 37 per Health, 46 per Recovery, 48 per Fitness. **In
-Fitness la barra si legge al contrario**: VO2max, endurance e hill si muovono
-in settimane, e stare sopra la fascia vuol dire che stanno ancora salendo. Il
-giorno sta nell'URL (`?day=2026-10-07`). Ogni card ha il testo della sua
+con grafico e mappa. **Tutte e quattro hanno la stessa forma**: quattro
+misure, ognuna con la barra della sua fascia e il valore di oggi come tacca, e
+niente testo sotto il numero. La fascia pero' non vuol dire la stessa cosa
+dappertutto: in Health e Recovery e' la media dei 28 giorni prima piu' e meno
+uno scarto tipo (in tinta chiara piu' e meno due), e uscirne e' un segnale; in
+Fitness e' la stessa media ma **sopra vuol dire che stai migliorando**; in
+Load e' il **bersaglio di Garmin**, non una media tua, e ha un livello solo.
+Il giorno sta nell'URL (`?day=2026-10-07`). Ogni card ha il testo della sua
 sezione del report giornaliero, l'ora in cui e' stato scritto e un tasto che
 la rifa' da sola (todo 44 e 47); i passi della seduta vengono dalla sezione
 Next. Per lanciarla servono l'API e Node.js:

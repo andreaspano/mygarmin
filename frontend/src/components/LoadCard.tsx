@@ -1,22 +1,34 @@
-// "Load" (todo 34): il carico di Garmin. Il titolo e' lo stato del carico di
-// Garmin detto a parole (la prima frase del report era troppo lunga per un
-// titolo), il testo e' la sezione Load del report; il bilancio del lavoro come tre
-// barre, con la fascia obiettivo di Garmin quando i file di salute ce
-// l'hanno; riposi e ultima seduta dura da `/api/daily/{day}`. Il VO2max e'
-// passato alla card Fitness (todo 37).
-import type { DailyData } from "../api/client";
-import { shortDayLabel } from "../format";
+// "Load" (todo 34, rifatta sullo stampo di Health): il carico di Garmin. Il
+// titolo e' lo stato del carico detto a parole (la prima frase del report era
+// troppo lunga per un titolo), poi le tre parti del carico mensile, ognuna
+// con la barra della **fascia obiettivo di Garmin** e il valore di oggi come
+// tacca, e il rapporto fra carico recente e abituale, che una fascia non ce
+// l'ha. Sotto, il testo della sezione Load del report. Il VO2max e' passato
+// alla card Fitness (todo 37).
 import type { ReactNode } from "react";
 
+import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
-import { CardHead, WrittenAt } from "./Stat";
+import { CardHead, RangeBar, Stat, WrittenAt, num } from "./Stat";
 
-type Row = { key: "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic"; label: string; tone: string };
+type Key = "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic";
 
-const ROWS: Row[] = [
-  { key: "load_aerobic_low", label: "Low aerobic", tone: "low" },
-  { key: "load_aerobic_high", label: "High aerobic", tone: "high" },
-  { key: "load_anaerobic", label: "Anaerobic", tone: "anaerobic" },
+const ROWS: { key: Key; label: string; help: string }[] = [
+  {
+    key: "load_aerobic_low",
+    label: "Low aerobic",
+    help: "Garmin's monthly load from easy aerobic work, against the range Garmin wants you in.",
+  },
+  {
+    key: "load_aerobic_high",
+    label: "High aerobic",
+    help: "Garmin's monthly load from harder aerobic work, against the range Garmin wants you in.",
+  },
+  {
+    key: "load_anaerobic",
+    label: "Anaerobic",
+    help: "Garmin's monthly load from efforts above threshold, against the range Garmin wants you in.",
+  },
 ];
 
 // Lo stato del carico di Garmin (`acwr_status`), come titolo del riquadro.
@@ -27,57 +39,11 @@ const STATUS_TITLES: Record<string, string> = {
   VERY_HIGH: "Well above your usual load",
 };
 
-/** Dove sta il carico rispetto alla fascia obiettivo. */
-function targetStatus(value: number, min: number, max: number): string {
-  if (value < min) return "short";
-  if (value > max) return "above target";
-  return "in range";
-}
-
-function Balance({ data }: { data: DailyData }) {
-  const now = data.load.now;
-  if (!now) return null;
-  const targets = data.load.targets;
-  // Una scala per le tre barre, cosi' si confrontano fra loro.
-  const top = Math.max(
-    ...ROWS.map((r) => now[r.key] ?? 0),
-    ...(targets ? ROWS.map((r) => targets[r.key].max) : [0]),
-    1,
-  );
-  const pct = (v: number) => `${(v / top) * 100}%`;
-  return (
-    <div className="balance">
-      <div className="balance-title">
-        Balance of the work
-        <span className="muted"> · monthly load{targets ? ", Garmin's target shaded" : ""}</span>
-      </div>
-      {ROWS.map((r) => {
-        const value = now[r.key];
-        const target = targets?.[r.key];
-        return (
-          <div className="balance-row" key={r.key}>
-            <div className="balance-label">
-              <span className={`swatch ${r.tone}`} />
-              {r.label}
-            </div>
-            <div className="balance-bar" aria-hidden="true">
-              {target && (
-                <div
-                  className="balance-target"
-                  style={{ left: pct(target.min), width: pct(target.max - target.min) }}
-                />
-              )}
-              {value != null && <div className={`balance-fill ${r.tone}`} style={{ width: pct(value) }} />}
-            </div>
-            <div className="balance-value">
-              {value != null ? Math.round(value) : "–"}
-              {value != null && target && <span className="muted"> {targetStatus(value, target.min, target.max)}</span>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+/** Dove sta il carico rispetto alla fascia obiettivo, accanto al numero come
+ * il "+1.2 in 28 days" di Fitness. */
+function Against({ value, min, max }: { value: number; min: number; max: number }): ReactNode {
+  const word = value < min ? "short" : value > max ? "above target" : "in range";
+  return <span className="delta muted">{word}</span>;
 }
 
 export function LoadCard({
@@ -95,30 +61,51 @@ export function LoadCard({
   icon: string | null;
   refresh?: ReactNode;
 }) {
-  const status = data.load.now?.acwr_status;
-  const title = (status && STATUS_TITLES[status]) ?? "Load";
-  const recent = data.recent;
+  const now = data.load.now;
+  const targets = data.load.targets;
+  const title = (now?.acwr_status && STATUS_TITLES[now.acwr_status]) ?? "Load";
   return (
     <section className="card load-card" aria-label="Load">
       <CardHead icon={icon} title="Load" refresh={refresh} />
       <h2>{title}</h2>
-      {text && <div className="prose">{markdown(text)}</div>}
-      <Balance data={data} />
-      <div className="load-facts">
-        <div className="stat">
-          <div className="stat-label">Rest days, last 7</div>
-          <div className="stat-value">{recent.rest_days_last_7}</div>
-        </div>
-        <div className="stat">
-          <div className="stat-label">Last hard session</div>
-          <div className="stat-value small">
-            {recent.last_hard_session_before_today ? shortDayLabel(recent.last_hard_session_before_today) : "–"}
-          </div>
-          {recent.days_since_last_hard_session_before_today != null && (
-            <div className="stat-sub">{recent.days_since_last_hard_session_before_today} days before</div>
-          )}
-        </div>
+      {/* La fascia e' il bersaglio di Garmin, non una media nostra: ha un
+          livello solo, quindi `outer` coincide con gli estremi e la barra
+          non ha la tinta piu' chiara delle altre card. */}
+      <div className="stats two">
+        {ROWS.map(({ key, label, help }) => {
+          const value = now?.[key] ?? null;
+          const target = targets?.[key];
+          return (
+            <Stat
+              key={key}
+              label={label}
+              help={help}
+              value={
+                <>
+                  {num(value)}
+                  {value != null && target && <Against value={value} min={target.min} max={target.max} />}
+                </>
+              }
+              sub={
+                value != null &&
+                target && (
+                  <RangeBar
+                    value={value}
+                    band={{ low: target.min, high: target.max, outer_low: target.min, outer_high: target.max }}
+                    tick={(v) => v.toFixed(0)}
+                  />
+                )
+              }
+            />
+          );
+        })}
+        <Stat
+          label="Load ratio"
+          value={num(now?.acwr, 1)}
+          help="Garmin's acute-to-chronic load ratio: the last week of training against the last four. Around 1 means you are carrying what you usually carry."
+        />
       </div>
+      {text && <div className="prose">{markdown(text)}</div>}
       <WrittenAt when={writtenAt} day={day} />
     </section>
   );

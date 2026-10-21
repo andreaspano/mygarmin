@@ -73,8 +73,11 @@ export function RangeBar({
 }) {
   const { low, high, outer_low: outerLow, outer_high: outerHigh } = band;
   const pad = (outerHigh - outerLow) * 0.12;
-  const min = Math.min(outerLow - pad, value ?? outerLow);
-  const max = Math.max(outerHigh + pad, value ?? outerHigh);
+  // Lo stesso margine anche attorno a un valore fuori dalla fascia: senza,
+  // la tacca finiva esattamente sul bordo della traccia e si vedeva a meta'
+  // (il carico anaerobico, molto sotto il bersaglio di Garmin).
+  const min = Math.min(outerLow, value ?? outerLow) - pad;
+  const max = Math.max(outerHigh, value ?? outerHigh) + pad;
   const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
   const span = (a: number, b: number) => ({ left: at(a), width: `calc(${at(b)} - ${at(a)})` });
   return (
