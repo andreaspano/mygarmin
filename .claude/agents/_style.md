@@ -49,6 +49,13 @@ Which direction is bad depends on the measure: **above** its band for resting
 heart rate, breathing rate and stress; **below** for HRV, readiness, sleep
 and body battery.
 
+**The fitness scores are the exception, and they are read the other way
+round.** VO2max, the endurance score and the hill score move over weeks, not
+overnight: **above** their band means the measure is still climbing, which is
+good news, and **below** means it is sliding. Their band is a moving average,
+so it shifts even on a day the value does not — a score that holds while its
+band catches up is a climb that has stopped.
+
 ## Your own ground
 
 Judge what your section owns and nothing else. Another section's measures are

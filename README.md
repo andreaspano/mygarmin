@@ -97,14 +97,16 @@ per ora la sola pagina Day, che chiede i dati all'API; le altre voci della
 barra in alto arriveranno. Mostra un giorno alla volta (todo 34): la striscia
 della settimana, la seduta suggerita e il verdetto del giorno, una griglia 2x2
 con Health e Load sopra, Recovery e Fitness sotto (todo 37), e l'allenamento
-con grafico e mappa. Health e Recovery mostrano quattro misure ciascuna,
-ognuna con la barra della sua fascia (la media dei 28 giorni prima piu' e meno
-uno scarto tipo, in tinta chiara piu' e meno due) e niente testo sotto il
-numero: todo 37 per Health, todo 46 per Recovery. Fitness ha VO2max, endurance
-score, hill score e soglia del lattato (todo 38). Il giorno sta nell'URL
-(`?day=2026-10-07`). Ogni card ha il testo della sua sezione del report
-giornaliero e un tasto che la rifa' da sola (todo 44); i passi della seduta
-vengono dalla sezione Next. Per lanciarla servono l'API e Node.js:
+con grafico e mappa. Health, Recovery e Fitness mostrano quattro misure
+ciascuna, ognuna con la barra della sua fascia (la media dei 28 giorni prima
+piu' e meno uno scarto tipo, in tinta chiara piu' e meno due) e niente testo
+sotto il numero: todo 37 per Health, 46 per Recovery, 48 per Fitness. **In
+Fitness la barra si legge al contrario**: VO2max, endurance e hill si muovono
+in settimane, e stare sopra la fascia vuol dire che stanno ancora salendo. Il
+giorno sta nell'URL (`?day=2026-10-07`). Ogni card ha il testo della sua
+sezione del report giornaliero, l'ora in cui e' stato scritto e un tasto che
+la rifa' da sola (todo 44 e 47); i passi della seduta vengono dalla sezione
+Next. Per lanciarla servono l'API e Node.js:
 
 ```bash
 cd frontend && npm ci   # la prima volta

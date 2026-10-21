@@ -340,6 +340,12 @@ class Vo2maxNow(BaseModel):
     as_of: date = Field(description="The day Garmin measured it.")
     days_ago_28: float | None = Field(description="Null when there is no value 28 days before.")
     change: float | None = Field(description="Null when there is no value 28 days before.")
+    band: Band | None = Field(
+        default=None,
+        description="Where it has sat over the last 28 days. Read the other way round from the "
+        "bands of `morning`: above the band means it is still climbing. Null with too few "
+        "measured days.",
+    )
 
 
 class ScoreNow(BaseModel):
@@ -349,6 +355,12 @@ class ScoreNow(BaseModel):
     as_of: date = Field(description="The day of the health file it is read from.")
     days_ago_28: int | None = Field(description="Null when there is no value 28 days before.")
     change: int | None = Field(description="Null when there is no value 28 days before.")
+    band: Band | None = Field(
+        default=None,
+        description="Where it has sat over the last 28 days. Read the other way round from the "
+        "bands of `morning`: above the band means it is still climbing. Null with too few "
+        "measured days.",
+    )
 
 
 class EnduranceNow(ScoreNow):

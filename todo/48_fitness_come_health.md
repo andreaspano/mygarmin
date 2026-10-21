@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Fitness rifatta sullo stampo di Health e Recovery
@@ -163,3 +163,44 @@ dire che stai scendendo.
    --no-update`: il testo apre con un verdetto senza numeri, nomina tutte e
    quattro le misure contro le loro fasce, e non cita ne' il livello
    "Intermediate" ne' la data di misura del VO2max.
+
+## Come e' andata
+
+Fatto come scritto, con un difetto trovato guardando la card a schermo:
+
+- **La fascia aveva i decimali sbagliati.** `_band` arrotondava sempre a un
+  decimale, quindi sotto il punteggio di resistenza le tacche dicevano
+  "4841.8 - 5010.7": una precisione che quel numero non ha, su un intero a
+  quattro cifre. Adesso `_band` prende i decimali della sua misura, e i
+  punteggi li hanno a zero (4842 - 5011, 48 - 54). Le fasce di `morning` non
+  si muovono: `_morning` non passa il parametro e resta a un decimale.
+- `FITNESS_LIMITS` tiene solo `hill_score` a `(0, 100)`. Sui dati di oggi
+  non morde (la fascia larga arriva a 57), ma e' la stessa protezione di
+  readiness e stress.
+- Le barre di Fitness prendono il blu dell'icona (`#2563c8`) con lo stesso
+  meccanismo di Recovery: due variabili CSS sulla card, nei due temi.
+
+Il testo fa quello che doveva: apre con un verdetto senza numeri ("The engine
+is still growing, and not marginally"), distingue chi e' **sopra** la fascia
+(VO2max e hill, ancora in salita) da chi ci e' **dentro** (endurance, "the
+rise there has flattened"), e usa l'eccezione della soglia per dare il passo
+e la data che la card non mostra piu'. Non nomina ne' "Intermediate" ne' la
+data di misura del VO2max.
+
+Resta da vedere, fra qualche settimana, se nei mesi piatti il testo si
+ripete: le fasce mobili dovrebbero dargli qualcosa da dire anche a valori
+fermi, ma e' una scommessa, non una verifica.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_48'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: resta riscritto il frammento
+`summary/01.daily/2026-10-21/fitness.md`, che e' il testo nuovo. Il codice
+vecchio lo mostra lo stesso, e' solo testo; per riavere quello di prima va
+rifatta la sezione con `make daily_report DAY=2026-10-21 SECTION=fitness`.
+
+Dopo il revert, rifare il merge di `todo_48` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

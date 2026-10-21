@@ -1,20 +1,14 @@
-// "Fitness" (todo 37 e 38): cosa Andrea e' capace di fare, che cambia piano
-// nelle settimane. VO2max (prima in fondo a "Load"), endurance e hill score di
-// Garmin e la soglia del lattato (o, prima che Garmin ne rilevi una, la
-// frequenza di soglia del FIT), da `fitness` di `/api/daily/{day}`. Dal todo
-// 44 ha anche il suo testo, scritto dall'agente `04_fitness`. Un valore che
-// manca e' "–", la card resta.
+// "Fitness" (todo 37 e 38, rifatta dal 48 sullo stampo di Health): cosa
+// Andrea e' capace di fare, che cambia piano nelle settimane. VO2max (prima
+// in fondo a "Load"), endurance e hill score di Garmin e la soglia del
+// lattato (o, prima che Garmin ne rilevi una, la frequenza di soglia del
+// FIT), da `fitness` di `/api/daily/{day}`. Il testo lo scrive l'agente
+// `04_fitness` (todo 44). Un valore che manca e' "–", la card resta.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
-import { shortDayLabel } from "../format";
 import { markdown } from "../markdown";
-import { CardHead, Stat, WrittenAt, num } from "./Stat";
-
-/** "6:00", dai secondi al km dell'API. */
-function paceLabel(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
+import { CardHead, RangeBar, Stat, WrittenAt, num } from "./Stat";
 
 /** "+1.0 in 28 days", verde o rosso; niente se 28 giorni fa non c'era un valore. */
 function Change({ value, digits }: { value: number | null | undefined; digits: number }): ReactNode {
@@ -47,8 +41,13 @@ export function FitnessCard({
   const hill = data.fitness.hill;
   const lactate = data.fitness.lactate_threshold;
   const threshold = data.fitness.threshold_hr;
+  // Sotto ogni numero solo la barra della sua fascia, come in Health e
+  // Recovery. Qui pero' **sopra la fascia e' buono**: queste misure si
+  // muovono in settimane, e stare sopra l'ultimo mese vuol dire che stanno
+  // ancora salendo. La soglia non ha fascia (e' un valore solo, rilevato di
+  // rado) e resta un numero nudo.
   return (
-    <section className="card" aria-label="Fitness">
+    <section className="card fitness-card" aria-label="Fitness">
       <CardHead icon={icon} title="Fitness" refresh={refresh} />
       <div className="stats two">
         <Stat
@@ -59,11 +58,7 @@ export function FitnessCard({
               <Change value={vo2?.change} digits={1} />
             </>
           }
-          sub={
-            vo2 &&
-            `Measured ${shortDayLabel(vo2.as_of)}` +
-              (vo2.days_ago_28 != null ? ` · ${vo2.days_ago_28.toFixed(1)} four weeks ago` : "")
-          }
+          sub={vo2?.band && <RangeBar value={vo2.now} band={vo2.band} />}
         />
         <Stat
           label="Endurance score"
@@ -73,7 +68,7 @@ export function FitnessCard({
               <Change value={endurance?.change} digits={0} />
             </>
           }
-          sub={endurance && [endurance.level, shortDayLabel(endurance.as_of)].filter(Boolean).join(" · ")}
+          sub={endurance?.band && <RangeBar value={endurance.now} band={endurance.band} />}
         />
         <Stat
           label="Hill score"
@@ -83,28 +78,12 @@ export function FitnessCard({
               <Change value={hill?.change} digits={0} />
             </>
           }
-          sub={hill && shortDayLabel(hill.as_of)}
+          sub={hill?.band && <RangeBar value={hill.now} band={hill.band} />}
         />
         {lactate ? (
-          <Stat
-            label="Lactate threshold"
-            value={num(lactate.heart_rate)}
-            unit="bpm"
-            sub={[
-              lactate.pace_s_per_km != null && `${paceLabel(lactate.pace_s_per_km)} /km`,
-              lactate.speed_kmh != null && `${lactate.speed_kmh.toFixed(1)} km/h`,
-              `Detected ${shortDayLabel(lactate.as_of)}`,
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          />
+          <Stat label="Lactate threshold" value={num(lactate.heart_rate)} unit="bpm" />
         ) : (
-          <Stat
-            label="Threshold heart rate"
-            value={num(threshold?.value)}
-            unit="bpm"
-            sub={threshold && `From the activity of ${shortDayLabel(threshold.as_of)}`}
-          />
+          <Stat label="Threshold heart rate" value={num(threshold?.value)} unit="bpm" />
         )}
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
