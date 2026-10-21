@@ -173,16 +173,22 @@ sono uguali:
 
 | | ore | sezioni |
 |---|---|---|
-| mattina | 10:00 | health, recovery, load, fitness, next, summary |
-| sera | 22:00 | load, fitness, training, next, summary |
+| mattina | 10:00 | health, recovery, load, fitness, next, summary_morning |
+| sera | 22:00 | load, fitness, training, next, summary_evening |
 
 Health e Recovery solo la mattina, perche' sono le misure della notte appena
 finita e alle 22 racconterebbero la stessa notte; Training solo la sera,
 perche' alle 10 non c'e' ancora niente da commentare.
 
+**Il verdetto del giorno e' in due pezzi** (todo 49), scritti dallo stesso
+agente nei due giri: il **sole** la mattina, la **luna** la sera, uno sopra
+l'altro nel riquadro Summary. La mattina si vede solo il sole, perche' la
+luna non esiste ancora. La luna legge il sole e chiude il cerchio — "il
+mattino diceva di tenerla facile, e l'hai tenuta facile" — senza ripeterlo.
+
 Gli agenti sanno **che giro e'**: la mattina Next propone la seduta per oggi
-e Summary giudica la giornata che comincia, la sera Next guarda a domani e
-Summary dice com'e' andata. Il momento si ricava dall'orologio
+e il Summary giudica la giornata che comincia, la sera Next guarda a domani
+e il Summary dice com'e' andata. Il momento si ricava dall'orologio
 (`EVENING_FROM_HOUR` in `api/sections.py`), quindi vale anche per il tasto
 della pagina, che pero' continua a rifare **tutte** le sezioni: il momento
 decide come parla il testo, l'insieme decide chi gira.

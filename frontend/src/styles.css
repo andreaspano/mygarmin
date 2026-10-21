@@ -18,6 +18,8 @@
   /* L'accento di Summary: viola chiaro, che si legge sul fondo scuro del
      riquadro in tutti e due i temi, contro l'arancio di Next. */
   --summary-accent: #9085e9;
+  /* La luna: lo stesso viola, spento, per il secondo pezzo del verdetto. */
+  --summary-moon: #6b63a8;
   --warn-bg: rgba(255, 189, 69, 0.22);
   --warn-text: #8a6100;
   --up: #1f7a3a;
@@ -43,6 +45,7 @@
     --border: rgba(244, 244, 246, 0.1);
     --border-strong: rgba(244, 244, 246, 0.25);
     --accent: #9085e9;
+    --summary-moon: #595280;
     --next-bg: #262a36;
     --next-chip: rgba(255, 255, 255, 0.22);
     --warn-bg: rgba(255, 227, 18, 0.16);
@@ -354,7 +357,25 @@ h2 {
 .next-session {
   max-width: 380px;
 }
-/* Summary: stesso riquadro di Next, accento suo. */
+/* I due pezzi del verdetto, uno sotto l'altro nello stesso riquadro (todo
+   49): una riga sottile a separarli, e la luna in un viola piu' spento del
+   sole, perche' si legga come la stessa cosa in un altro momento. */
+.summary-card .next-main + .next-main {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--next-chip);
+}
+.summary-card .next-icon.moon {
+  background: var(--summary-moon);
+}
+
+/* Summary: stesso riquadro di Next, accento suo. Ma in colonna, non in
+   riga: `.next-card` e' fatto per Next, che mette i chip a destra, e i due
+   pezzi del verdetto vanno uno sopra l'altro. */
+.summary-card {
+  flex-direction: column;
+  gap: 0;
+}
 .summary-card .next-icon {
   background: var(--summary-accent);
 }

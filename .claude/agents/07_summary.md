@@ -29,6 +29,16 @@ whole job: say what the day amounts to when you put them together.
   speak of the morning: that is the start of the day you are summing up, not
   a reason to talk about what comes next.
 
+  **On the evening run there is one more file, and it is yours:
+  `summary_morning.md`, the verdict the day started with.** Read it and
+  close the circle when there is a circle to close: the morning said keep it
+  easy and he kept it easy, or the morning said there was room for something
+  sharp and the room is still there. **Do not repeat it** — the two sit one
+  above the other on the page, the morning one is right there to be read,
+  and saying it again in other words is a wasted sentence. If the morning
+  and the evening simply agree and there is nothing to add, let the evening
+  stand on its own.
+
 The rest holds for both:
 
 - **No numbers at all.** Not one. The figures are a scroll away, in the
@@ -55,9 +65,10 @@ thing worth watching, your heart rate variability, is low inside its range
 rather than outside it — the body carrying yesterday's intervals, which is
 what it should be doing. Train, but do not go hunting for a hard day.
 
-Evening — note that it ends on the verdict, with no advice at all:
+Evening — note that it picks up the morning in a clause without repeating
+it, and ends on the verdict with no advice at all:
 
-A good day's work. The hour on the belt was meant to be easy and it was, and
-the body had the room for it: nothing in the day argues with anything else.
-The one thing the morning flagged, your heart rate variability, held up
-under it.
+A good day's work, and the morning called it right. The hour on the belt was
+meant to be easy and it was, on a body that had the room for it: nothing in
+the day argues with anything else. The one thing the morning flagged, your
+heart rate variability, held up under it.
