@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
-import { preamble, sectionBody, sectionIcon } from "../markdown";
+import { preamble, sectionBody, sectionIcon, sectionWrittenAt } from "../markdown";
 import { useColorScheme } from "../useColorScheme";
 import { DayHeader } from "./DayHeader";
 import { FitnessCard } from "./FitnessCard";
@@ -222,13 +222,29 @@ export function DayPage() {
             Refresh of {refresh.day} failed: {refresh.message}
           </p>
         )}
+        {/* Lo scaricamento che fallisce non ferma il lavoro: il testo si
+            scrive sui dati che ci sono gia'. Ma va detto, perche' da quando
+            a lanciare sono i timer non c'e' nessuno a guardare (todo 47). */}
+        {watched && refresh?.download && !refresh.download.ok && (
+          <p className="warning multiline">
+            Garmin was not reached: the text of {refresh.day} was written on the data already here.
+            {refresh.download.message && ` ${refresh.download.message}`}
+          </p>
+        )}
         <div className="head-row">
           <NextCard
             body={sectionBody(report, "Next")}
+            writtenAt={sectionWrittenAt(report, "Next")}
+            day={day}
             tomorrow={data?.recent.trained_today ?? true}
             refresh={sectionButton("next")}
           />
-          <SummaryCard body={sectionBody(report, "Summary")} refresh={sectionButton("summary")} />
+          <SummaryCard
+            body={sectionBody(report, "Summary")}
+            writtenAt={sectionWrittenAt(report, "Summary")}
+            day={day}
+            refresh={sectionButton("summary")}
+          />
         </div>
         {data ? (
           <>
@@ -236,24 +252,32 @@ export function DayPage() {
               <HealthCard
                 data={data}
                 text={sectionBody(report, "Health")}
+                writtenAt={sectionWrittenAt(report, "Health")}
+                day={day}
                 icon={sectionIcon(report, "Health")}
                 refresh={sectionButton("health")}
               />
               <LoadCard
                 data={data}
                 text={sectionBody(report, "Load")}
+                writtenAt={sectionWrittenAt(report, "Load")}
+                day={day}
                 icon={sectionIcon(report, "Load")}
                 refresh={sectionButton("load")}
               />
               <RecoveryCard
                 data={data}
                 text={sectionBody(report, "Recovery")}
+                writtenAt={sectionWrittenAt(report, "Recovery")}
+                day={day}
                 icon={sectionIcon(report, "Recovery")}
                 refresh={sectionButton("recovery")}
               />
               <FitnessCard
                 data={data}
                 text={sectionBody(report, "Fitness")}
+                writtenAt={sectionWrittenAt(report, "Fitness")}
+                day={day}
                 icon={sectionIcon(report, "Fitness")}
                 refresh={sectionButton("fitness")}
               />
@@ -266,6 +290,8 @@ export function DayPage() {
           activities={dayActivities}
           data={data}
           comment={sectionBody(report, "Training")}
+          commentWrittenAt={sectionWrittenAt(report, "Training")}
+          day={day}
           icon={sectionIcon(report, "Training")}
           restIcon={sportList?.rest_icon ?? null}
           sport={sport}

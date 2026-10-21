@@ -116,3 +116,12 @@ export function effectMinutesLabel(seconds: number): string {
   if (minutes > 0 && minutes < 1) return `${minutes.toFixed(1)} min`;
   return `${roundHalfEven(minutes)} min`;
 }
+
+/** "written at 10:04", o "written 21 Oct, 00:01" quando il testo e' stato
+ * scritto in un giorno diverso da quello di cui parla. Succede: la Recovery
+ * del 20 ottobre e' stata riscritta a mezzanotte e un minuto. */
+export function writtenLabel(timestamp: string, day: string): string {
+  const when = timeOf(timestamp);
+  if (dayOf(timestamp) === day) return `written at ${when}`;
+  return `written ${shortDayLabel(dayOf(timestamp))}, ${when}`;
+}

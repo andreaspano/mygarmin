@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
 import type { DailyData } from "../api/client";
 import { durationLabel } from "../format";
 import { markdown } from "../markdown";
-import { CardHead, MeasureBar, num, Stat } from "./Stat";
+import { CardHead, MeasureBar, Stat, WrittenAt, num } from "./Stat";
 
 /** "8h04", dai minuti dell'API. */
 function sleepValue(minutes: number | null): ReactNode {
@@ -24,11 +24,15 @@ function sleepValue(minutes: number | null): ReactNode {
 export function RecoveryCard({
   data,
   text,
+  writtenAt,
+  day,
   icon,
   refresh,
 }: {
   data: DailyData;
   text: string | null;
+  writtenAt: string | null;
+  day: string;
   icon: string | null;
   refresh?: ReactNode;
 }) {
@@ -71,6 +75,7 @@ export function RecoveryCard({
         />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
+      <WrittenAt when={writtenAt} day={day} />
     </section>
   );
 }

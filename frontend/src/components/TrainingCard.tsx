@@ -13,7 +13,7 @@ import { markdown } from "../markdown";
 import type { ColorScheme } from "../useColorScheme";
 import { RouteMap } from "./RouteMap";
 import { RunChart } from "./RunChart";
-import { CardHead, Stat } from "./Stat";
+import { CardHead, Stat, WrittenAt } from "./Stat";
 
 const TE_HELP = {
   aerobic:
@@ -191,6 +191,8 @@ function ActivityView({
   data,
   first,
   comment,
+  commentWrittenAt,
+  day,
   sport,
   theme,
 }: {
@@ -198,6 +200,8 @@ function ActivityView({
   data: DailyData | null;
   first: boolean;
   comment: string | null;
+  commentWrittenAt: string | null;
+  day: string;
   sport: Sport;
   theme: ColorScheme;
 }) {
@@ -296,6 +300,7 @@ function ActivityView({
         </div>
         <aside className="training-side">
           {comment && <div className="prose">{markdown(comment)}</div>}
+          <WrittenAt when={commentWrittenAt} day={day} />
           {detail?.run_type != null && (
             <OverridePicker
               activityId={id}
@@ -347,6 +352,8 @@ export function TrainingCard({
   activities,
   data,
   comment,
+  commentWrittenAt,
+  day,
   icon,
   restIcon,
   sport,
@@ -356,6 +363,8 @@ export function TrainingCard({
   activities: Activity[];
   data: DailyData | null;
   comment: string | null;
+  commentWrittenAt: string | null;
+  day: string;
   icon: string | null;
   restIcon: string | null;
   refresh?: ReactNode;
@@ -396,6 +405,8 @@ export function TrainingCard({
           data={data}
           first={selected.activity_id === activities[0].activity_id}
           comment={comment}
+          commentWrittenAt={commentWrittenAt}
+          day={day}
           sport={sport}
           theme={theme}
         />
@@ -406,6 +417,7 @@ export function TrainingCard({
             <h2>Rest day</h2>
           </div>
           {comment && <div className="prose">{markdown(comment)}</div>}
+          <WrittenAt when={commentWrittenAt} day={day} />
         </div>
       )}
     </section>

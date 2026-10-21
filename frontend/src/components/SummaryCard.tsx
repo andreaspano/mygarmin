@@ -5,8 +5,19 @@
 import type { ReactNode } from "react";
 
 import { markdown } from "../markdown";
+import { WrittenAt } from "./Stat";
 
-export function SummaryCard({ body, refresh }: { body: string | null; refresh?: ReactNode }) {
+export function SummaryCard({
+  body,
+  writtenAt,
+  day,
+  refresh,
+}: {
+  body: string | null;
+  writtenAt: string | null;
+  day: string;
+  refresh?: ReactNode;
+}) {
   return (
     <section className="next-card summary-card" aria-label="Summary">
       <div className="next-main">
@@ -23,6 +34,7 @@ export function SummaryCard({ body, refresh }: { body: string | null; refresh?: 
           ) : (
             <p className="next-reason">No summary for this day.</p>
           )}
+          <WrittenAt when={writtenAt} day={day} />
         </div>
       </div>
     </section>

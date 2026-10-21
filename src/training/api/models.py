@@ -133,6 +133,11 @@ class ReportSection(BaseModel):
     title: str | None = Field(description="Null for the text before the first section.")
     body: str = Field(description="Markdown.")
     icon: str | None = Field(description="Icon file name, served under /icons. Null when the section has none.")
+    written_at: datetime | None = Field(
+        default=None,
+        description="When this section's text was written. Sections of the same day can carry "
+        "different times: the morning job writes some, the evening job others.",
+    )
 
 
 class Report(BaseModel):
@@ -155,6 +160,13 @@ class SectionRefresh(BaseModel):
     )
 
 
+class Download(BaseModel):
+    """How the download from Garmin fared at the start of a job."""
+
+    ok: bool
+    message: str | None = Field(description="Why it failed. Null when it worked.")
+
+
 class RefreshStatus(BaseModel):
     """The Refresh job of the Day page: download new data and rewrite a daily report.
 
@@ -165,9 +177,19 @@ class RefreshStatus(BaseModel):
         description="idle until the first job since the API started. failed when any section did."
     )
     day: date | None = Field(description="The day whose report the job rewrites.")
+    moment: Literal["morning", "evening"] | None = Field(
+        default=None,
+        description="Which part of the day the job speaks from: it decides whether Next "
+        "suggests a session for today or tomorrow.",
+    )
     started: datetime | None
     finished: datetime | None
     message: str | None = Field(description="Why the job failed. Null otherwise.")
+    download: Download | None = Field(
+        default=None,
+        description="How the download from Garmin fared. Null when the job did not download. "
+        "A failed download does not stop the job: the text is written on the data already here.",
+    )
     sections: dict[str, SectionRefresh] = Field(
         description="One entry per section of the report, by key: summary, training, recovery, "
         "health, load, fitness, next."

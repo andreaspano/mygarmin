@@ -1,4 +1,4 @@
-.PHONY: daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_timers daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -77,3 +77,25 @@ daily_report:
 #   make daily_data DAY=2026-10-07   (un giorno a scelta)
 daily_data:
 	uv run training-daily-data $(if $(DAY),--day $(DAY))
+
+# I due timer che scrivono il report da soli (todo 47): le 10 e le 22. Le
+# unita' stanno in deploy/ con due segnaposto, perche' un servizio utente non
+# ha il PATH della shell e il repo puo' stare dove vuole.
+#
+# Serve una volta sola, e la lancia Andrea perche' chiede i suoi permessi:
+#   loginctl enable-linger $(USER)
+# Senza, i servizi utente girano solo mentre e' loggato.
+UNIT_DIR := $(HOME)/.config/systemd/user
+UV := $(shell command -v uv)
+install_timers:
+	@test -n "$(UV)" || { echo "uv non e' nel PATH"; exit 1; }
+	@mkdir -p $(UNIT_DIR)
+	@sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' deploy/mygarmin-report@.service > $(UNIT_DIR)/mygarmin-report@.service
+	@cp deploy/mygarmin-report-morning.timer deploy/mygarmin-report-evening.timer $(UNIT_DIR)/
+	@systemctl --user daemon-reload
+	@systemctl --user enable --now mygarmin-report-morning.timer mygarmin-report-evening.timer
+	@systemctl --user list-timers --no-pager 'mygarmin-*'
+	@if [ "$$(loginctl show-user $(USER) -p Linger --value)" != yes ]; then \
+		echo; echo "I timer girano solo mentre sei loggato. Per farli girare sempre:"; \
+		echo "  loginctl enable-linger $(USER)"; \
+	fi

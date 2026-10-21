@@ -97,3 +97,12 @@ export function nextParts(body: string): NextParts {
 export function sectionIcon(report: Report | null, title: string): string | null {
   return report?.sections.find((s) => s.title?.toLowerCase() === title.toLowerCase())?.icon ?? null;
 }
+
+/** Quando e' stato scritto il testo della sezione `title`, o `null`. Le
+ * sezioni di uno stesso giorno possono portare ore diverse: dal todo 47 il
+ * giro della mattina ne scrive alcune e quello della sera altre. */
+export function sectionWrittenAt(report: Report | null, title: string): string | null {
+  return (
+    report?.sections.find((s) => s.title?.toLowerCase() === title.toLowerCase())?.written_at ?? null
+  );
+}

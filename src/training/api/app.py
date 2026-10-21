@@ -10,7 +10,7 @@ Gli endpoint sono sincroni: i calcoli (`db`, `run_chart`, `daily_data`) sono
 codice bloccante, e FastAPI li serve su un pool di thread."""
 
 import math
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -262,7 +262,7 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     return DailyData(**daily_payload(day, ctx.data_dir))
 
 
-def _fragment_sections(folder: Path) -> list[tuple[str | None, str]]:
+def _fragment_sections(folder: Path) -> list[tuple[str | None, str, datetime | None]]:
     """Le sezioni dai frammenti di una cartella (todo 44): un file per
     sezione, nell'ordine in cui si leggono.
 
@@ -274,13 +274,19 @@ def _fragment_sections(folder: Path) -> list[tuple[str | None, str]]:
     sola card su un giorno mai scritto: restava la sua, e le altre sei
     perdevano l'icona.
 
+    Di ognuna si da' anche quando e' stata scritta, cioe' l'`mtime` del suo
+    file: dal todo 47 le sezioni di uno stesso giorno portano ore diverse,
+    perche' il giro della mattina ne scrive alcune e quello della sera altre,
+    e la pagina lo dice sotto ogni testo.
+
     Niente testo senza titolo: la riga "Data: ..." del file unico la scartava
     gia' `parse_report`, quindi alla pagina non e' mai arrivata."""
-    found: list[tuple[str | None, str]] = []
+    found: list[tuple[str | None, str, datetime | None]] = []
     for section in SECTIONS:
         path = folder / f"{section.key}.md"
         body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
-        found.append((section.title, body))
+        written = datetime.fromtimestamp(path.stat().st_mtime) if body else None
+        found.append((section.title, body, written))
     return found
 
 
@@ -296,16 +302,24 @@ def get_daily_report(day: date, ctx: Context) -> Report:
     if folder.is_dir():
         found = _fragment_sections(folder)
     elif path.exists():
-        found = parse_report(path)
+        # Il file unico l'ha scritto un agente solo, in una volta: le sue
+        # sezioni portano tutte l'ora del file.
+        written = datetime.fromtimestamp(path.stat().st_mtime)
+        found = [(title, body, written) for title, body in parse_report(path)]
     else:
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
     # Una cartella che esiste ma non ha ancora un frammento scritto vale come
     # un report che non c'e': le sezioni vuote da sole non sono un report.
-    if not any(body for _, body in found):
+    if not any(body for _, body, _written in found):
         raise HTTPException(status_code=404, detail=f"No daily report for {day}.")
     sections = [
-        ReportSection(title=title, body=body, icon=section_icon(title) if title else None)
-        for title, body in found
+        ReportSection(
+            title=title,
+            body=body,
+            icon=section_icon(title) if title else None,
+            written_at=written,
+        )
+        for title, body, written in found
     ]
     return Report(day=day, sections=sections)
 

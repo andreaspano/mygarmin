@@ -9,7 +9,7 @@ import { shortDayLabel } from "../format";
 import type { ReactNode } from "react";
 
 import { markdown } from "../markdown";
-import { CardHead } from "./Stat";
+import { CardHead, WrittenAt } from "./Stat";
 
 type Row = { key: "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic"; label: string; tone: string };
 
@@ -83,11 +83,15 @@ function Balance({ data }: { data: DailyData }) {
 export function LoadCard({
   data,
   text,
+  writtenAt,
+  day,
   icon,
   refresh,
 }: {
   data: DailyData;
   text: string | null;
+  writtenAt: string | null;
+  day: string;
   icon: string | null;
   refresh?: ReactNode;
 }) {
@@ -115,6 +119,7 @@ export function LoadCard({
           )}
         </div>
       </div>
+      <WrittenAt when={writtenAt} day={day} />
     </section>
   );
 }
