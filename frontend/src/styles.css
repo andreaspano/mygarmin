@@ -507,8 +507,12 @@ h2 {
   color: var(--muted);
 }
 
-/* La barra di una fascia (HRV, battito a riposo): il tratto della fascia e
-   la tacca di dove sta il valore di oggi. */
+/* La barra di una fascia (HRV, battito a riposo, readiness, sonno): il
+   tratto della fascia e la tacca di dove sta il valore di oggi. Di suo
+   prende l'indaco, che e' il colore dell'icona di Health; una card che ha
+   un'icona di un altro colore ridichiara `--range-fill` e `--range-wide-fill`
+   e le sue barre la seguono. La tacca resta scura in tutte: e' il valore di
+   oggi, non la fascia, e deve staccare dal colore sotto. */
 .range-bar {
   margin: 4px 0 2px;
 }
@@ -526,10 +530,10 @@ h2 {
   border-radius: 4px;
 }
 .range-band {
-  background: var(--low);
+  background: var(--range-fill, var(--low));
 }
 .range-wide {
-  background: var(--band-wide);
+  background: var(--range-wide-fill, var(--band-wide));
 }
 .range-marker {
   position: absolute;
@@ -548,6 +552,21 @@ h2 {
 .range-ticks span {
   position: absolute;
   transform: translateX(-50%);
+}
+
+/* Le barre di Recovery prendono il cremisi della sua icona (#c2255c), come
+   quelle di Health prendono l'indaco della loro: la card si legge come una
+   cosa sola invece che come due. Il tratto pieno e' il cremisi schiarito,
+   quello largo il cremisi stesso, trasparente. */
+.recovery-card {
+  --range-fill: rgb(226, 153, 178);
+  --range-wide-fill: rgba(194, 37, 92, 0.16);
+}
+@media (prefers-color-scheme: dark) {
+  .recovery-card {
+    --range-fill: rgb(171, 69, 105);
+    --range-wide-fill: rgba(218, 124, 157, 0.22);
+  }
 }
 
 /* Load */

@@ -38,7 +38,7 @@ export function RecoveryCard({
   // barre del body battery raccontano cose diverse — la prima quanto si e'
   // ricaricato, la seconda quanto gli ha chiesto la giornata di ieri.
   return (
-    <section className="card" aria-label="Recovery">
+    <section className="card recovery-card" aria-label="Recovery">
       <CardHead icon={icon} title="Recovery" refresh={refresh} />
       <div className="stats two">
         <Stat
