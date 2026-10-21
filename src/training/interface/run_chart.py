@@ -285,6 +285,9 @@ def run_analysis_chart(
     if data.empty:
         return None
 
+    # Il passo si mostra solo a chi corre, come l'asse di destra: in bici e
+    # sugli sci i km/h sono la lettura giusta.
+    with_pace = sport == "running"
     has_hr = data["hr"].notna().any()
     # Gli sport senza distanza (il tapis roulant, todo 45) non hanno nemmeno
     # una velocita' da disegnare: quella nei record e' la stessa stima del
@@ -319,6 +322,16 @@ def run_analysis_chart(
         tooltip.append(alt.Tooltip("effect:N", title="Effect (estimated)"))
     if has_speed:
         tooltip.append(alt.Tooltip("speed:Q", title="Speed (km/h)", format=".1f"))
+        # Il passo accanto alla velocita', per chi corre: e' la stessa cosa
+        # letta al contrario (60 diviso i km/h), ed e' quella che un podista
+        # ha in testa. Si calcola qui invece che in Vega perche' `_clock` da'
+        # gia' "m:ss", lo stesso formato delle tacche dell'asse di destra.
+        # Da fermo non esiste un passo: resta un trattino.
+        if with_pace:
+            data["pace"] = data["speed"].map(
+                lambda kmh: _clock(60 / kmh) if pd.notna(kmh) and kmh > 0 else "–"
+            )
+            tooltip.append(alt.Tooltip("pace:N", title="Pace (min/km)"))
     if has_equiv:
         tooltip.append(alt.Tooltip("equiv:Q", title="Grade-adjusted (km/h)", format=".1f"))
     if has_slope:
