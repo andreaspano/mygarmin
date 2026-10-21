@@ -185,16 +185,27 @@ decide come parla il testo, l'insieme decide chi gira.
 Siccome ogni sezione porta la sua ora, le card ne mostrano una sotto il
 testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
 
-I timer sono unita' systemd **utente**, in `deploy/`:
+I due giri sono righe di **cron**, in `deploy/crontab`:
 
 ```bash
-make install_timers          # copia, ricarica, abilita, e dice cosa manca
-loginctl enable-linger $USER # una volta sola: senza, girano solo da loggato
-systemctl --user list-timers 'mygarmin-*'
-journalctl --user -u 'mygarmin-report@*' -n 50
+make install_cron            # le mette nel tuo crontab, ripetibile
+make uninstall_cron          # le toglie
+crontab -l | grep mygarmin   # cosa c'e' adesso
+tail -f ~/.local/state/mygarmin-report.log   # com'e' andata
 ```
 
-`Persistent=true`: un giro saltato a macchina spenta si recupera al
-risveglio. Un lavoro alla volta vale anche fra processi diversi, con un lock
-su file in `<dati>/.refresh.lock`: se il timer parte mentre premi Refresh,
-il secondo se ne va senza fare niente.
+L'installazione toglie le righe che ha messo l'ultima volta (le riconosce dal
+marcatore `# mygarmin` in fondo) e rimette queste: il resto del crontab non
+si tocca. `uv` va scritto per intero perche' cron da' un `PATH` scarno
+(`/usr/bin:/bin`); `make` e `claude`, che servono dopo, stanno li'.
+
+Prima erano due timer di systemd (todo 47), con il vantaggio di recuperare un
+giro saltato a macchina spenta. Su questa macchina, accesa sempre e mai
+sospesa, quel vantaggio non valeva il prezzo: i timer utente girano solo
+finche' sei collegato, a meno di `loginctl enable-linger`. **Cron non ha
+quel problema** — in cambio non recupera i giri saltati, e l'output va nel
+file qui sopra invece che nel journal.
+
+Un lavoro alla volta vale anche fra processi diversi, con un lock su file in
+`<dati>/.refresh.lock`: se un giro parte mentre premi Refresh, il secondo se
+ne va senza fare niente.

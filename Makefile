@@ -1,4 +1,4 @@
-.PHONY: install_timers daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_cron uninstall_cron daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -78,24 +78,26 @@ daily_report:
 daily_data:
 	uv run training-daily-data $(if $(DAY),--day $(DAY))
 
-# I due timer che scrivono il report da soli (todo 47): le 10 e le 22. Le
-# unita' stanno in deploy/ con due segnaposto, perche' un servizio utente non
-# ha il PATH della shell e il repo puo' stare dove vuole.
+# I due giri che scrivono il report da soli (todo 47): le 10 e le 22. Le
+# righe stanno in deploy/crontab con tre segnaposto, perche' cron da' un PATH
+# scarno e il repo puo' stare dove vuole.
 #
-# Serve una volta sola, e la lancia Andrea perche' chiede i suoi permessi:
-#   loginctl enable-linger $(USER)
-# Senza, i servizi utente girano solo mentre e' loggato.
-UNIT_DIR := $(HOME)/.config/systemd/user
+# L'installazione e' ripetibile: toglie le righe `# mygarmin` che ci sono gia'
+# e rimette queste, senza toccare il resto del tuo crontab.
 UV := $(shell command -v uv)
-install_timers:
+CRON_LOG := $(HOME)/.local/state/mygarmin-report.log
+install_cron:
 	@test -n "$(UV)" || { echo "uv non e' nel PATH"; exit 1; }
-	@mkdir -p $(UNIT_DIR)
-	@sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' deploy/mygarmin-report@.service > $(UNIT_DIR)/mygarmin-report@.service
-	@cp deploy/mygarmin-report-morning.timer deploy/mygarmin-report-evening.timer $(UNIT_DIR)/
-	@systemctl --user daemon-reload
-	@systemctl --user enable --now mygarmin-report-morning.timer mygarmin-report-evening.timer
-	@systemctl --user list-timers --no-pager 'mygarmin-*'
-	@if [ "$$(loginctl show-user $(USER) -p Linger --value)" != yes ]; then \
-		echo; echo "I timer girano solo mentre sei loggato. Per farli girare sempre:"; \
-		echo "  loginctl enable-linger $(USER)"; \
-	fi
+	@mkdir -p $(dir $(CRON_LOG))
+	@{ crontab -l 2>/dev/null | grep -v '# mygarmin$$' || true; \
+	   sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' -e 's|__LOG__|$(CRON_LOG)|' \
+	       deploy/crontab | grep '# mygarmin$$'; } | crontab -
+	@echo "Installato. Il crontab adesso:"
+	@crontab -l | grep '# mygarmin$$'
+	@echo "Il registro dei giri: $(CRON_LOG)"
+
+# Toglie i due giri e lascia il resto del crontab com'e'.
+uninstall_cron:
+	@{ crontab -l 2>/dev/null | grep -v '# mygarmin$$' || true; } | crontab -
+	@echo "Tolti. Il crontab adesso:"
+	@crontab -l 2>/dev/null || echo "  (vuoto)"

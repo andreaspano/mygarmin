@@ -255,3 +255,14 @@ e `recovery.md`) e il `next.md` del 2026-10-21, piu' il file vuoto
 
 Dopo il revert, rifare il merge di `todo_47` non riporta le modifiche (git le
 considera gia' unite): per riaverle serve il revert del revert.
+
+---
+
+**Nota del 2026-10-21, dopo il merge.** I timer di systemd sono durati poche
+ore: Andrea ha chiesto cron, che su questa macchina e' la scelta giusta
+(accesa da settimane, mai sospesa, quindi il recupero dei giri saltati non
+serve, e cron non vuole il linger). Le unita' sono state spente, rimosse e
+cancellate dal repo; al loro posto ci sono `deploy/crontab` e
+`make install_cron`. Il `## Revert` qui sopra resta valido per il codice, ma
+la sua frase sui timer non vale piu': non ci sono piu' unita' da spegnere a
+mano, semmai righe di cron da togliere con `make uninstall_cron`.

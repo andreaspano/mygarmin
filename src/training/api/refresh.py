@@ -10,14 +10,14 @@ sono gli stessi, ma un giro che va storto si ferma invece di bruciare le
 sessioni rimaste, e non si rischiano i limiti di frequenza. Un giro completo
 sono sette agenti da circa un minuto l'uno.
 
-Dal todo 47 a lanciare non e' piu' solo il tasto: due timer di systemd
-(`deploy/`) fanno il giro del mattino e quello della sera, che non sono
-uguali. Da li' vengono tre cose che il tasto da solo non chiedeva:
+Dal todo 47 a lanciare non e' piu' solo il tasto: due righe di cron
+(`deploy/crontab`) fanno il giro del mattino e quello della sera, che non
+sono uguali. Da li' vengono tre cose che il tasto da solo non chiedeva:
 
 - il **momento**, `morning` o `evening`, che e' la voce con cui Next e
   Summary parlano e si ricava dall'orologio;
 - il lock **su file**, perche' il guardiano in memoria vale dentro un solo
-  processo e il timer e' un processo diverso dall'API;
+  processo e il giro di cron e' un processo diverso dall'API;
 - l'esito dello **scaricamento** nello stato, perche' senza nessuno a
   guardare un login scaduto scriverebbe report su dati vecchi in silenzio.
 
@@ -381,9 +381,9 @@ def main() -> None:
     che lanciano i timer (`--moment`, todo 47). Stampa come e' andata sezione
     per sezione, ed esce 1 se qualcuna e' fallita.
 
-    Se un altro lavoro sta gia' girando — il tasto della pagina, o il timer
-    dell'altro giro — non si mette in coda: lo dice ed esce 0, cosi' nel
-    registro di systemd un accavallamento non si legge come un guasto."""
+    Se un altro lavoro sta gia' girando — il tasto della pagina, o il giro
+    di cron dell'altro momento — non si mette in coda: lo dice ed esce 0,
+    cosi' nel registro un accavallamento non si legge come un guasto."""
     from training.api.context import REPO_ROOT, SUMMARY_DIR
     from training.garmin.config import DATA_DIR
 

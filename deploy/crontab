@@ -1,0 +1,12 @@
+# I due giri del report giornaliero (todo 47, passati a cron il 2026-10-21).
+#
+# Li installa `make install_cron`, che riempie i tre segnaposto e lascia in
+# pace il resto del crontab: ogni riga finisce con il marcatore `# mygarmin`,
+# e l'installazione toglie le vecchie righe che ce l'hanno. Il `#` finale lo
+# legge la shell, non cron, che gli passa la riga intera.
+#
+# La mattina sei agenti, la sera cinque: quali sono lo dice `--moment` (vedi
+# `api/sections.py`). `uv` per intero perche' cron da' un PATH scarno
+# (`/usr/bin:/bin`); `make` e `claude`, che servono piu' avanti, stanno li'.
+0 10 * * * cd __REPO__ && __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
+0 22 * * * cd __REPO__ && __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
