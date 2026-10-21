@@ -299,11 +299,13 @@ h2 {
 
 /* I due riquadri in testa, Next e Summary: affiancati, uguali di larghezza
    come le card sotto, uno sotto l'altro quando la pagina si stringe. */
+/* Next e Summary pari in altezza: la piu' alta decide, l'altra si allunga.
+   Due riquadri affiancati di altezza diversa si leggono come se uno fosse
+   finito a meta'. */
 .head-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
 }
 /* Riquadro Next */
 .next-card {
@@ -414,12 +416,12 @@ h2 {
   font-size: 1.35rem;
 }
 /* Health, Load, Recovery e Fitness (todo 37): due colonne uguali, una sotto
-   i 900 px. Le card non si allungano per pareggiare la riga. */
+   i 900 px. Le due card di una riga hanno la stessa altezza: la piu' alta
+   decide e l'altra si allunga, cosi' la griglia non sembra sfaldata. */
 .cards-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 16px;
-  align-items: start;
 }
 /* Il tasto che rifa' una sola sezione (todo 44): in fondo all'intestazione
    della card, zitto finche' non ci passi sopra. Mentre il suo agente scrive,
