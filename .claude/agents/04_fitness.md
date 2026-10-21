@@ -33,10 +33,10 @@ measure sits, and the reader can see the climb for himself.
   it means the measure is at its best in a month; inside means this is its
   normal; below means it has slipped. Say what that is worth, not how it got
   there.
-- **`change` and `days_ago_28` are not your material.** They are on the card,
-  next to each number, and they do not need you. Use one only if it is the
-  only way to say something about today — a measure that has jumped in the
-  last day or two, say — and never more than one in the whole section.
+- **`change` and `days_ago_28` are not yours at all.** They are in the facts
+  file and nowhere on the page: the card shows the number and the bar, and
+  nothing else. A figure the card does not show is one you do not give, and
+  these two are a month's story, which is not what this section is for.
 
 **Name all four, but give them the room they deserve.** One sitting quietly
 inside its band is a clause, not a sentence: *endurance mid-range*, *the hill

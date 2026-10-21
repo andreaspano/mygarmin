@@ -4,9 +4,10 @@
 // recente e abituale, che una fascia non ce l'ha. Sotto, il testo della
 // sezione Load del report. Il VO2max e' passato alla card Fitness (todo 37).
 //
-// Niente titolo sopra i numeri: lo stato del carico secondo Garmin
-// ("In a healthy range") diceva a mezze parole quello che la prima riga del
-// testo dice per intero, e nessuna delle altre tre card ha un titolo.
+// Niente titolo sopra i numeri e niente parole accanto: lo stato del carico
+// secondo Garmin ("In a healthy range") diceva a mezze parole quello che la
+// prima riga del testo dice per intero, e "above target" ripeteva a parole
+// quello che la barra fa vedere.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
@@ -32,13 +33,6 @@ const ROWS: { key: Key; label: string; help: string }[] = [
     help: "Garmin's monthly load from efforts above threshold, against the range Garmin wants you in.",
   },
 ];
-
-/** Dove sta il carico rispetto alla fascia obiettivo, accanto al numero come
- * il "+1.2 in 28 days" di Fitness. */
-function Against({ value, min, max }: { value: number; min: number; max: number }): ReactNode {
-  const word = value < min ? "short" : value > max ? "above target" : "in range";
-  return <span className="delta muted">{word}</span>;
-}
 
 export function LoadCard({
   data,
@@ -72,12 +66,7 @@ export function LoadCard({
               key={key}
               label={label}
               help={help}
-              value={
-                <>
-                  {num(value)}
-                  {value != null && target && <Against value={value} min={target.min} max={target.max} />}
-                </>
-              }
+              value={num(value)}
               sub={
                 value != null &&
                 target && (

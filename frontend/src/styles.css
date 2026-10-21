@@ -611,15 +611,6 @@ h2 {
 }
 
 /* Load */
-.delta {
-  font-size: 0.8rem;
-  font-weight: 600;
-  margin-left: 8px;
-}
-.delta.up {
-  color: var(--up);
-}
-
 /* I tre effetti, negli stessi colori del grafico */
 .swatch {
   display: inline-block;

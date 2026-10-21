@@ -4,22 +4,15 @@
 // lattato (o, prima che Garmin ne rilevi una, la frequenza di soglia del
 // FIT), da `fitness` di `/api/daily/{day}`. Il testo lo scrive l'agente
 // `04_fitness` (todo 44). Un valore che manca e' "–", la card resta.
+//
+// Accanto al numero non va niente: la variazione in 28 giorni ("+1.2 in 28
+// days") raccontava un andamento, e queste card dicono com'e' oggi. Dove sta
+// la misura lo fa vedere la barra.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
 import { CardHead, RangeBar, Stat, WrittenAt, num } from "./Stat";
-
-/** "+1.0 in 28 days", verde o rosso; niente se 28 giorni fa non c'era un valore. */
-function Change({ value, digits }: { value: number | null | undefined; digits: number }): ReactNode {
-  if (value == null) return null;
-  return (
-    <span className={value >= 0 ? "delta up" : "delta down"}>
-      {value >= 0 ? "+" : ""}
-      {value.toFixed(digits)} in 28 days
-    </span>
-  );
-}
 
 export function FitnessCard({
   data,
@@ -52,32 +45,17 @@ export function FitnessCard({
       <div className="stats two">
         <Stat
           label="VO2max"
-          value={
-            <>
-              {num(vo2?.now, 1)}
-              <Change value={vo2?.change} digits={1} />
-            </>
-          }
+          value={num(vo2?.now, 1)}
           sub={vo2?.band && <RangeBar value={vo2.now} band={vo2.band} />}
         />
         <Stat
           label="Endurance score"
-          value={
-            <>
-              {num(endurance?.now)}
-              <Change value={endurance?.change} digits={0} />
-            </>
-          }
+          value={num(endurance?.now)}
           sub={endurance?.band && <RangeBar value={endurance.now} band={endurance.band} />}
         />
         <Stat
           label="Hill score"
-          value={
-            <>
-              {num(hill?.now)}
-              <Change value={hill?.change} digits={0} />
-            </>
-          }
+          value={num(hill?.now)}
           sub={hill?.band && <RangeBar value={hill.now} band={hill.band} />}
         />
         {lactate ? (
