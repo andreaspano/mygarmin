@@ -156,6 +156,45 @@ make daily_report SECTION=health    # solo una sezione
 ```
 
 Il login a Garmin non si chiede mai dal tasto: con il token scaduto il
-report si scrive sui dati locali, e il login si rifa' da terminale con
-`make update_activity`. I report scritti prima del todo 44 stanno ancora nel
-file unico `summary/01.daily/<giorno>.md` e si continuano a leggere da li'.
+report si scrive sui dati locali **e la pagina lo dice**, e il login si rifa'
+da terminale con `make update_activity`. I report scritti prima del todo 44
+stanno ancora nel file unico `summary/01.daily/<giorno>.md` e si continuano a
+leggere da li'.
+
+### I due giri dei timer
+
+Dal todo 47 il report si scrive da solo due volte al giorno, e i due giri non
+sono uguali:
+
+| | ore | sezioni |
+|---|---|---|
+| mattina | 10:00 | health, recovery, load, fitness, next, summary |
+| sera | 22:00 | load, fitness, training, next, summary |
+
+Health e Recovery solo la mattina, perche' sono le misure della notte appena
+finita e alle 22 racconterebbero la stessa notte; Training solo la sera,
+perche' alle 10 non c'e' ancora niente da commentare.
+
+Gli agenti sanno **che giro e'**: la mattina Next propone la seduta per oggi
+e Summary giudica la giornata che comincia, la sera Next guarda a domani e
+Summary dice com'e' andata. Il momento si ricava dall'orologio
+(`EVENING_FROM_HOUR` in `api/sections.py`), quindi vale anche per il tasto
+della pagina, che pero' continua a rifare **tutte** le sezioni: il momento
+decide come parla il testo, l'insieme decide chi gira.
+
+Siccome ogni sezione porta la sua ora, le card ne mostrano una sotto il
+testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
+
+I timer sono unita' systemd **utente**, in `deploy/`:
+
+```bash
+make install_timers          # copia, ricarica, abilita, e dice cosa manca
+loginctl enable-linger $USER # una volta sola: senza, girano solo da loggato
+systemctl --user list-timers 'mygarmin-*'
+journalctl --user -u 'mygarmin-report@*' -n 50
+```
+
+`Persistent=true`: un giro saltato a macchina spenta si recupera al
+risveglio. Un lavoro alla volta vale anche fra processi diversi, con un lock
+su file in `<dati>/.refresh.lock`: se il timer parte mentre premi Refresh,
+il secondo se ne va senza fare niente.

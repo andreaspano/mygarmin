@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Due timer: il report si scrive da solo, mattina e sera
@@ -199,3 +199,59 @@ sette). `--section` continua a voler dire una sola.
    il prossimo scatto all'ora giusta. Una prova vera con
    `systemctl --user start mygarmin-report@evening.service` e il suo
    `journalctl --user -u ...`.
+
+## Come e' andata
+
+Fatto come scritto. Quattro cose decise o trovate per strada:
+
+- **`--moment` da' anche la voce a una sezione sola.** Serviva per provare il
+  ramo della sera a meta' pomeriggio, e si e' rivelata la semantica giusta:
+  `--moment` vuol dire "parla come quel giro" sempre, e in piu' sceglie
+  l'insieme quando non c'e' `--section`. Senza, la voce la da' l'orologio.
+- **I due verdetti hanno avuto bisogno di due giri.** Al primo tentativo Next
+  della sera scriveva "Nothing more today" invece di proporre domani, e
+  Summary chiudeva con "Train, but let the body set the pace", cioe' un
+  consiglio in avanti alle 22. I due prompt adesso lo vietano per nome: la
+  sera **tutto** quello che Next propone e' di domani, e Summary finisce sul
+  verdetto senza nemmeno una clausola di direzione.
+- **Chi non prende il lock lascia lo stato in ordine.** `start()` segna
+  "running" prima di lanciare il thread: se poi il lock e' di un altro
+  processo, lo stato sarebbe rimasto "running" per sempre. Adesso quel caso
+  si chiude da solo con "Another refresh is already running".
+- **La riga dell'ora e' una sola guardia**, dentro `WrittenAt`: l'API manda
+  `written_at` solo per le sezioni scritte, quindi nessuna card se la ripete.
+  In Load sta in fondo alla card e non sotto il testo, perche' sotto ci sono
+  ancora il grafico e due numeri.
+
+**I timer sono installati e accesi**: il prossimo giro e' quello delle 22.
+Per spegnerli:
+
+```bash
+systemctl --user disable --now mygarmin-report-morning.timer mygarmin-report-evening.timer
+```
+
+Resta da fare a mano `loginctl enable-linger andrea`: finche' e' `no`, i due
+giri partono solo mentre Andrea e' loggato.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_47'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: **i timer restano installati e accesi**. Le unita'
+sono copie in `~/.config/systemd/user/`, che git non tocca: dopo il revert
+continuerebbero a partire e a chiamare un comando che non ha piu'
+`--moment`, fallendo due volte al giorno. Vanno spenti a mano con il comando
+qui sopra e, volendo, cancellati:
+
+```bash
+rm ~/.config/systemd/user/mygarmin-report*; systemctl --user daemon-reload
+```
+
+Restano anche i frammenti riscritti del 2026-10-20 (tutti tranne `health.md`
+e `recovery.md`) e il `next.md` del 2026-10-21, piu' il file vuoto
+`<dati>/.refresh.lock`, che e' innocuo: il codice vecchio non lo guarda.
+
+Dopo il revert, rifare il merge di `todo_47` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

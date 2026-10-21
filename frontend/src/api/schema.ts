@@ -590,6 +590,19 @@ export interface components {
             activities: string[];
         };
         /**
+         * Download
+         * @description How the download from Garmin fared at the start of a job.
+         */
+        Download: {
+            /** Ok */
+            ok: boolean;
+            /**
+             * Message
+             * @description Why it failed. Null when it worked.
+             */
+            message: string | null;
+        };
+        /**
          * EffectSeconds
          * @description Seconds spent in each training effect, estimated from heart rate.
          */
@@ -872,6 +885,11 @@ export interface components {
              * @description The day whose report the job rewrites.
              */
             day: string | null;
+            /**
+             * Moment
+             * @description Which part of the day the job speaks from: it decides whether Next suggests a session for today or tomorrow.
+             */
+            moment?: ("morning" | "evening") | null;
             /** Started */
             started: string | null;
             /** Finished */
@@ -881,6 +899,8 @@ export interface components {
              * @description Why the job failed. Null otherwise.
              */
             message: string | null;
+            /** @description How the download from Garmin fared. Null when the job did not download. A failed download does not stop the job: the text is written on the data already here. */
+            download?: components["schemas"]["Download"] | null;
             /**
              * Sections
              * @description One entry per section of the report, by key: summary, training, recovery, health, load, fitness, next.
@@ -919,6 +939,11 @@ export interface components {
              * @description Icon file name, served under /icons. Null when the section has none.
              */
             icon: string | null;
+            /**
+             * Written At
+             * @description When this section's text was written. Sections of the same day can carry different times: the morning job writes some, the evening job others.
+             */
+            written_at?: string | null;
         };
         /**
          * Route

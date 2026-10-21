@@ -11,6 +11,7 @@ quindi girano dopo: l'ordine di `RUN_ORDER` non e' quello in cui le sezioni
 si leggono nella pagina."""
 
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True)
@@ -45,3 +46,32 @@ RUN_ORDER: tuple[Section, ...] = tuple(BY_KEY[key] for key in _RUN_KEYS)
 assert {s.key for s in RUN_ORDER} == {s.key for s in SECTIONS}
 assert all(not s.reads_fragments for s in RUN_ORDER[:5]), "i numeri prima dei verdetti"
 assert all(s.reads_fragments for s in RUN_ORDER[5:]), "i verdetti per ultimi"
+
+
+# I due giri dei timer (todo 47). Non sono due giri uguali: la mattina
+# Health e Recovery hanno qualcosa da dire, perche' sono le misure della
+# notte appena finita; la sera racconterebbero di nuovo la stessa notte.
+# Training il contrario: alle 10 non c'e' ancora niente da commentare.
+MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
+    "morning": ("health", "recovery", "load", "fitness", "next", "summary"),
+    "evening": ("load", "fitness", "training", "next", "summary"),
+}
+
+MOMENTS = tuple(MOMENT_SECTIONS)
+assert all(set(keys) <= set(BY_KEY) for keys in MOMENT_SECTIONS.values())
+
+# L'ora da cui una giornata si considera alle spalle. Serve alla **voce** del
+# testo, non a chi gira: prima di questa Next propone la seduta per oggi e
+# Summary giudica la giornata che comincia, dopo Next guarda a domani e
+# Summary dice com'e' andata.
+EVENING_FROM_HOUR = 15
+
+
+def moment_at(when: datetime) -> str:
+    """Il momento della giornata di `when`, per la voce del testo.
+
+    Si ricava sempre dall'orologio, anche quando a lanciare e' il tasto
+    della pagina: cosi' un refresh a mano parla come il giro del timer che
+    gli e' piu' vicino. Quale sezione gira e' un'altra cosa, e la decidono
+    solo i timer (`MOMENT_SECTIONS`)."""
+    return "evening" if when.hour >= EVENING_FROM_HOUR else "morning"

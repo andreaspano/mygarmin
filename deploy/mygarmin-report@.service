@@ -1,0 +1,19 @@
+# Un giro del report giornaliero (todo 47). `%i` e' il momento: `morning`
+# scrive le sei sezioni che hanno qualcosa da dire al mattino, `evening` le
+# cinque che si muovono con la seduta del giorno.
+#
+# Non e' un servizio che resta su: parte, fa il suo giro di agenti (qualche
+# minuto) e finisce. Lo accendono i due timer accanto.
+[Unit]
+Description=Daily training report, %i run
+Documentation=file:%h/dev/mygarmin/todo/47_timer_mattina_e_sera.md
+# Senza rete non si scarica niente: il giro si farebbe sui dati vecchi.
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__REPO__
+# Il percorso di uv per intero: un servizio utente non ha il PATH della shell.
+ExecStart=__UV__ run training-daily-report --moment %i
+# Gli agenti sono sette minuti buoni nel caso peggiore, piu' lo scaricamento.
+TimeoutStartSec=45min

@@ -5,16 +5,20 @@ import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
-import { CardHead, MeasureBar, num, Stat } from "./Stat";
+import { CardHead, MeasureBar, Stat, WrittenAt, num } from "./Stat";
 
 export function HealthCard({
   data,
   text,
+  writtenAt,
+  day,
   icon,
   refresh,
 }: {
   data: DailyData;
   text: string | null;
+  writtenAt: string | null;
+  day: string;
   icon: string | null;
   refresh?: ReactNode;
 }) {
@@ -51,6 +55,7 @@ export function HealthCard({
         <Stat label="Stress, yesterday" value={num(m.stress_avg_yesterday.value)} sub={<MeasureBar measure={m.stress_avg_yesterday} />} />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
+      <WrittenAt when={writtenAt} day={day} />
     </section>
   );
 }

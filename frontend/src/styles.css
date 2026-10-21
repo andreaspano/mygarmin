@@ -569,6 +569,18 @@ h2 {
   }
 }
 
+/* Quando e' stato scritto il testo di una card (todo 47): sotto la prosa,
+   piccolo e in disparte. Dentro i riquadri scuri prende il loro grigio. */
+.written-at {
+  margin: 10px 0 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.next-card .written-at {
+  color: var(--next-muted);
+  margin-top: 8px;
+}
+
 /* Load */
 .load-card h2 {
   margin-bottom: 4px;

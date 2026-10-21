@@ -9,7 +9,7 @@ import type { ReactNode } from "react";
 import type { DailyData } from "../api/client";
 import { shortDayLabel } from "../format";
 import { markdown } from "../markdown";
-import { CardHead, num, Stat } from "./Stat";
+import { CardHead, Stat, WrittenAt, num } from "./Stat";
 
 /** "6:00", dai secondi al km dell'API. */
 function paceLabel(seconds: number): string {
@@ -30,11 +30,15 @@ function Change({ value, digits }: { value: number | null | undefined; digits: n
 export function FitnessCard({
   data,
   text,
+  writtenAt,
+  day,
   icon,
   refresh,
 }: {
   data: DailyData;
   text: string | null;
+  writtenAt: string | null;
+  day: string;
   icon: string | null;
   refresh?: ReactNode;
 }) {
@@ -104,6 +108,7 @@ export function FitnessCard({
         )}
       </div>
       {text && <div className="prose">{markdown(text)}</div>}
+      <WrittenAt when={writtenAt} day={day} />
     </section>
   );
 }

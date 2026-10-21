@@ -4,13 +4,18 @@
 import type { ReactNode } from "react";
 
 import { inline, markdown, nextParts } from "../markdown";
+import { WrittenAt } from "./Stat";
 
 export function NextCard({
   body,
+  writtenAt,
+  day,
   tomorrow,
   refresh,
 }: {
   body: string | null;
+  writtenAt: string | null;
+  day: string;
   tomorrow: boolean;
   refresh?: ReactNode;
 }) {
@@ -32,6 +37,7 @@ export function NextCard({
           ) : (
             <p className="next-reason">No daily report for this day.</p>
           )}
+          <WrittenAt when={writtenAt} day={day} />
         </div>
       </div>
       {parts && parts.steps.length > 0 && (

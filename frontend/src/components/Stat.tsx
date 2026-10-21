@@ -4,6 +4,7 @@
 import type { ReactNode } from "react";
 
 import { iconUrl, type Band, type Measure } from "../api/client";
+import { writtenLabel } from "../format";
 
 export function num(value: number | null | undefined, digits = 0): string {
   return value == null ? "–" : value.toFixed(digits);
@@ -105,4 +106,16 @@ export function MeasureBar({
 }) {
   if (!measure.band) return null;
   return <RangeBar value={value === undefined ? measure.value : value} band={measure.band} tick={tick} />;
+}
+
+
+/** La riga che dice quando e' stato scritto il testo di una card (todo 47).
+ *
+ * Niente quando l'ora non c'e', che e' anche il caso della card senza testo:
+ * l'API manda `written_at` solo per le sezioni scritte, quindi la guardia
+ * sta tutta qui e nessuna card se la ripete. Dentro i riquadri scuri (Next,
+ * Summary) prende il loro grigio. */
+export function WrittenAt({ when, day }: { when: string | null; day: string }) {
+  if (!when) return null;
+  return <p className="written-at">{writtenLabel(when, day)}</p>;
 }
