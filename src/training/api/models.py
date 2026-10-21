@@ -387,15 +387,26 @@ class LactateThreshold(BaseModel):
     as_of: date = Field(description="The day Garmin detected it.")
 
 
+_TREND = (
+    "Garmin's word for the direction: ACCLIMATIZING, ACCLIMATIZED, DEACCLIMATIZING. "
+    "Null when it has nothing to say."
+)
+
+
 class AltitudeAcclimation(BaseModel):
     """How high the body is acclimatised to, as Garmin works it out from where the
     activities happened. Built over days spent high up and lost just as fast."""
 
     metres: int = Field(description="Zero when there is no acclimatisation.")
-    trend: str | None = Field(
-        description="Garmin's word for the direction: ACCLIMATIZING, ACCLIMATIZED, "
-        "DEACCLIMATIZING. Null when it has nothing to say."
-    )
+    trend: str | None = Field(description=_TREND)
+
+
+class HeatAcclimation(BaseModel):
+    """How far the body has adapted to training in the heat, from the temperature of the
+    activities. Same shape as the altitude: days to build, days to lose."""
+
+    percent: int = Field(description="0 to 100. Zero when there is no acclimatisation.")
+    trend: str | None = Field(description=_TREND)
 
 
 class Fitness(BaseModel):
@@ -412,6 +423,11 @@ class Fitness(BaseModel):
         description="Same as `hr_zones.threshold_hr`. Null when no activity has a valid threshold."
     )
     altitude_acclimation: AltitudeAcclimation | None = Field(
+        default=None,
+        description="Null for the days whose training status file does not carry the block, "
+        "which is everything before 2025.",
+    )
+    heat_acclimation: HeatAcclimation | None = Field(
         default=None,
         description="Null for the days whose training status file does not carry the block, "
         "which is everything before 2025.",

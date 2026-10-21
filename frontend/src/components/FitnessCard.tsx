@@ -9,9 +9,10 @@
 // days") raccontava un andamento, e queste card dicono com'e' oggi. Dove sta
 // la misura lo fa vedere la barra.
 //
-// L'acclimatamento alla quota sta in fondo accanto alla soglia: non e' una
-// capacita' che cresce, e' dove il corpo si trova adesso. Zero per quasi
-// tutto l'anno, 1400 m nelle estati in montagna.
+// I due acclimatamenti stanno in fondo accanto alla soglia: non sono
+// capacita' che crescono, sono dove il corpo si trova adesso. Zero per quasi
+// tutto l'anno, 1400 m nelle settimane in montagna e 58% di caldo in un
+// settembre.
 import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
@@ -39,6 +40,7 @@ export function FitnessCard({
   const lactate = data.fitness.lactate_threshold;
   const threshold = data.fitness.threshold_hr;
   const altitude = data.fitness.altitude_acclimation;
+  const heat = data.fitness.heat_acclimation;
   // Sotto ogni numero solo la barra della sua fascia, come in Health e
   // Recovery. Qui pero' **sopra la fascia e' buono**: queste misure si
   // muovono in settimane, e stare sopra l'ultimo mese vuol dire che stanno
@@ -76,6 +78,12 @@ export function FitnessCard({
           value={num(altitude?.metres)}
           unit="m"
           help="How high Garmin reckons your body is acclimatised to, from where you have been training. It builds over days spent high up and is lost just as fast; zero at home."
+        />
+        <Stat
+          label="Heat acclimation"
+          value={num(heat?.percent)}
+          unit="%"
+          help="How far Garmin reckons your body has adapted to training in the heat, from the temperature of your activities. A week of hot sessions builds it and ten cool days undo it; zero in winter."
         />
       </div>
       {text && <div className="prose">{markdown(text)}</div>}

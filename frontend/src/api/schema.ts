@@ -677,11 +677,30 @@ export interface components {
             threshold_hr: components["schemas"]["ThresholdHr"] | null;
             /** @description Null for the days whose training status file does not carry the block, which is everything before 2025. */
             altitude_acclimation?: components["schemas"]["AltitudeAcclimation"] | null;
+            /** @description Null for the days whose training status file does not carry the block, which is everything before 2025. */
+            heat_acclimation?: components["schemas"]["HeatAcclimation"] | null;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * HeatAcclimation
+         * @description How far the body has adapted to training in the heat, from the temperature of the
+         *     activities. Same shape as the altitude: days to build, days to lose.
+         */
+        HeatAcclimation: {
+            /**
+             * Percent
+             * @description 0 to 100. Zero when there is no acclimatisation.
+             */
+            percent: number;
+            /**
+             * Trend
+             * @description Garmin's word for the direction: ACCLIMATIZING, ACCLIMATIZED, DEACCLIMATIZING. Null when it has nothing to say.
+             */
+            trend: string | null;
         };
         /**
          * LactateThreshold

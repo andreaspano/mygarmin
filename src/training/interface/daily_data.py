@@ -509,24 +509,36 @@ def _latest_with_change(health: pd.DataFrame, day: date, column: str, digits: in
     }
 
 
-def _altitude_acclimation(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
-    """A che quota il corpo e' acclimatato, dal JSON del training status di
-    quel giorno: `health_daily` non lo tiene, come la fascia HRV.
+def _acclimation(day: date, data_dir: Path = DATA_DIR) -> dict[str, Any]:
+    """A che quota e a quanto caldo il corpo e' adattato, dal JSON del
+    training status di quel giorno: `health_daily` non li tiene, come la
+    fascia HRV.
 
-    Garmin lo da' in metri, annidato dentro il VO2max piu' recente, insieme
-    all'acclimatamento al caldo che per ora non leggiamo. Si costruisce in
-    giorni di permanenza in quota e si perde altrettanto in fretta: nello
-    storico di Andrea sale a 1400 m nelle estati in montagna e sta a zero
-    tutto il resto dell'anno. `None` se il file non c'e' o non porta il
-    blocco (i giorni prima del 2025 non ce l'hanno)."""
+    Garmin li tiene insieme, annidati dentro il VO2max piu' recente: la quota
+    in metri, il caldo in percento. Sono due adattamenti rapidi da prendere e
+    rapidi da perdere, e nello storico di Andrea si vede: la quota sale a
+    1400 m nelle settimane in montagna, il caldo al 58% a settembre 2025 e
+    poi torna a zero in dieci giorni. Il resto dell'anno sono zero tutti e
+    due. `None` per ognuno che manchi, e per tutti i giorni prima del 2025,
+    i cui file non portano affatto il blocco."""
     path = _day_paths(Path(data_dir) / "health", day.isoformat())["training_status"]
     block = _dig(_read_json(path), "mostRecentVO2Max", "heatAltitudeAcclimation")
     if not isinstance(block, dict):
-        return None
+        return {"altitude_acclimation": None, "heat_acclimation": None}
     metres = block.get("altitudeAcclimation")
-    if metres is None:
-        return None
-    return {"metres": int(metres), "trend": _value(block.get("altitudeTrend"))}
+    percent = block.get("heatAcclimationPercentage")
+    return {
+        "altitude_acclimation": (
+            {"metres": int(metres), "trend": _value(block.get("altitudeTrend"))}
+            if metres is not None
+            else None
+        ),
+        "heat_acclimation": (
+            {"percent": int(percent), "trend": _value(block.get("heatTrend"))}
+            if percent is not None
+            else None
+        ),
+    }
 
 
 def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
@@ -552,7 +564,7 @@ def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
         "vo2max": vo2max,
         "endurance": endurance,
         "hill": _latest_with_change(health, day, "hill_score", digits=0),
-        "altitude_acclimation": _altitude_acclimation(day),
+        **_acclimation(day),
     }
 
 

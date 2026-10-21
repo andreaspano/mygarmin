@@ -101,7 +101,7 @@ con grafico e mappa. **Tutte e quattro hanno la stessa forma**: le misure,
 ognuna con la barra della sua fascia e il valore di oggi come tacca, e niente
 testo accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e
 allora e' un numero nudo: la soglia del lattato, il rapporto di carico, la
-quota a cui sei acclimatato. La fascia pero' non vuol dire la stessa cosa
+quota e il caldo a cui sei acclimatato. La fascia pero' non vuol dire la stessa cosa
 dappertutto: in Health e Recovery e' la media dei 28 giorni prima piu' e meno
 uno scarto tipo (in tinta chiara piu' e meno due), e uscirne e' un segnale; in
 Fitness e' la stessa media ma **sopra vuol dire che stai migliorando**; in
