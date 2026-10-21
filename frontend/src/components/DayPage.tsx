@@ -240,10 +240,17 @@ export function DayPage() {
             refresh={sectionButton("next")}
           />
           <SummaryCard
-            body={sectionBody(report, "Summary")}
-            writtenAt={sectionWrittenAt(report, "Summary")}
             day={day}
-            refresh={sectionButton("summary")}
+            morning={{
+              body: sectionBody(report, "Morning summary"),
+              writtenAt: sectionWrittenAt(report, "Morning summary"),
+              refresh: sectionButton("summary_morning"),
+            }}
+            evening={{
+              body: sectionBody(report, "Evening summary"),
+              writtenAt: sectionWrittenAt(report, "Evening summary"),
+              refresh: sectionButton("summary_evening"),
+            }}
           />
         </div>
         {data ? (

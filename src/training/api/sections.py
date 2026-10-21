@@ -25,9 +25,14 @@ class Section:
     reads_fragments: bool
 
 
-# Nell'ordine in cui si leggono nella pagina.
+# Nell'ordine in cui si leggono nella pagina. Il verdetto del giorno e' in
+# due pezzi (todo 49), stesso agente e due momenti: il sole lo scrive il giro
+# del mattino, la luna quello della sera. Con un file solo il giro delle 22
+# cancellava il verdetto delle 10, che e' proprio quello con cui vale la pena
+# confrontarlo.
 SECTIONS: tuple[Section, ...] = (
-    Section("summary", "Summary", "07_summary", True),
+    Section("summary_morning", "Morning summary", "07_summary", True),
+    Section("summary_evening", "Evening summary", "07_summary", True),
     Section("training", "Training", "05_training", False),
     Section("recovery", "Recovery", "03_recovery", False),
     Section("health", "Health", "01_health", False),
@@ -39,13 +44,26 @@ SECTIONS: tuple[Section, ...] = (
 BY_KEY = {section.key: section for section in SECTIONS}
 
 # Nell'ordine in cui si lanciano, che e' quello dei numeri degli agenti e non
-# quello di lettura: prima le cinque che guardano i numeri del giorno, poi le
-# due che leggono i frammenti delle altre.
-_RUN_KEYS = ("health", "load", "recovery", "fitness", "training", "next", "summary")
+# quello di lettura: prima quelle che guardano i numeri del giorno, poi quelle
+# che leggono i frammenti delle altre. Il sole prima della luna, perche'
+# quando girano insieme (il tasto della pagina) la luna lo deve trovare
+# scritto.
+_RUN_KEYS = (
+    "health",
+    "load",
+    "recovery",
+    "fitness",
+    "training",
+    "next",
+    "summary_morning",
+    "summary_evening",
+)
 RUN_ORDER: tuple[Section, ...] = tuple(BY_KEY[key] for key in _RUN_KEYS)
 assert {s.key for s in RUN_ORDER} == {s.key for s in SECTIONS}
-assert all(not s.reads_fragments for s in RUN_ORDER[:5]), "i numeri prima dei verdetti"
-assert all(s.reads_fragments for s in RUN_ORDER[5:]), "i verdetti per ultimi"
+# I verdetti stanno in fondo, tutti insieme: chi legge i frammenti degli
+# altri non puo' girare prima di loro.
+_first_verdict = next(i for i, s in enumerate(RUN_ORDER) if s.reads_fragments)
+assert all(s.reads_fragments for s in RUN_ORDER[_first_verdict:]), "i verdetti per ultimi"
 
 
 # I due giri dei timer (todo 47). Non sono due giri uguali: la mattina
@@ -53,8 +71,8 @@ assert all(s.reads_fragments for s in RUN_ORDER[5:]), "i verdetti per ultimi"
 # notte appena finita; la sera racconterebbero di nuovo la stessa notte.
 # Training il contrario: alle 10 non c'e' ancora niente da commentare.
 MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
-    "morning": ("health", "recovery", "load", "fitness", "next", "summary"),
-    "evening": ("load", "fitness", "training", "next", "summary"),
+    "morning": ("health", "recovery", "load", "fitness", "next", "summary_morning"),
+    "evening": ("load", "fitness", "training", "next", "summary_evening"),
 }
 
 MOMENTS = tuple(MOMENT_SECTIONS)

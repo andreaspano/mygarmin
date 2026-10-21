@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il Summary in due: il sole e la luna
@@ -140,3 +140,40 @@ quel giorno nella verifica, e il file rimasto si cancella a mano.
    nessuno dei due. I due tasti che rifanno il blocco giusto.
 5. Un giorno a file unico (2026-10-11): il report vecchio si legge ancora, e
    il riquadro Summary dice che non c'e'.
+
+## Come e' andata
+
+Fatto come scritto. Due note:
+
+- **`.next-card` e' flex in riga**, pensato per Next che mette i chip a
+  destra: con due blocchi dentro sarebbero finiti affiancati invece che uno
+  sopra l'altro. `.summary-card` adesso dichiara `flex-direction: column`.
+- **Il `summary.md` del 20 ottobre non l'ho cancellato.** Nessuna sezione lo
+  legge piu', quindi e' innocuo, ma `summary/` lo produce la pipeline e
+  toccarlo a mano non e' cosa mia. Se da' fastidio:
+  `rm summary/01.daily/2026-10-20/summary.md`.
+
+La prova che contava e' riuscita: il sole del 20 ottobre chiude con "Train,
+and let the fast day wait for a fresher morning", e la luna — scritta dopo,
+leggendolo — apre con "The day went the way it was asked to" e chiude con
+"The sharp work your load is missing is still missing". Il cerchio si chiude
+senza che una parola del mattino venga ripetuta, ed e' esattamente quello che
+il prompt chiedeva. Il file del sole non e' stato toccato dal giro della
+sera (`mtime` identico).
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_49'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: restano i frammenti scritti durante la verifica —
+`summary_morning.md` e `summary_evening.md` del 2026-10-20 e
+`summary_morning.md` del 2026-10-21. Dopo il revert nessuno li legge piu' (le
+chiavi tornano a essere `summary`), e quei due giorni restano senza verdetto
+finche' non si rifa' la sezione con `make daily_report DAY=... SECTION=summary`.
+Il vecchio `summary.md` del 20 ottobre e' ancora li' e tornerebbe a
+funzionare da solo.
+
+Dopo il revert, rifare il merge di `todo_49` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
