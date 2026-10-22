@@ -404,6 +404,51 @@ h2 {
   font-size: 0.82rem;
 }
 
+/* Le sedute della settimana (todo 51): una riga per seduta, e un clic porta
+   alla Day di quel giorno. */
+.week-sessions {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+.week-session {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.week-session:hover {
+  background: var(--track);
+}
+.week-sessions li + li .week-session {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 10px 10px;
+}
+.week-session-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600;
+}
+.week-session-size {
+  flex: 0 0 auto;
+  text-align: right;
+  font-weight: 700;
+}
+.week-session-name .muted,
+.week-session-size .muted {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
 /* Riquadri */
 .card {
   background: var(--surface);
