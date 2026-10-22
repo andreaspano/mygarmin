@@ -92,24 +92,37 @@ report giornaliero non legge nessuna delle tre.
 
 ### La pagina Day in React
 
-`frontend/` e' l'interfaccia (React, TypeScript, Vite), l'unica dal todo 40:
-per ora la sola pagina Day, che chiede i dati all'API; le altre voci della
-barra in alto arriveranno. Mostra un giorno alla volta (todo 34): la striscia
-della settimana, la seduta suggerita e il verdetto del giorno, una griglia 2x2
-con Health e Load sopra, Recovery e Fitness sotto (todo 37), e l'allenamento
-con grafico e mappa. **Tutte e quattro hanno la stessa forma**: le misure,
-ognuna con la barra della sua fascia e il valore di oggi come tacca, e niente
-testo accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e
-allora e' un numero nudo: la soglia del lattato, il rapporto di carico, la
-quota e il caldo a cui sei acclimatato. La fascia pero' non vuol dire la stessa cosa
+`frontend/` e' l'interfaccia (React, TypeScript, Vite), l'unica dal todo 40.
+Le pagine sono due (todo 51): la **Day** e la **Week**; Month, Recovery e
+Activities restano grigie nella barra. Quale si apre lo dice `?page=` —
+senza, la Day, cosi' i collegamenti di prima continuano a funzionare — e il
+resto dei parametri lo sceglie la pagina: `?day=2026-10-07` per la Day,
+`?page=week&monday=2026-10-19` per la Week. Niente router di libreria:
+`URLSearchParams` e `history.pushState` (`src/navigation.ts`).
+
+La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
+`Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
+ISO per le settimane a cavallo — la striscia dei sette giorni e le sedute.
+Un clic su un giorno apre la Day. I numeri della settimana e il suo report
+arrivano coi todo 52 e 53.
+
+La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
+la seduta suggerita e il verdetto del giorno, una griglia 2x2 con Health e
+Load sopra, Recovery e Fitness sotto (todo 37), e l'allenamento con grafico e
+mappa. **Tutte e quattro le card hanno la stessa forma**: le misure, ognuna
+con la barra della sua fascia e il valore di oggi come tacca, e niente testo
+accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e allora e'
+un numero nudo: la soglia del lattato, il rapporto di carico, la quota e il
+caldo a cui sei acclimatato. La fascia pero' non vuol dire la stessa cosa
 dappertutto: in Health e Recovery e' la media dei 28 giorni prima piu' e meno
 uno scarto tipo (in tinta chiara piu' e meno due), e uscirne e' un segnale; in
 Fitness e' la stessa media ma **sopra vuol dire che stai migliorando**; in
 Load e' il **bersaglio di Garmin**, non una media tua, e ha un livello solo.
-Il giorno sta nell'URL (`?day=2026-10-07`). Ogni card ha il testo della sua
-sezione del report giornaliero, l'ora in cui e' stato scritto e un tasto che
-la rifa' da sola (todo 44 e 47); i passi della seduta vengono dalla sezione
-Next. Per lanciarla servono l'API e Node.js:
+Ogni card ha il testo della sua sezione del report giornaliero, l'ora in cui
+e' stato scritto e un tasto che la rifa' da sola (todo 44 e 47); i passi della
+seduta vengono dalla sezione Next.
+
+Per lanciarla servono l'API e Node.js:
 
 ```bash
 cd frontend && npm ci   # la prima volta

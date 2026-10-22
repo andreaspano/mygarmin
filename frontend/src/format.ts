@@ -125,3 +125,38 @@ export function writtenLabel(timestamp: string, day: string): string {
   if (dayOf(timestamp) === day) return `written at ${when}`;
   return `written ${shortDayLabel(dayOf(timestamp))}, ${when}`;
 }
+
+/** Il lunedi della settimana di `day`, secondo ISO 8601 (la settimana
+ * comincia il lunedi). */
+export function mondayOf(day: string): string {
+  const weekday = weekdayIndex(day); // 0 = domenica
+  return addDays(day, weekday === 0 ? -6 : 1 - weekday);
+}
+
+/** Il numero della settimana ISO: quella che contiene il giovedi. */
+export function isoWeek(day: string): number {
+  // Il giovedi della settimana decide a che anno appartiene: dal 1 gennaio
+  // di quell'anno si contano le settimane.
+  const thursday = addDays(mondayOf(day), 3);
+  const [year] = parts(thursday);
+  const firstThursday = addDays(mondayOf(`${year}-01-04`), 3);
+  return Math.round((utc(thursday) - utc(firstThursday)) / (7 * DAY_MS)) + 1;
+}
+
+/** "Week 43 · October 2026": il numero ISO, e il mese del **giovedi**, che
+ * e' la regola ISO per le settimane a cavallo di due mesi (la 5 del 2026 va
+ * dal 26 gennaio al 1 febbraio ed e' di gennaio). */
+export function weekLabel(day: string): string {
+  const thursday = addDays(mondayOf(day), 3);
+  const [y, m] = parts(thursday);
+  return `Week ${String(isoWeek(day)).padStart(2, "0")} · ${MONTHS_LONG[m - 1]} ${y}`;
+}
+
+/** "12 – 18 October", o "28 September – 4 October" a cavallo di due mesi. */
+export function weekRangeLabel(monday: string): string {
+  const sunday = addDays(monday, 6);
+  const [, m1, d1] = parts(monday);
+  const [, m2, d2] = parts(sunday);
+  const inizio = m1 === m2 ? `${d1}` : `${d1} ${MONTHS_LONG[m1 - 1]}`;
+  return `${inizio} – ${d2} ${MONTHS_LONG[m2 - 1]}`;
+}

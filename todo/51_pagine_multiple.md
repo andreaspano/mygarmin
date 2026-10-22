@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Piu' di una pagina
@@ -105,3 +105,39 @@ numeri settimanali li costruisce il todo 52.
    deve dare `Week 05 · January 2026`.
 5. Un clic su un giorno della striscia apre la Day di quel giorno.
 6. Nessun errore in console, nei due temi.
+
+## Come e' andata
+
+Fatto come scritto, con due scelte prese per strada.
+
+- **`pushUrl` emette un `popstate` finto.** Il browser lo manda solo su
+  avanti e indietro, quindi un tasto dentro la pagina non avvisava nessuno:
+  il primo tentativo di `openDay` finiva con un `window.location.reload()`,
+  che e' rozzo. Con l'evento sintetico `App` e le pagine si aggiornano da
+  sole e la navigazione e' davvero senza ricarica — provato: clic su una
+  seduta, la Day compare, il tasto indietro riporta alla Week.
+- **`openDay` toglie anche `monday` dall'URL.** Senza, restava appeso
+  (`?monday=2026-10-12&day=2026-10-15`): la Day lo ignora, ma un indirizzo
+  che si copia e si manda deve essere pulito.
+
+Gli aiuti ISO (`mondayOf`, `isoWeek`, `weekLabel`) sono stati confrontati
+con il calendario di Python su sette casi difficili — i due scavalchi
+d'anno, la settimana 53 del 2026, la 5 a cavallo fra gennaio e febbraio — e
+danno gli stessi numeri.
+
+La barra in alto usa collegamenti veri (`<a href>`), quindi Day e Week si
+aprono anche in una scheda nuova. Dentro la pagina, invece, si naviga con
+`pushUrl`.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_51'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. La pagina Week non scrive niente: legge
+`/api/activities` e `/api/sports`, che esistevano gia'. Dopo il revert un
+indirizzo `?page=week` apre la Day, come prima.
+
+Dopo il revert, rifare il merge di `todo_51` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.
