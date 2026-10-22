@@ -2,11 +2,11 @@
 status: todo
 ---
 
-# I numeri della settimana, e i suoi grafici
+# I numeri della settimana, e il suo grafico
 
 Il todo 51 ha costruito la pagina Week: intestazione, striscia dei giorni e
-le sedute. Mancano i numeri — le quattro card con le loro misure — e i due
-grafici della card Training.
+le sedute. Mancano i numeri — le quattro card con le loro misure — e il
+grafico della card Training.
 
 ## Le fasce: dodici settimane, non ventotto giorni
 
@@ -58,31 +58,15 @@ gia' calcolate**. Serve:
 - le medie settimanali delle quattro misure di Health, che oggi non ci sono
   tutte;
 - i valori di fine settimana per Fitness, da `fitness_on` sull'ultimo giorno
-  della settimana;
-- **i minuti per zona** della settimana.
+  della settimana.
 
-### 2. I minuti per zona: da scrivere
-
-Oggi sappiamo i minuti per **effetto** (basso aerobico, alto aerobico,
-anaerobico) con `run_chart.effects()`, non per **zona**. Il conto si fa con
-`zone_of()` sui campioni, che stanno nella tabella `records`, usando le zone
-in vigore quel giorno (`run_chart.zone_settings` sulla riga dell'attivita',
-che cambiano nel tempo: dall'8 agosto al 20 ottobre la soglia e' passata per
-sei valori).
-
-**Costa**: vuol dire rileggere i campioni di tutte le sedute di una
-settimana. Una volta a settimana va bene; a ogni apertura della pagina no.
-Se la lentezza si vede, il posto giusto per tenerli e' una colonna in
-`activities`, con il salto di `LOGIC_VERSION` che ne consegue — ma prima si
-misura.
-
-### 3. L'API — `GET /api/weekly/{monday}`
+### 2. L'API — `GET /api/weekly/{monday}`
 
 Come `/api/daily/{day}`: un endpoint che rende i fatti della settimana con
 le fasce, tipato nei modelli. 422 se il giorno non e' un lunedi, come fa
 gia' `build_weekly_data`.
 
-### 4. Le card — `frontend/src/components/WeekPage.tsx`
+### 3. Le card — `frontend/src/components/WeekPage.tsx`
 
 Health, Recovery, Load e Fitness, **riusando i componenti della Day**:
 `Stat`, `RangeBar` e `MeasureBar` stanno gia' in `Stat.tsx` e prendono
@@ -90,20 +74,22 @@ valore e fascia senza sapere se vengono da un giorno o da una settimana.
 
 I colori delle barre seguono le icone come nella Day (todo 46-48).
 
-### 5. I due grafici di Training
+### 4. Il grafico di Training
 
-Due, non uno: tre informazioni in un disegno solo non ci stanno.
+**Barre per sport**: il tempo e la distanza di ogni sport della settimana,
+con il numero di sedute nell'etichetta. La distanza **salta gli sport che
+non ne hanno** (il tapis roulant, todo 45): li' si mostra solo il tempo.
 
-1. **Barre per sport**: il tempo e la distanza di ogni sport della
-   settimana, con il numero di sedute nell'etichetta. La distanza **salta
-   gli sport che non ne hanno** (il tapis roulant, todo 45): li' solo il
-   tempo.
-2. **La torta delle zone**: quanto tempo in Z1, Z2, Z3, Z4 e Z5 sommando
-   tutte le sedute.
-
-Li disegna Altair come il grafico della scheda (`run_chart.py`), e l'API li
+Lo disegna Altair come il grafico della scheda (`run_chart.py`), e l'API lo
 rende come specifica Vega-Lite gia' pronta, come fa
 `/api/activities/{id}/chart/vega`.
+
+**Niente torta delle zone.** C'era nel primo abbozzo ed e' stata tolta: i
+minuti per zona non esistono nei dati (sappiamo i minuti per *effetto*, non
+per zona), andavano calcolati rileggendo i campioni di tutte le sedute della
+settimana, e una torta a cinque spicchi e' il grafico che si legge peggio.
+Il tempo per intensita', se servira', si guarda nella scheda della singola
+seduta, dove c'e' gia'.
 
 ## Vincoli
 
@@ -122,12 +108,6 @@ rende come specifica Vega-Lite gia' pronta, come fa
   giorni e la sua media non si confronta con dodici settimane piene.
   `build_weekly_data` sa gia' se la settimana e' `partial`: o la fascia non
   si disegna, o lo si dice a schermo.
-- **Il tempo per zona sulle sedute in bici**: il profilo Bici non salva la
-  soglia e le zone sono calcolate sulla frequenza massima (vedi
-  `_fill_missing_thresholds`). Le zone di una pedalata e di una corsa non
-  sono la stessa scala, e sommarle in una torta sola va spiegato o evitato.
-- **La torta con cinque spicchi** e' il grafico che si legge peggio. Se non
-  funziona, una barra unica divisa in cinque dice la stessa cosa meglio.
 
 ## Verifica
 
@@ -136,11 +116,7 @@ rende come specifica Vega-Lite gia' pronta, come fa
    settimane misurate sono meno di sei.
 2. Le medie di Health e Recovery della settimana contro la media a mano dei
    sette giorni di `days`: stessi numeri.
-3. I minuti per zona di una settimana contro la somma dei minuti per effetto
-   delle stesse sedute: devono raccontare la stessa storia.
-4. La distanza per sport salta il tapis roulant e ne mostra solo il tempo.
-5. Quanto ci mette `/api/weekly/{monday}` la prima volta, con i campioni da
-   rileggere: se supera il paio di secondi, va detto nel report finale.
-6. `make frontend_types` (`schema.ts` cambia una volta e si committa),
+3. La distanza per sport salta il tapis roulant e ne mostra solo il tempo.
+4. `make frontend_types` (`schema.ts` cambia una volta e si committa),
    `npm run typecheck`, `npm run build`, e la pagina in Firefox headless nei
    due temi: una settimana piena, una a meta' e una senza dati.
