@@ -85,12 +85,17 @@ daily_data:
 # L'installazione e' ripetibile: toglie le righe `# mygarmin` che ci sono gia'
 # e rimette queste, senza toccare il resto del tuo crontab.
 UV := $(shell command -v uv)
+# La cartella di uv entra nel PATH delle righe di cron: il percorso assoluto
+# basta a lanciare il comando, non a `make update_activity` che dentro chiama
+# un altro `uv run`.
+UV_DIR := $(dir $(UV))
 CRON_LOG := $(HOME)/.local/state/mygarmin-report.log
 install_cron:
 	@test -n "$(UV)" || { echo "uv non e' nel PATH"; exit 1; }
 	@mkdir -p $(dir $(CRON_LOG))
 	@{ crontab -l 2>/dev/null | grep -v '# mygarmin$$' || true; \
-	   sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' -e 's|__LOG__|$(CRON_LOG)|' \
+	   sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' -e 's|__UVDIR__|$(UV_DIR:/=)|' \
+	       -e 's|__LOG__|$(CRON_LOG)|' \
 	       deploy/crontab | grep '# mygarmin$$'; } | crontab -
 	@echo "Installato. Il crontab adesso:"
 	@crontab -l | grep '# mygarmin$$'

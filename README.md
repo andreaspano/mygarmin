@@ -207,8 +207,12 @@ tail -f ~/.local/state/mygarmin-report.log   # com'e' andata
 
 L'installazione toglie le righe che ha messo l'ultima volta (le riconosce dal
 marcatore `# mygarmin` in fondo) e rimette queste: il resto del crontab non
-si tocca. `uv` va scritto per intero perche' cron da' un `PATH` scarno
-(`/usr/bin:/bin`); `make` e `claude`, che servono dopo, stanno li'.
+si tocca. Cron da' un `PATH` scarno (`/usr/bin:/bin`), dove `make` e `claude`
+ci sono ma `uv` no, e **non basta scrivere `uv` per intero**: dentro il
+lavoro c'e' un `make update_activity` che a sua volta chiama `uv run`. Per
+questo le righe allargano il `PATH` con la cartella di `uv`. I primi due giri
+automatici sbagliarono proprio qui: i report furono scritti, ma sui dati
+vecchi.
 
 Prima erano due timer di systemd (todo 47), con il vantaggio di recuperare un
 giro saltato a macchina spenta. Su questa macchina, accesa sempre e mai
