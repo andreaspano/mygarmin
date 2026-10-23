@@ -423,10 +423,21 @@ def _week_fitness(
     return fitness
 
 
-def build_weekly_data(monday: date, data_dir: Path = DATA_DIR, today: date | None = None) -> dict[str, Any]:
+def build_weekly_data(
+    monday: date,
+    data_dir: Path = DATA_DIR,
+    today: date | None = None,
+    activities: pd.DataFrame | None = None,
+    health: pd.DataFrame | None = None,
+) -> dict[str, Any]:
     """I fatti della settimana che comincia `monday`, come dizionario pronto
     per il JSON. Una settimana non ancora finita si puo' chiedere: `partial`
-    e `last_day` dicono fin dove arriva."""
+    e `last_day` dicono fin dove arriva.
+
+    `activities` e `health` sono quelli di `list_activities` e
+    `load_health_db`, come in `build_daily_data`: l'API li passa dalla sua
+    cache, perche' rileggerli a ogni richiesta costa un secondo mentre tutto
+    il conto della settimana ne costa un decimo; senza, si leggono qui."""
     if monday.weekday() != 0:
         raise ValueError(f"{monday} non e' un lunedi'")
     today = today or date.today()
@@ -437,8 +448,10 @@ def build_weekly_data(monday: date, data_dir: Path = DATA_DIR, today: date | Non
     partial = end >= today
     last_day = min(end, today)
 
-    activities = list_activities(data_dir)
-    health = load_health_db(data_dir)
+    if activities is None:
+        activities = list_activities(data_dir)
+    if health is None:
+        health = load_health_db(data_dir)
 
     week = _week_activities(activities, monday, end)
     week_health = _week_health(health, monday)

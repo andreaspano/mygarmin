@@ -265,6 +265,18 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     return DailyData(**daily_payload(day, ctx.data_dir))
 
 
+def _weekly(monday: date, data_dir: Path) -> dict[str, Any]:
+    """I fatti della settimana, con salute e attivita' dalla cache: senza,
+    ogni richiesta rifa' la scansione dei file di salute (circa un secondo,
+    dieci volte il conto della settimana)."""
+    return build_weekly_data(
+        monday,
+        data_dir,
+        activities=load_activities(data_dir),
+        health=load_health(data_dir),
+    )
+
+
 @app.get("/api/weekly/{monday}", response_model=WeeklyData, summary="Weekly data")
 def get_weekly(monday: date, ctx: Context) -> WeeklyData:
     """Everything known about one ISO week, Monday to Sunday (todo 52).
@@ -276,7 +288,7 @@ def get_weekly(monday: date, ctx: Context) -> WeeklyData:
         raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
     if monday > date.today():
         raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
-    data = build_weekly_data(monday, ctx.data_dir)
+    data = _weekly(monday, ctx.data_dir)
     return WeeklyData(**{name: data[name] for name in WeeklyData.model_fields})
 
 
@@ -289,7 +301,7 @@ def get_weekly_chart_vega(
     """The week's work by sport, as a ready-to-render Vega-Lite specification."""
     if monday.weekday() != 0:
         raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
-    data = build_weekly_data(monday, ctx.data_dir)
+    data = _weekly(monday, ctx.data_dir)
     chart = week_sports_chart(data["training"]["by_sport"], theme)
     if chart is None:
         raise HTTPException(status_code=404, detail="No sessions to plot for this week.")
