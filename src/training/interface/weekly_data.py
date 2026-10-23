@@ -72,6 +72,38 @@ LOAD_METRICS = (
     "load_balance_phrase",
 )
 
+# Le misure che la pagina Week mostra con la loro barra (todo 52), con
+# l'etichetta a schermo, l'unita' e i decimali. Health e Recovery sono
+# **medie** dei sette giorni: il corpo in quella settimana. Il carico e la
+# forma no, sono stati di fine settimana, e stanno altrove.
+WEEK_MEASURES: tuple[tuple[str, str, str, str, int], ...] = (
+    ("health", "resting_hr", "Resting heart rate", "bpm", 0),
+    ("health", "hrv_last_night", "HRV", "ms", 0),
+    ("health", "resp_sleep_avg", "Breathing in sleep", "/min", 1),
+    ("health", "stress_avg", "Stress", "", 0),
+    ("recovery", "readiness", "Readiness", "", 0),
+    ("recovery", "sleep_hours", "Sleep", "h", 1),
+    ("recovery", "body_battery_high", "Body battery, wake-up", "", 0),
+    ("recovery", "body_battery_low", "Body battery, low", "", 0),
+)
+
+# Le misure che vivono fra 0 e 100, come `MORNING_LIMITS` per il giorno: la
+# fascia non deve promettere un valore che la misura non puo' avere.
+WEEK_LIMITS: dict[str, tuple[float, float]] = {
+    name: (0, 100)
+    for name in ("readiness", "stress_avg", "body_battery_high", "body_battery_low")
+}
+
+# Quante settimane guarda indietro una fascia della Week, e quante ne
+# servono perche' valga qualcosa (todo 52). Dodici settimane sono tre mesi:
+# abbastanza da contenere un blocco di lavoro intero, abbastanza poche da
+# seguire un cambio di passo. **Non sono i 28 giorni della Day**: attorno a
+# una media settimanale quella fascia non direbbe niente, perche' una media
+# di sette giorni oscilla molto meno di un singolo giorno e cadrebbe quasi
+# sempre dentro.
+BAND_WEEKS = 12
+MIN_BAND_WEEKS = 6
+
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 # Per i messaggi d'errore, che sono in italiano.
 GIORNI = ("lunedi'", "martedi'", "mercoledi'", "giovedi'", "venerdi'", "sabato", "domenica")
@@ -251,6 +283,98 @@ def _week_summary(
     }
 
 
+def _week_mean(health: pd.DataFrame, column: str, monday: date) -> float | None:
+    """La media di `column` nei sette giorni che cominciano `monday`, o
+    `None` se non c'e' nemmeno un valore."""
+    week = health.reindex(pd.date_range(monday, periods=7, freq="D"))[column].dropna()
+    return float(week.mean()) if len(week) else None
+
+
+def _week_measures(health: pd.DataFrame, monday: date) -> dict[str, dict[str, Any]]:
+    """Le misure di Health e Recovery della settimana (todo 52): la media
+    dei sette giorni e la fascia in cui si e' mossa nelle `BAND_WEEKS`
+    settimane precedenti.
+
+    **La fascia non e' quella della Day.** Li' il confronto e' fra il valore
+    di un giorno e i 28 giorni prima; qui fra una media settimanale e le
+    dodici medie settimanali che la precedono. Attorno a una media la fascia
+    giornaliera non direbbe niente: sette giorni oscillano molto meno di
+    uno, e il valore cadrebbe quasi sempre dentro.
+
+    `_band` e' la stessa della Day, con il minimo dei valori abbassato a
+    `MIN_BAND_WEEKS`: e' importata qui dentro e non in testa al modulo
+    perche' `daily_data` importa gia' da qui, e in testa sarebbe un giro
+    chiuso."""
+    from training.interface.daily_data import _band
+
+    out: dict[str, dict[str, Any]] = {}
+    for card, column, label, unit, digits in WEEK_MEASURES:
+        before = pd.Series(
+            [_week_mean(health, column, monday - timedelta(weeks=k)) for k in range(1, BAND_WEEKS + 1)],
+            dtype="float64",
+        )
+        out[column] = {
+            "card": card,
+            "label": label,
+            "unit": unit,
+            "value": _value(_week_mean(health, column, monday), digits),
+            "band": _band(before, WEEK_LIMITS.get(column), digits, MIN_BAND_WEEKS),
+            "weeks": int(before.notna().sum()),
+        }
+    return out
+
+
+def _as_of(week_health: pd.DataFrame, last_day: date) -> date:
+    """L'ultimo giorno della settimana che porta dei dati di salute, o
+    `last_day` se non ce n'e' nessuno.
+
+    Serve al carico, ai bersagli e alla forma: sono stati di fine settimana,
+    e in una settimana ancora in corso l'ultimo giorno e' oggi, i cui file
+    arrivano solo col giro della sera."""
+    known = week_health[week_health["load_acute"].notna() | week_health["readiness"].notna()]
+    if known.empty:
+        return last_day
+    return min(known.index[-1].date(), last_day)
+
+
+def _load_targets_on(day: date, data_dir: Path) -> dict[str, Any] | None:
+    """I bersagli di Garmin per il carico mensile, nel giorno `day`."""
+    from training.interface.daily_data import _load_targets
+
+    return _load_targets(day.isoformat(), data_dir)
+
+
+def _week_fitness(
+    health: pd.DataFrame, activities: pd.DataFrame, last_day: date, data_dir: Path
+) -> dict[str, Any]:
+    """La forma alla fine della settimana (todo 52): VO2max, i due punteggi,
+    gli acclimatamenti e la soglia.
+
+    Non si media: sono stati, non cose che succedono nei sette giorni. Vale
+    quello dell'ultimo giorno — della domenica, o di oggi se la settimana e'
+    ancora aperta. Sono gli stessi numeri della card Fitness della Day, con
+    le loro fasce a 28 giorni: quelle restano giornaliere perche' qui il
+    valore e' di un giorno solo, non una media."""
+    from training.interface.daily_data import _hr_zones, fitness_on
+    from training.interface.health import load_lactate_threshold
+
+    fitness = fitness_on(health, last_day)
+    lactate = load_lactate_threshold(data_dir)
+    fitness["lactate_threshold"] = (
+        lactate if lactate and lactate["as_of"] <= last_day.isoformat() else None
+    )
+    # La soglia dell'orologio, il ripiego di quando Garmin non ne ha
+    # rilevata una: viene dalle zone dell'ultima attivita' a piedi, come
+    # nella Day (`api/daily.daily_payload`).
+    zones = _hr_zones(activities, last_day)
+    fitness["threshold_hr"] = (
+        {"value": zones["threshold_hr"], "as_of": zones["as_of"]}
+        if zones and zones.get("threshold_hr") is not None
+        else None
+    )
+    return fitness
+
+
 def build_weekly_data(monday: date, data_dir: Path = DATA_DIR, today: date | None = None) -> dict[str, Any]:
     """I fatti della settimana che comincia `monday`, come dizionario pronto
     per il JSON. Una settimana non ancora finita si puo' chiedere: `partial`
@@ -285,6 +409,18 @@ def build_weekly_data(monday: date, data_dir: Path = DATA_DIR, today: date | Non
         "load": _load(week_health, last_day),
         "vo2max": _vo2max(health, monday, end),
         "coverage": {m: int(week_health[m].notna().sum()) for m in COVERAGE_METRICS},
+        # Health e Recovery come medie dei sette giorni, con la fascia delle
+        # dodici settimane prima; Fitness come stava alla fine (todo 52).
+        "measures": _week_measures(health, monday),
+        # **Non `last_day` ma l'ultimo giorno che ha dei dati.** In una
+        # settimana in corso l'ultimo giorno e' oggi, e i file di oggi
+        # arrivano col giro della sera: fino ad allora carico, bersagli e
+        # acclimatamenti sarebbero vuoti, e le card senza barre.
+        "fitness": _week_fitness(health, activities, _as_of(week_health, last_day), data_dir),
+        # Le fasce obiettivo del carico, per la barra della card Load: sono
+        # di Garmin e stanno nel file del giorno, come nella Day, che le
+        # cerca nel giorno del carico e non in quello chiesto.
+        "load_targets": _load_targets_on(_as_of(week_health, last_day), data_dir),
         # Dalla piu' vecchia a questa; le tre prima sono sempre chiuse.
         "four_weeks": [
             _week_summary(activities, health, start, min(start + timedelta(days=6), last_day), today)

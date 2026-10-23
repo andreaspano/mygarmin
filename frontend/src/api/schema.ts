@@ -193,6 +193,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weekly/{monday}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly data
+         * @description Everything known about one ISO week, Monday to Sunday (todo 52).
+         *
+         *     The Health and Recovery measures are averages of the seven days, each with the band it
+         *     has moved in over the last twelve weeks; load and fitness are the state at the end of
+         *     the week, which is today for a week still running.
+         */
+        get: operations["get_weekly_api_weekly__monday__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weekly/{monday}/chart/vega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly chart, Vega-Lite
+         * @description The week's work by sport, as a ready-to-render Vega-Lite specification.
+         */
+        get: operations["get_weekly_chart_vega_api_weekly__monday__chart_vega_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/reports/daily/{day}": {
         parameters: {
             query?: never;
@@ -1191,6 +1235,112 @@ export interface components {
             /** @description Where it has sat over the last 28 days. Read the other way round from the bands of `morning`: above the band means it is still climbing. Null with too few measured days. */
             band?: components["schemas"]["Band"] | null;
         };
+        /** WeekInfo */
+        WeekInfo: {
+            /**
+             * Start
+             * Format: date
+             * @description The Monday.
+             */
+            start: string;
+            /**
+             * End
+             * Format: date
+             * @description The Sunday.
+             */
+            end: string;
+            /**
+             * Partial
+             * @description True while the week is still running.
+             */
+            partial: boolean;
+            /**
+             * Last Day
+             * Format: date
+             * @description The Sunday, or today for a week still running.
+             */
+            last_day: string;
+        };
+        /**
+         * WeekMeasure
+         * @description One of the week's measures, with the band it moved in over the last twelve
+         *     weeks (todo 52). Health and Recovery are averages of the seven days.
+         */
+        WeekMeasure: {
+            /**
+             * Card
+             * @description Which card shows it.
+             * @enum {string}
+             */
+            card: "health" | "recovery";
+            /**
+             * Label
+             * @description The name to show.
+             */
+            label: string;
+            /**
+             * Unit
+             * @description Empty for the measures that have none.
+             */
+            unit: string;
+            /**
+             * Value
+             * @description Null when no day of the week was measured.
+             */
+            value: number | null;
+            /** @description Where the weekly average has sat over the last twelve weeks. Null with fewer than six measured weeks. Not the daily band: around an average of seven days a 28-day band would sit inside almost always. */
+            band: components["schemas"]["Band"] | null;
+            /**
+             * Weeks
+             * @description How many of the twelve weeks before carried a value.
+             */
+            weeks: number;
+        };
+        /**
+         * WeeklyData
+         * @description Everything known about one ISO week, Monday to Sunday (todo 52).
+         */
+        WeeklyData: {
+            week: components["schemas"]["WeekInfo"];
+            /**
+             * Measures
+             * @description By column name: the Health and Recovery measures, averaged over the week.
+             */
+            measures: {
+                [key: string]: components["schemas"]["WeekMeasure"];
+            };
+            /** @description Garmin's load at the end of the week. */
+            load: components["schemas"]["LoadNow"] | null;
+            /** @description Garmin's target ranges, for the bars of the Load card. */
+            load_targets: components["schemas"]["LoadTargets"] | null;
+            /** @description What the body could do at the end of the week. */
+            fitness: components["schemas"]["Fitness"];
+            /**
+             * Training
+             * @description Sessions, time and totals by sport.
+             */
+            training: {
+                [key: string]: unknown;
+            };
+            /**
+             * Days
+             * @description One entry per day of the week.
+             */
+            days: {
+                [key: string]: unknown;
+            }[];
+            /** Activities */
+            activities: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Coverage
+             * @description Measured days per metric, out of seven.
+             */
+            coverage: {
+                [key: string]: number;
+            };
+        };
         /**
          * ZoneBand
          * @description A stretch of time in one heart-rate zone. Times in minutes from the start.
@@ -1495,6 +1645,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weekly_api_weekly__monday__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                monday: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeeklyData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weekly_chart_vega_api_weekly__monday__chart_vega_get: {
+        parameters: {
+            query?: {
+                theme?: "light" | "dark";
+            };
+            header?: never;
+            path: {
+                monday: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
             /** @description Validation Error */

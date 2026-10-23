@@ -40,9 +40,11 @@ from training.api.models import (
     Sport,
     SportList,
     TerrainUpdate,
+    WeeklyData,
     ZoneBand,
 )
 from training.interface.daily_data import build_daily_data, fitness_on
+from training.interface.weekly_data import build_weekly_data
 from training.interface.db import _clean, load_activity_records
 from training.interface.health import load_lactate_threshold
 from training.interface.report_text import parse_report, section_icon
@@ -53,6 +55,7 @@ from training.interface.run_chart import (
     has_effects,
     pauses,
     run_analysis_chart,
+    week_sports_chart,
     zone_bands,
     zone_settings,
 )
@@ -260,6 +263,37 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     # agenti: una strada sola, cosi' la pagina e chi scrive il testo vedono
     # le stesse cose.
     return DailyData(**daily_payload(day, ctx.data_dir))
+
+
+@app.get("/api/weekly/{monday}", response_model=WeeklyData, summary="Weekly data")
+def get_weekly(monday: date, ctx: Context) -> WeeklyData:
+    """Everything known about one ISO week, Monday to Sunday (todo 52).
+
+    The Health and Recovery measures are averages of the seven days, each with the band it
+    has moved in over the last twelve weeks; load and fitness are the state at the end of
+    the week, which is today for a week still running."""
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    if monday > date.today():
+        raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
+    data = build_weekly_data(monday, ctx.data_dir)
+    return WeeklyData(**{name: data[name] for name in WeeklyData.model_fields})
+
+
+@app.get("/api/weekly/{monday}/chart/vega", summary="Weekly chart, Vega-Lite")
+def get_weekly_chart_vega(
+    monday: date,
+    ctx: Context,
+    theme: Literal["light", "dark"] = "light",
+) -> dict[str, Any]:
+    """The week's work by sport, as a ready-to-render Vega-Lite specification."""
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    data = build_weekly_data(monday, ctx.data_dir)
+    chart = week_sports_chart(data["training"]["by_sport"], theme)
+    if chart is None:
+        raise HTTPException(status_code=404, detail="No sessions to plot for this week.")
+    return chart.to_dict()
 
 
 def _fragment_sections(folder: Path) -> list[tuple[str | None, str, datetime | None]]:

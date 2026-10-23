@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # I numeri della settimana, e il suo grafico
@@ -120,3 +120,51 @@ seduta, dove c'e' gia'.
 4. `make frontend_types` (`schema.ts` cambia una volta e si committa),
    `npm run typecheck`, `npm run build`, e la pagina in Firefox headless nei
    due temi: una settimana piena, una a meta' e una senza dati.
+
+## Come e' andata
+
+Le fasce a dodici settimane danno gli stessi numeri del mockup che avevamo
+guardato insieme, e sono le letture che la fascia giornaliera non avrebbe
+dato: nella settimana 42 l'HRV a 44 ms sta sul bordo sinistro della sua
+fascia 44-50, la settimana peggiore delle ultime dodici.
+
+Quattro cose decise o trovate per strada:
+
+- **`_band` ha preso un minimo parametrico** (`min_values`), perche' i 14
+  giorni erano cablati e qui i valori sono dodici. Le fasce della Day non si
+  muovono: il parametro ha per difetto `MIN_BAND_DAYS`.
+- **Import ritardato, non modulo nuovo.** `weekly_data` ha bisogno di
+  `_band` e `fitness_on`, ma `daily_data` importa gia' da `weekly_data`: un
+  import in testa sarebbe un giro chiuso. Le due funzioni si importano
+  dentro i metodi, come fa gia' `refresh.main()`.
+- **Il carico e la forma si leggono dall'ultimo giorno che ha dati**, non da
+  `last_day`. In una settimana in corso l'ultimo giorno e' oggi, e i file di
+  oggi arrivano col giro delle 22: fino ad allora la card Load restava senza
+  barre e gli acclimatamenti vuoti. La Day fa gia' cosi' (`_load_targets`
+  sull'`as_of` del carico), e adesso anche la Week.
+- **Il grafico non usa `facet`.** Il primo tentativo faceva due riquadri
+  affiancati, uno per misura, e non si vedeva affatto: Vega-Lite non sa
+  stare nella larghezza del contenitore (`width: "container"`) dentro una
+  vista composta, e veniva largo zero. Adesso e' un grafico solo, con ogni
+  barra in scala sul massimo della **sua** misura e il valore vero scritto
+  in fondo — minuti e chilometri non si confrontano su un asse comune.
+
+**Un avviso resta in console**: `Dropping "fit-y" because spec has discrete
+height`, a ogni disegno del grafico. Viene da vega-embed, che con
+`width: "container"` impone il suo autosize. Ho provato a metterlo nel
+config, nella specifica e a dare al grafico un'altezza in pixel invece che
+discreta: l'avviso resta. Il grafico si disegna giusto, in tutti e due i
+temi; e' rumore, non un difetto, e non ho voluto spenderci altro tempo.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_52'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. La Week legge e basta: niente scritture in
+`summary/`, niente colonne nuove in `activities.db`, nessuna chiamata a
+Garmin.
+
+Dopo il revert, rifare il merge di `todo_52` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

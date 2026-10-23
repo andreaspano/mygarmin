@@ -102,9 +102,17 @@ resto dei parametri lo sceglie la pagina: `?day=2026-10-07` per la Day,
 
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
-ISO per le settimane a cavallo — la striscia dei sette giorni e le sedute.
-Un clic su un giorno apre la Day. I numeri della settimana e il suo report
-arrivano coi todo 52 e 53.
+ISO per le settimane a cavallo — la striscia dei sette giorni, le quattro
+card e le sedute con il grafico del lavoro per sport. Un clic su un giorno
+apre la Day. Il report della settimana arriva col todo 53.
+
+Le fasce della Week **non sono quelle della Day**: qui il valore della
+settimana si confronta con le **12 settimane precedenti** (todo 52), e ne
+bastano sei misurate. Attorno a una media settimanale una fascia a 28 giorni
+non direbbe niente: sette giorni oscillano molto meno di uno, e il valore
+cadrebbe quasi sempre dentro. Health e Recovery sono medie dei sette giorni,
+Load e Fitness lo stato di fine settimana — il carico e la forma sono stati,
+non cose da mediare.
 
 La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
 la seduta suggerita e il verdetto del giorno, una griglia 2x2 con Health e

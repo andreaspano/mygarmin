@@ -15,7 +15,7 @@ const TEXT_COLORS: Record<ColorScheme, { text: string; muted: string; grid: stri
   dark: { text: "#fafafa", muted: "#9ca3af", grid: "rgba(250, 250, 250, 0.12)" },
 };
 
-function themeConfig(theme: ColorScheme) {
+export function themeConfig(theme: ColorScheme) {
   const c = TEXT_COLORS[theme];
   return {
     // Il fondo lo da' la pagina, nei due temi.
