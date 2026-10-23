@@ -149,6 +149,17 @@ Quattro cose decise o trovate per strada:
   barra in scala sul massimo della **sua** misura e il valore vero scritto
   in fondo — minuti e chilometri non si confrontano su un asse comune.
 
+**Corretto dopo** (branch `fasce_fitness_settimana`): la card Fitness era
+rimasta indietro di due passi. Non disegnava nessuna barra — i tre punteggi
+erano numeri nudi — e le fasce che arrivavano da `fitness_on` erano quelle
+della Day, a 28 giorni, mentre la tabella qui sopra dice dodici settimane
+anche per lei. Adesso i tre punteggi hanno la fascia delle dodici settimane
+(`_fitness_bands`, che prende il valore di fine settimana di ognuna) e la
+barra sotto il numero, come nelle altre tre card. A oggi la vede solo il
+VO2max: endurance e hill score esistono dal 19 settembre, cinque settimane,
+e sotto le sei di `MIN_BAND_WEEKS` la fascia giustamente non c'e'. Soglia e
+acclimatamenti restano senza barra, come nella Day.
+
 **Un avviso resta in console**: `Dropping "fit-y" because spec has discrete
 height`, a ogni disegno del grafico. Viene da vega-embed, che con
 `width: "container"` impone il suo autosize. Ho provato a metterlo nel

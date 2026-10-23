@@ -14,6 +14,7 @@ import {
   iconUrl,
   isAbort,
   type Activity,
+  type Band,
   type SportList,
   type WeeklyData,
   type WeekMeasure,
@@ -113,6 +114,26 @@ const CARD_ICONS: Record<string, string> = {
   fitness: "fitness.png",
 };
 const sectionIconFile = (card: string) => CARD_ICONS[card] ?? null;
+
+/** Un punteggio di forma con la sua barra: la fascia e' quella delle dodici
+ * settimane, e **sopra vuol dire che stai migliorando**, come nella Day. */
+function ScoreStat({
+  label,
+  score,
+  digits = 0,
+}: {
+  label: string;
+  score: { now: number; band?: Band | null } | null;
+  digits?: number;
+}) {
+  return (
+    <Stat
+      label={label}
+      value={num(score?.now, digits)}
+      sub={score?.band && <RangeBar value={score.now} band={score.band} />}
+    />
+  );
+}
 
 const LOAD_ROWS: {
   key: "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic";
@@ -249,7 +270,11 @@ export function WeekPage() {
               </button>
             </div>
           </div>
-          <WeekPicker monday={monday} current={currentMonday} onSelect={changeWeek} />
+          <WeekPicker
+            monday={monday}
+            current={currentMonday}
+            onSelect={changeWeek}
+          />
         </div>
         {error && <p className="warning">{error}</p>}
         {data && (
@@ -300,12 +325,16 @@ export function WeekPage() {
             <section className="card fitness-card" aria-label="Fitness">
               <CardHead icon={sectionIconFile("fitness")} title="Fitness" />
               <div className="stats">
-                <Stat label="VO2max" value={num(data.fitness.vo2max?.now, 1)} />
-                <Stat
-                  label="Endurance score"
-                  value={num(data.fitness.endurance?.now)}
+                <ScoreStat
+                  label="VO2max"
+                  score={data.fitness.vo2max}
+                  digits={1}
                 />
-                <Stat label="Hill score" value={num(data.fitness.hill?.now)} />
+                <ScoreStat
+                  label="Endurance score"
+                  score={data.fitness.endurance}
+                />
+                <ScoreStat label="Hill score" score={data.fitness.hill} />
                 <Stat
                   label={
                     data.fitness.lactate_threshold

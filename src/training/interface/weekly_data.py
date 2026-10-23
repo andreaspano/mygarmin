@@ -344,17 +344,60 @@ def _load_targets_on(day: date, data_dir: Path) -> dict[str, Any] | None:
     return _load_targets(day.isoformat(), data_dir)
 
 
+# I punteggi di forma che la Week mostra con la loro barra. Niente soglia
+# ne' acclimatamenti: la prima la conosciamo solo nell'ultima versione, i
+# secondi stanno a zero quasi tutto l'anno.
+FITNESS_SCORES: tuple[tuple[str, int], ...] = (
+    ("vo2max", 1),
+    ("endurance_score", 0),
+    ("hill_score", 0),
+)
+# Come si chiamano nel blocco `fitness`, che viene da `fitness_on`.
+FITNESS_KEYS = {"vo2max": "vo2max", "endurance_score": "endurance", "hill_score": "hill"}
+
+
+def _at_end_of(health: pd.DataFrame, column: str, sunday: date) -> float | None:
+    """L'ultimo valore noto di `column` fino alla domenica compresa: e' il
+    valore "di fine settimana" di uno stato che si muove in settimane."""
+    values = health.loc[: pd.Timestamp(sunday), column].dropna()
+    return float(values.iloc[-1]) if len(values) else None
+
+
+def _fitness_bands(health: pd.DataFrame, monday: date) -> dict[str, dict[str, Any] | None]:
+    """Le fasce dei punteggi di forma sulle `BAND_WEEKS` settimane prima
+    (todo 52).
+
+    **A dodici settimane come tutto il resto della Week**, non ai 28 giorni
+    della Day: qui il confronto e' fra la forma di fine settimana e quella
+    delle dodici settimane che la precedono, e una fascia giornaliera
+    direbbe un'altra cosa su una pagina che parla di settimane."""
+    from training.interface.daily_data import _band
+
+    out: dict[str, dict[str, Any] | None] = {}
+    for column, digits in FITNESS_SCORES:
+        before = pd.Series(
+            [
+                _at_end_of(health, column, monday - timedelta(weeks=k, days=1))
+                for k in range(1, BAND_WEEKS + 1)
+            ],
+            dtype="float64",
+        )
+        out[FITNESS_KEYS[column]] = _band(before, None, digits, MIN_BAND_WEEKS)
+    return out
+
+
 def _week_fitness(
-    health: pd.DataFrame, activities: pd.DataFrame, last_day: date, data_dir: Path
+    health: pd.DataFrame, activities: pd.DataFrame, monday: date, last_day: date, data_dir: Path
 ) -> dict[str, Any]:
     """La forma alla fine della settimana (todo 52): VO2max, i due punteggi,
     gli acclimatamenti e la soglia.
 
     Non si media: sono stati, non cose che succedono nei sette giorni. Vale
     quello dell'ultimo giorno — della domenica, o di oggi se la settimana e'
-    ancora aperta. Sono gli stessi numeri della card Fitness della Day, con
-    le loro fasce a 28 giorni: quelle restano giornaliere perche' qui il
-    valore e' di un giorno solo, non una media."""
+    ancora aperta. Sono gli stessi numeri della card Fitness della Day, ma
+    le fasce no: i tre punteggi prendono quella delle dodici settimane
+    (`_fitness_bands`), perche' la domanda della Week e' dove sta questa
+    settimana nella stagione, non dove sta oggi nel mese."""
     from training.interface.daily_data import _hr_zones, fitness_on
     from training.interface.health import load_lactate_threshold
 
@@ -372,6 +415,11 @@ def _week_fitness(
         if zones and zones.get("threshold_hr") is not None
         else None
     )
+    # Le fasce che arrivano da `fitness_on` sono quelle della Day, a 28
+    # giorni: qui si sostituiscono con quelle a dodici settimane.
+    for chiave, banda in _fitness_bands(health, monday).items():
+        if isinstance(fitness.get(chiave), dict):
+            fitness[chiave]["band"] = banda
     return fitness
 
 
@@ -416,7 +464,9 @@ def build_weekly_data(monday: date, data_dir: Path = DATA_DIR, today: date | Non
         # settimana in corso l'ultimo giorno e' oggi, e i file di oggi
         # arrivano col giro della sera: fino ad allora carico, bersagli e
         # acclimatamenti sarebbero vuoti, e le card senza barre.
-        "fitness": _week_fitness(health, activities, _as_of(week_health, last_day), data_dir),
+        "fitness": _week_fitness(
+            health, activities, monday, _as_of(week_health, last_day), data_dir
+        ),
         # Le fasce obiettivo del carico, per la barra della card Load: sono
         # di Garmin e stanno nel file del giorno, come nella Day, che le
         # cerca nel giorno del carico e non in quello chiesto.
