@@ -31,6 +31,7 @@ import {
   timeOf,
   today,
   weekLabel,
+  weekdayShort,
 } from "../format";
 import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
 import { paramFromUrl, pushUrl } from "../navigation";
@@ -607,8 +608,11 @@ export function WeekPage() {
                         )}
                         <span className="week-session-name">
                           {a.activity_name ?? sportLabel(a.sport)}
+                          {/* Il giorno della settimana davanti alla data:
+                              in una pagina che parla di sette giorni,
+                              "Mon" si legge prima del numero. */}
                           <span className="muted">
-                            {sportLabel(a.sport)} · {day} ·{" "}
+                            {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
                             {timeOf(a.start_time)}
                           </span>
                         </span>
