@@ -17,7 +17,7 @@ import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
-import { CardHead, RangeBar, Stat, WrittenAt, num } from "./Stat";
+import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
 
 export function FitnessCard({
   data,
@@ -56,22 +56,48 @@ export function FitnessCard({
         <Stat
           label="VO2max"
           value={num(vo2?.now, 1)}
-          sub={vo2?.band && <RangeBar value={vo2.now} band={vo2.band} />}
+          sub={
+            vo2?.band ? (
+              <RangeBar value={vo2.now} band={vo2.band} />
+            ) : (
+              <EmptyBar />
+            )
+          }
         />
         <Stat
           label="Endurance score"
           value={num(endurance?.now)}
-          sub={endurance?.band && <RangeBar value={endurance.now} band={endurance.band} />}
+          sub={
+            endurance?.band ? (
+              <RangeBar value={endurance.now} band={endurance.band} />
+            ) : (
+              <EmptyBar />
+            )
+          }
         />
         <Stat
           label="Hill score"
           value={num(hill?.now)}
-          sub={hill?.band && <RangeBar value={hill.now} band={hill.band} />}
+          sub={
+            hill?.band ? (
+              <RangeBar value={hill.now} band={hill.band} />
+            ) : (
+              <EmptyBar />
+            )
+          }
         />
         {lactate ? (
-          <Stat label="Lactate threshold" value={num(lactate.heart_rate)} unit="bpm" />
+          <Stat
+            label="Lactate threshold"
+            value={num(lactate.heart_rate)}
+            unit="bpm"
+          />
         ) : (
-          <Stat label="Threshold heart rate" value={num(threshold?.value)} unit="bpm" />
+          <Stat
+            label="Threshold heart rate"
+            value={num(threshold?.value)}
+            unit="bpm"
+          />
         )}
         <Stat
           label="Altitude acclimation"

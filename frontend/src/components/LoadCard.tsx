@@ -12,7 +12,7 @@ import type { ReactNode } from "react";
 
 import type { DailyData } from "../api/client";
 import { markdown } from "../markdown";
-import { CardHead, RangeBar, Stat, WrittenAt, num } from "./Stat";
+import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
 
 type Key = "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic";
 
@@ -68,13 +68,19 @@ export function LoadCard({
               help={help}
               value={num(value)}
               sub={
-                value != null &&
-                target && (
+                target ? (
                   <RangeBar
                     value={value}
-                    band={{ low: target.min, high: target.max, outer_low: target.min, outer_high: target.max }}
+                    band={{
+                      low: target.min,
+                      high: target.max,
+                      outer_low: target.min,
+                      outer_high: target.max,
+                    }}
                     tick={(v) => v.toFixed(0)}
                   />
+                ) : (
+                  <EmptyBar />
                 )
               }
             />

@@ -56,7 +56,6 @@ export function CardHead({
   );
 }
 
-
 /** Una fascia e il valore di oggi dentro: la media dei 28 giorni prima piu'
  * e meno uno scarto tipo (la parte piena), e piu' e meno due (la parte
  * chiara). La scala va un po' oltre la fascia, per vedere anche un valore
@@ -79,13 +78,18 @@ export function RangeBar({
   const min = Math.min(outerLow, value ?? outerLow) - pad;
   const max = Math.max(outerHigh, value ?? outerHigh) + pad;
   const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
-  const span = (a: number, b: number) => ({ left: at(a), width: `calc(${at(b)} - ${at(a)})` });
+  const span = (a: number, b: number) => ({
+    left: at(a),
+    width: `calc(${at(b)} - ${at(a)})`,
+  });
   return (
     <div className="range-bar" aria-hidden="true">
       <div className="range-track">
         <div className="range-wide" style={span(outerLow, outerHigh)} />
         <div className="range-band" style={span(low, high)} />
-        {value != null && <div className="range-marker" style={{ left: at(value) }} />}
+        {value != null && (
+          <div className="range-marker" style={{ left: at(value) }} />
+        )}
       </div>
       <div className="range-ticks">
         <span style={{ left: at(low) }}>{tick(low)}</span>
@@ -95,9 +99,24 @@ export function RangeBar({
   );
 }
 
-/** La barra della fascia di una misura, o niente se la fascia non c'e'
- * (pochi giorni misurati). `value` sostituisce quello della misura dove il
- * numero buono sta altrove (il sonno, che la pagina ha in minuti). */
+/** Il posto di una barra che non si puo' disegnare: la misura una fascia
+ * ce l'ha, ma i giorni misurati non bastano a calcolarla. Una traccia
+ * grigia e vuota, perche' "non lo so ancora" e "qui non ha senso" non sono
+ * la stessa cosa e non devono somigliarsi — e le righe restano allineate
+ * con quelle che la barra ce l'hanno. Dove una fascia non e' prevista (la
+ * soglia, gli acclimatamenti, il rapporto di carico) non va messo niente. */
+export function EmptyBar() {
+  return (
+    <div className="range-bar" aria-hidden="true">
+      <div className="range-track" />
+      <div className="range-ticks" />
+    </div>
+  );
+}
+
+/** La barra della fascia di una misura, o la traccia vuota se la fascia non
+ * c'e' (pochi giorni misurati). `value` sostituisce quello della misura dove
+ * il numero buono sta altrove (il sonno, che la pagina ha in minuti). */
 export function MeasureBar({
   measure,
   value,
@@ -107,10 +126,15 @@ export function MeasureBar({
   value?: number | null;
   tick?: (value: number) => string;
 }) {
-  if (!measure.band) return null;
-  return <RangeBar value={value === undefined ? measure.value : value} band={measure.band} tick={tick} />;
+  if (!measure.band) return <EmptyBar />;
+  return (
+    <RangeBar
+      value={value === undefined ? measure.value : value}
+      band={measure.band}
+      tick={tick}
+    />
+  );
 }
-
 
 /** La riga che dice quando e' stato scritto il testo di una card (todo 47).
  *

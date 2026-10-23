@@ -31,7 +31,7 @@ import {
 } from "../format";
 import { paramFromUrl, pushUrl } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
-import { CardHead, RangeBar, Stat, num } from "./Stat";
+import { CardHead, EmptyBar, RangeBar, Stat, num } from "./Stat";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
 import { WeekPicker } from "./WeekPicker";
@@ -68,8 +68,11 @@ function WeekStat({ m }: { m: WeekMeasure }) {
       value={num(m.value, digits)}
       unit={m.unit || undefined}
       sub={
-        m.value != null &&
-        m.band && <RangeBar value={m.value} band={m.band} tick={fmt} />
+        m.band ? (
+          <RangeBar value={m.value} band={m.band} tick={fmt} />
+        ) : (
+          <EmptyBar />
+        )
       }
     />
   );
@@ -130,7 +133,13 @@ function ScoreStat({
     <Stat
       label={label}
       value={num(score?.now, digits)}
-      sub={score?.band && <RangeBar value={score.now} band={score.band} />}
+      sub={
+        score?.band ? (
+          <RangeBar value={score.now} band={score.band} />
+        ) : (
+          <EmptyBar />
+        )
+      }
     />
   );
 }
@@ -296,8 +305,7 @@ export function WeekPage() {
                       label={label}
                       value={num(value)}
                       sub={
-                        value != null &&
-                        target && (
+                        target ? (
                           <RangeBar
                             value={value}
                             band={{
@@ -308,6 +316,8 @@ export function WeekPage() {
                             }}
                             tick={(v) => v.toFixed(0)}
                           />
+                        ) : (
+                          <EmptyBar />
                         )
                       }
                     />

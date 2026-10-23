@@ -160,6 +160,14 @@ VO2max: endurance e hill score esistono dal 19 settembre, cinque settimane,
 e sotto le sei di `MIN_BAND_WEEKS` la fascia giustamente non c'e'. Soglia e
 acclimatamenti restano senza barra, come nella Day.
 
+Da qui e' nata una regola che vale per tutte le card, Day comprese: dove una
+fascia e' prevista ma non si puo' calcolare, al suo posto va la **traccia
+grigia vuota** (`EmptyBar`); dove una fascia non ha senso — la soglia, gli
+acclimatamenti, il rapporto di carico — non va niente. Prima i due casi si
+somigliavano, perche' erano tutti e due il vuoto, e si leggeva "questa misura
+non ha una fascia" anche quando la risposta giusta era "non ancora". La
+traccia tiene anche le righe allineate, che a tre colonne si vedeva.
+
 **Un avviso resta in console**: `Dropping "fit-y" because spec has discrete
 height`, a ogni disegno del grafico. Viene da vega-embed, che con
 `width: "container"` impone il suo autosize. Ho provato a metterlo nel
