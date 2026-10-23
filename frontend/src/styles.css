@@ -404,6 +404,12 @@ h2 {
   font-size: 0.82rem;
 }
 
+/* Il grafico della settimana (todo 52): senza la cornice del riquadro, che
+   qui separerebbe due cose che stanno nella stessa card. */
+.week-chart .chart-box {
+  margin-bottom: 4px;
+}
+
 /* Le sedute della settimana (todo 51): una riga per seduta, e un clic porta
    alla Day di quel giorno. */
 .week-sessions {

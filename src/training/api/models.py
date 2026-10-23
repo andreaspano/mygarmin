@@ -465,6 +465,47 @@ class Recent(BaseModel):
     activities_last_14_days: list[RecentActivity]
 
 
+class WeekMeasure(BaseModel):
+    """One of the week's measures, with the band it moved in over the last twelve
+    weeks (todo 52). Health and Recovery are averages of the seven days."""
+
+    card: Literal["health", "recovery"] = Field(description="Which card shows it.")
+    label: str = Field(description="The name to show.")
+    unit: str = Field(description="Empty for the measures that have none.")
+    value: float | None = Field(description="Null when no day of the week was measured.")
+    band: Band | None = Field(
+        description="Where the weekly average has sat over the last twelve weeks. Null with "
+        "fewer than six measured weeks. Not the daily band: around an average of seven days a "
+        "28-day band would sit inside almost always."
+    )
+    weeks: int = Field(description="How many of the twelve weeks before carried a value.")
+
+
+class WeekInfo(BaseModel):
+    start: Date = Field(description="The Monday.")
+    end: Date = Field(description="The Sunday.")
+    partial: bool = Field(description="True while the week is still running.")
+    last_day: Date = Field(description="The Sunday, or today for a week still running.")
+
+
+class WeeklyData(BaseModel):
+    """Everything known about one ISO week, Monday to Sunday (todo 52)."""
+
+    week: WeekInfo
+    measures: dict[str, WeekMeasure] = Field(
+        description="By column name: the Health and Recovery measures, averaged over the week."
+    )
+    load: LoadNow | None = Field(description="Garmin's load at the end of the week.")
+    load_targets: LoadTargets | None = Field(
+        description="Garmin's target ranges, for the bars of the Load card."
+    )
+    fitness: Fitness = Field(description="What the body could do at the end of the week.")
+    training: dict[str, Any] = Field(description="Sessions, time and totals by sport.")
+    days: list[dict[str, Any]] = Field(description="One entry per day of the week.")
+    activities: list[dict[str, Any]]
+    coverage: dict[str, int] = Field(description="Measured days per metric, out of seven.")
+
+
 class DailyData(BaseModel):
     """Everything known about one day, as built for the daily report."""
 

@@ -16,6 +16,8 @@ export type ReportSection = Schemas["ReportSection"];
 export type Route = Schemas["Route"];
 export type Sport = Schemas["Sport"];
 export type SportList = Schemas["SportList"];
+export type WeeklyData = Schemas["WeeklyData"];
+export type WeekMeasure = Schemas["WeekMeasure"];
 export type Terrain = NonNullable<Activity["terrain"]>;
 export type RunType = NonNullable<Activity["run_type"]>;
 
@@ -102,6 +104,15 @@ export const api = {
   route: (id: number, signal?: AbortSignal) => getJson<Route>(`/api/activities/${id}/route`, signal),
 
   daily: (day: string, signal?: AbortSignal) => getJson<DailyData>(`/api/daily/${day}`, signal),
+
+  // I fatti di una settimana ISO (todo 52): `monday` e' sempre un lunedi'.
+  weekly: (monday: string, signal?: AbortSignal) =>
+    getJson<WeeklyData>(`/api/weekly/${monday}`, signal),
+
+  // Il lavoro della settimana per sport, gia' pronto da disegnare. `null`
+  // quando la settimana non ha sedute.
+  weeklyChartVega: (monday: string, theme: "light" | "dark", signal?: AbortSignal) =>
+    getOrNull<VegaSpec>(`/api/weekly/${monday}/chart/vega?theme=${theme}`, signal),
 
   dailyReport: (day: string, signal?: AbortSignal) => getOrNull<Report>(`/api/reports/daily/${day}`, signal),
 

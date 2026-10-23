@@ -106,7 +106,10 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
 
 
 def _band(
-    window: pd.Series, limits: tuple[float, float] | None = None, digits: int = 1
+    window: pd.Series,
+    limits: tuple[float, float] | None = None,
+    digits: int = 1,
+    min_values: int = MIN_BAND_DAYS,
 ) -> dict[str, Any] | None:
     """Dove sta di solito una misura: la media della finestra piu' e meno uno
     scarto tipo (`low`, `high`) e piu' e meno due (`outer_low`,
@@ -127,9 +130,12 @@ def _band(
     calcolano dallo storico. Non sono soglie d'allarme - quello del battito
     a riposo scatta a `RHR_RISE_BPM` sopra la media per `RHR_RISE_DAYS`
     giorni di fila - ma dicono dove la misura sta di solito. `None` sotto
-    `MIN_BAND_DAYS` giorni misurati, dove lo scarto tipo sarebbe rumore."""
+    `min_values` valori, dove lo scarto tipo sarebbe rumore: di suo sono i
+    giorni di `MIN_BAND_DAYS`, ma la stessa funzione serve le fasce della
+    settimana (todo 52), dove i valori sono dodici medie settimanali e ne
+    bastano meno."""
     values = window.dropna()
-    if len(values) < MIN_BAND_DAYS:
+    if len(values) < min_values:
         return None
     mean, sd = values.mean(), values.std()
     if pd.isna(mean) or pd.isna(sd):
