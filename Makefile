@@ -1,4 +1,4 @@
-.PHONY: install_cron uninstall_cron daily_report weekly_report backfill_zones update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_cron uninstall_cron daily_report weekly_report backfill_zones backfill_reports backfill_weeks update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -70,6 +70,25 @@ weekly_data:
 #   make daily_report SECTION=health         (solo una sezione)
 daily_report:
 	uv run training-daily-report $(if $(DAY),--day $(DAY)) $(if $(SECTION),--section $(SECTION))
+
+# Riscrive i report vecchi nella forma di oggi (todo 50): salta le sezioni
+# che ci sono gia' e non scarica niente da Garmin.
+#
+# **Sono ore di agenti**: i giorni sono otto sezioni l'uno (79 giorni da
+# agosto fanno circa tre ore e mezza), le settimane otto a settimana. Si
+# lancia quando non c'e' altro in corso: se il giro delle 10 o delle 22
+# prende il lock, il ciclo si ferma e lo dice, e si rilancia dopo.
+#   make backfill_reports FROM=2026-08-01                 (TO di default oggi)
+#   make backfill_reports FROM=2026-09-01 TO=2026-09-07   (una settimana)
+backfill_reports:
+	@test -n "$(FROM)" || { echo "serve FROM=YYYY-MM-DD"; exit 1; }
+	uv run training-daily-report --from $(FROM) $(if $(TO),--to $(TO))
+
+# Lo stesso per le settimane: FROM e TO sono lunedi'.
+#   make backfill_weeks FROM=2026-08-03
+backfill_weeks:
+	@test -n "$(FROM)" || { echo "serve FROM=YYYY-MM-DD (un lunedi')"; exit 1; }
+	uv run training-weekly-report --from $(FROM) $(if $(TO),--to $(TO))
 
 # Ricalcola i minuti per zona delle sedute (todo 54), dai record gia' in
 # tabella: nessuna chiamata a Garmin, nessun file FIT riletto. Lo fa da se'
