@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il carico della settimana, misurato sulla settimana
@@ -172,8 +172,9 @@ restano, e il prompt `02_load` con loro.
    minuti.
 3. Una seduta senza HR (l'arrampicata dell'8 ottobre) resta a `NULL`, non a
    zero, e la settimana che la contiene dichiara la seduta mancante.
-4. La settimana 12-18 ottobre deve dare 493 / 45 / 1 minuti, che e' il conto
-   gia' fatto a mano qui sopra.
+4. La settimana 12-18 ottobre deve dare **496 / 45 / 1** minuti (il conto a
+   mano qui sopra diceva 493, ma assumeva un campione al secondo: vedi
+   "Come e' andata").
 5. `/api/weekly/2026-10-12` **non deve rallentare**: era 0,14 s, e con la
    somma in tabella deve restarci.
 6. `make frontend_types`, `npm run typecheck`, `npm run build`, e la pagina
@@ -183,3 +184,84 @@ restano, e il prompt `02_load` con loro.
    stessi bersagli.
 8. La sezione Load della settimana riscritta con il prompt nuovo: deve
    parlare di tempo per zona e non nominare i bersagli di Garmin.
+
+## Come e' andata
+
+Fatto come scritto, con **tre scoperte** che hanno reso il lavoro piu'
+piccolo di quanto il todo prevedesse, e una correzione di conto.
+
+### I record erano gia' in tabella
+
+Il todo diceva di leggere i FIT per contare i minuti per zona, e di
+aggiungere un `make backfill_zones` da una cinquantina di secondi. Non
+serve: la tabella `records` ha gia' la frequenza cardiaca campione per
+campione, con il suo timestamp. I minuti si contano da li', e lo storico
+intero si riempie in **0,2 secondi** invece che in un minuto. Il target
+`backfill_zones` resta comunque, perche' serve a rifare i conti quando il
+modo di contarli cambia (`FORCE=1`), ma di suo il riempimento avviene a
+ogni `sync()`, accanto a `_fill_missing_thresholds`.
+
+Niente `LOGIC_VERSION` nuova, quindi: quella avrebbe forzato un rebuild e
+la rilettura di 979 file FIT per un dato che si ricava da cio' che c'e'
+gia'. Le tre colonne si aggiungono con un `ALTER TABLE` idempotente
+(`_add_missing_columns`), che e' un meccanismo nuovo per questo repo ma e'
+l'unico che evita il rebuild.
+
+### Il campionamento non e' un battito al secondo
+
+Il numero scritto qui sopra — 493 minuti — veniva dal contare i campioni e
+dividere per 60. Sbagliato: la registrazione e' a 1 Hz sulle corse ma a
+**0,81 Hz** sul giro in bici del 17 ottobre, che ha dei buchi. Il conto
+giusto somma le **differenze fra timestamp consecutivi**, con un tetto di
+30 secondi oltre il quale e' una sosta e non tempo allenato. I totali veri
+della settimana 12-18 ottobre sono **496 / 45 / 1**, a tre minuti da quelli
+scritti a mano: la coincidenza e' fortuita, il metodo e' diverso.
+
+Si vede sulla verifica che conta: sulle due corse la somma delle tre zone
+torna al minuto con la durata della seduta (46,8 su 46,8), e sul giro di
+nove ore resta sotto di un'ora e mezza, che sono le soste.
+
+### La soglia manca su 926 sedute su 979
+
+I minuti per zona hanno bisogno dei confini **e** della soglia, e la soglia
+il repo non la retrodata prima del 1 agosto 2026
+(`THRESHOLD_FALLBACK_FROM`). Quindi lo storico profondo resta senza, e va
+bene cosi': la Week guarda dodici settimane, e **dal 1 agosto tutte e 53 le
+sedute hanno i minuti**. Le dodici settimane prima del 12 ottobre sono
+tutte misurate.
+
+### Le fasce andavano fermate a zero
+
+Con due settimane di riposo totale dentro la finestra, due scarti tipo sotto
+la media davano **-203 minuti**. Le fasce dei minuti e quella del carico
+usano `limits=(0, inf)`, lo stesso rimedio del body battery del todo 46.
+
+Le settimane **senza sedute contano zero** e restano nella serie: il riposo
+e' un dato della stagione, e toglierlo direbbe "quanto alleni quando
+alleni". Una settimana con sedute ma senza frequenza cardiaca e' un'altra
+cosa ed esce dal conto — provato su giugno, dove due sedute danno `None` e
+`sessions_without_hr: 2`.
+
+### Il costo
+
+L'endpoint passa da **0,14 a 0,17 secondi**: trenta millisecondi per due
+fasce nuove (dodici somme settimanali per i minuti, dodici letture del
+carico). Il todo chiedeva di non rallentare e intendeva "non tornare al
+mezzo secondo": quello e' rispettato.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_54'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: le tre colonne `min_low_aerobic`,
+`min_high_aerobic` e `min_anaerobic` restano in `activities.db` con i loro
+valori. Sono innocue — il codice vecchio non le legge — e si ricalcolano da
+sole se un giorno servono di nuovo. Resta anche il `load.md` della settimana
+2026-10-12, riscritto durante la verifica con il prompt nuovo: parla di
+minuti per zona, che dopo il revert la card non mostra piu'. Si rifa' con
+`make weekly_report WEEK=2026-10-12 SECTION=load`.
+
+Dopo il revert, rifare il merge di `todo_54` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

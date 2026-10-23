@@ -1,4 +1,4 @@
-.PHONY: install_cron uninstall_cron daily_report weekly_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_cron uninstall_cron daily_report weekly_report backfill_zones update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -70,6 +70,17 @@ weekly_data:
 #   make daily_report SECTION=health         (solo una sezione)
 daily_report:
 	uv run training-daily-report $(if $(DAY),--day $(DAY)) $(if $(SECTION),--section $(SECTION))
+
+# Ricalcola i minuti per zona delle sedute (todo 54), dai record gia' in
+# tabella: nessuna chiamata a Garmin, nessun file FIT riletto. Lo fa da se'
+# anche ogni sync, su quelle che non li hanno; qui serve a rifarli tutti
+# quando cambia il modo di contarli.
+#   make backfill_zones
+#   make backfill_zones FORCE=1    (anche quelle che li hanno gia')
+backfill_zones:
+	uv run python -c "from training.interface.db import fill_zone_minutes; \
+	  fatte, senza = fill_zone_minutes(force=bool('$(FORCE)')); \
+	  print(f'minuti per zona: {fatte} sedute calcolate, {senza} senza (nessuna soglia o nessun battito)')"
 
 # Il report settimanale, scritto dagli otto agenti uno alla volta (todo 53).
 # Non scarica niente: la settimana si scrive sui dati che ci sono.

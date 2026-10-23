@@ -166,13 +166,15 @@ function ScoreStat({
   );
 }
 
-const LOAD_ROWS: {
-  key: "load_aerobic_low" | "load_aerobic_high" | "load_anaerobic";
+// Le tre fasce di sforzo di Garmin, nell'ordine in cui si leggono: il
+// tempo della settimana dentro ognuna (todo 54).
+const ZONE_ROWS: {
+  key: "low_aerobic" | "high_aerobic" | "anaerobic";
   label: string;
 }[] = [
-  { key: "load_aerobic_low", label: "Low aerobic" },
-  { key: "load_aerobic_high", label: "High aerobic" },
-  { key: "load_anaerobic", label: "Anaerobic" },
+  { key: "low_aerobic", label: "Low aerobic" },
+  { key: "high_aerobic", label: "High aerobic" },
+  { key: "anaerobic", label: "Anaerobic" },
 ];
 
 export function WeekPage() {
@@ -480,26 +482,38 @@ export function WeekPage() {
                 title="Load"
                 refresh={sectionButton("load")}
               />
+              {/* Numeri della settimana, non del mese (todo 54): il carico
+                  dei sette giorni e il tempo passato nelle tre fasce di
+                  sforzo, ognuno contro le dodici settimane prima. */}
               <div className="stats two">
-                {LOAD_ROWS.map(({ key, label }) => {
-                  const value = data.load?.[key] ?? null;
-                  const target = data.load_targets?.[key];
+                <Stat
+                  label="Load"
+                  value={num(data.load?.load_acute)}
+                  sub={
+                    data.load?.band ? (
+                      <RangeBar
+                        value={data.load.load_acute}
+                        band={data.load.band}
+                        tick={(v) => v.toFixed(0)}
+                      />
+                    ) : (
+                      <EmptyBar />
+                    )
+                  }
+                />
+                {ZONE_ROWS.map(({ key, label }) => {
+                  const zone = data.zones[key];
                   return (
                     <Stat
                       key={key}
                       label={label}
-                      value={num(value)}
+                      value={durationLabel(zone.minutes)}
                       sub={
-                        target ? (
+                        zone.band ? (
                           <RangeBar
-                            value={value}
-                            band={{
-                              low: target.min,
-                              high: target.max,
-                              outer_low: target.min,
-                              outer_high: target.max,
-                            }}
-                            tick={(v) => v.toFixed(0)}
+                            value={zone.minutes}
+                            band={zone.band}
+                            tick={(v) => durationLabel(v)}
                           />
                         ) : (
                           <EmptyBar />
@@ -508,8 +522,14 @@ export function WeekPage() {
                     />
                   );
                 })}
-                <Stat label="Load ratio" value={num(data.load?.acwr, 1)} />
               </div>
+              {data.zones.sessions_without_hr > 0 && (
+                <p className="caption">
+                  {data.zones.sessions_without_hr === 1
+                    ? "One session has no heart rate and is not in these times."
+                    : `${data.zones.sessions_without_hr} sessions have no heart rate and are not in these times.`}
+                </p>
+              )}
               {text("Load") && (
                 <div className="prose">{markdown(text("Load")!)}</div>
               )}
