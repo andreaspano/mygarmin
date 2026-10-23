@@ -102,9 +102,9 @@ resto dei parametri lo sceglie la pagina: `?day=2026-10-07` per la Day,
 
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
-ISO per le settimane a cavallo — la striscia dei sette giorni, le quattro
-card e le sedute con il grafico del lavoro per sport. Un clic su un giorno
-apre la Day. Il report della settimana arriva col todo 53.
+ISO per le settimane a cavallo — un selettore di otto settimane (numero,
+lunedi e domenica), le quattro card, e le sedute con il grafico del lavoro
+per sport. Un clic su una seduta apre la Day di quel giorno. Il report della settimana arriva col todo 53.
 
 Le fasce della Week **non sono quelle della Day**: qui il valore della
 settimana si confronta con le **12 settimane precedenti** (todo 52), e ne

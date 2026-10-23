@@ -297,6 +297,47 @@ h2 {
   font-weight: 600;
 }
 
+/* Il selettore di settimane della Week (todo 53): gli stessi bottoni della
+   striscia dei giorni, con dentro il numero della settimana e le due date
+   invece del giorno e delle icone. Riquadro sulla settimana aperta,
+   tratteggio su quella corrente, come "oggi" nella Day. */
+.strip-week {
+  flex: 0 0 auto;
+  width: 74px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 2px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.strip-week:hover {
+  background: var(--track);
+}
+.strip-week.today {
+  border: 1px dashed var(--border-strong);
+}
+.strip-week.selected {
+  border: 1.5px solid var(--text);
+  background: var(--surface);
+}
+.strip-dates {
+  font-size: 0.7rem;
+  color: var(--muted);
+  line-height: 1.35;
+  text-align: center;
+  white-space: nowrap;
+}
+.strip-week.selected .strip-dates {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* I due riquadri in testa, Next e Summary: affiancati, uguali di larghezza
    come le card sotto, uno sotto l'altro quando la pagina si stringe. */
 /* Next e Summary pari in altezza: la piu' alta decide, l'altra si allunga.

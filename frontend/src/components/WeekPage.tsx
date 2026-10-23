@@ -33,7 +33,7 @@ import { useColorScheme } from "../useColorScheme";
 import { CardHead, RangeBar, Stat, num } from "./Stat";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
-import { WeekStrip } from "./WeekStrip";
+import { WeekPicker } from "./WeekPicker";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const API_DOWN = "Cannot reach the API. Is it running (make api)?";
@@ -249,16 +249,7 @@ export function WeekPage() {
               </button>
             </div>
           </div>
-          <WeekStrip
-            start={monday}
-            end={sunday}
-            selected=""
-            today={now}
-            activities={activities}
-            sportIcons={sportIcons}
-            restIcon={sportList?.rest_icon ?? null}
-            onSelect={openDay}
-          />
+          <WeekPicker monday={monday} current={currentMonday} onSelect={changeWeek} />
         </div>
         {error && <p className="warning">{error}</p>}
         {data && (
