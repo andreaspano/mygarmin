@@ -16,22 +16,47 @@ Oggi un report settimanale c'e' gia', ma e' un'altra cosa: un agente solo
 
 Prese con Andrea il 2026-10-22:
 
-- **Sette sezioni, non otto**: Health, Load, Recovery, Fitness, Training,
-  Next e **un solo Summary**. Il sole e la luna sono del giorno (todo 49):
-  una settimana ha un verdetto solo.
-- **Next guarda alla settimana dopo**: non la prossima seduta, ma la forma
-  del lavoro dei sette giorni che vengono.
+- **Otto sezioni**: Health, Load, Recovery, Fitness, Training, Next e il
+  **Summary in due parti**, come il sole e la luna del giorno (todo 49).
+- **Next e' solo la strategia della settimana**: quante sedute, di che
+  tipo, dove va l'intensita' e dove il lungo. Non lo stato con cui arrivi e
+  non il verdetto: quelli sono del Summary. Una sezione che dice una cosa
+  sola e' anche l'unico modo perche' non finisca per ripetere l'altra.
 - Il vecchio `weekly-report` e il suo formato a tre sezioni **spariscono**,
   come e' sparito `fitness-status` col todo 44. I tre file gia' scritti
   restano dove sono: nessuno li legge piu'.
 
+Deciso con Andrea il 2026-10-23, dopo che i numeri della Week erano in
+piedi:
+
+- **Il Summary d'inizio e quello di fine**, e il secondo legge il primo:
+  "lunedi dicevo di tenerla bassa, e l'hai tenuta bassa" e' la frase che
+  nessun'altra sezione puo' scrivere, ed e' la stessa ragione per cui la
+  luna legge il sole.
+- **Lunedi alle 10 e domenica alle 22**, agganciate ai due giri che gia'
+  esistono (`deploy/crontab`): nessuna riga di cron nuova. Mezzanotte del
+  lunedi era il primo pensiero, ma li' la settimana ha zero giorni e manca
+  la notte — readiness, HRV e sonno del lunedi arrivano col sonno, e sono
+  proprio il dato che dice come cominci. Le 23:50 della domenica volevano
+  un terzo giro per guadagnare un'ora e cinquanta in cui cambia solo il
+  sonno della notte dopo, che e' della settimana nuova.
 ## Work
 
 ### 1. Il registro — `src/training/api/sections.py`
 
-`WEEK_SECTIONS` accanto a `SECTIONS`, con lo stesso `Section`: sette voci,
-le cinque delle card che leggono i numeri e poi Next e Summary che leggono i
-frammenti delle altre. Vale la stessa `assert`: i verdetti per ultimi.
+`WEEK_SECTIONS` accanto a `SECTIONS`, con lo stesso `Section`: otto voci,
+le cinque delle card che leggono i numeri e poi Next e i due Summary, che
+leggono i frammenti delle altre. Vale la stessa `assert`: i verdetti per
+ultimi, e `summary_start` prima di `summary_end` perche' il secondo legge
+il primo.
+
+Come nel giorno, i due Summary sono **due chiavi e un agente solo**
+(`w7_summary`, due rami), e un momento per giro:
+
+| | sezioni |
+|---|---|
+| lunedi, 10 | health, recovery, load, fitness, training, next, **summary_start** |
+| domenica, 22 | load, fitness, training, next, **summary_end** |
 
 I frammenti vanno in `summary/02.weekly/<lunedi>/`, una cartella per
 settimana, come `01.daily/<giorno>/`.
@@ -75,12 +100,22 @@ liberta' di essere brevi quando non e' successo niente.
 
 ### 5. Quando si scrive
 
-**Il lunedi mattina**, per la settimana appena chiusa, agganciato al giro
-delle 10 di `deploy/crontab`: sette agenti una volta a settimana, in coda ai
-sei del giorno. Il lunedi diventa il giro piu' lungo, una decina di minuti.
+Due momenti, tutti e due su giri che gia' girano:
 
-La settimana **in corso** mostra i numeri, che sono sempre freschi, e al
-posto del testo il tasto per scriverlo a mano.
+- **lunedi alle 10**, in coda ai sei agenti del giorno: apre la settimana
+  che comincia, con la notte appena finita e la settimana chiusa alle
+  spalle. Il lunedi diventa il giro piu' lungo, una decina di minuti.
+- **domenica alle 22**, in coda ai cinque della sera: chiude la settimana,
+  e lo fa leggendo quello che il lunedi aveva detto.
+
+Nei giorni in mezzo la settimana **in corso** mostra i numeri, che sono
+sempre freschi, e il testo resta quello di lunedi, con la sua ora accanto
+come nella Day. Il tasto per riscrivere una sezione a mano c'e' comunque.
+
+Da decidere quando il testo esistera': se il Next vada riscritto ogni sera
+invece che solo il lunedi. In corsa saprebbe cosa e' gia' successo ("manca
+una seduta dura per restare in linea"), e costerebbe un agente al giorno.
+Non si decide a tavolino: prima si legge qualche Next scritto il lunedi.
 
 ## La striscia dei giorni e' gia' diventata un selettore di settimane
 
@@ -106,6 +141,12 @@ Resta qui come appunto: quando il report arrivera', il selettore c'e' gia'.
 - **Sette prompt nuovi sono sette tarature.** Quelli del giorno hanno
   richiesto parecchi giri per smettere di ripetersi e di sconfinare: qui
   succedera' di nuovo, e la prova costa sette agenti per volta.
+- **Next e Summary d'inizio guardano tutti e due avanti.** E' il rischio
+  che il confine qui sopra deve tenere: uno dice lo stato e l'intenzione,
+  l'altro il lavoro. Se dopo qualche settimana i due testi si somigliano,
+  il ripiego e' fondere Next dentro il Summary d'inizio e restare a sette
+  sezioni — e' successo nel giornaliero, dove Load e Fitness hanno smesso
+  di ripetersi solo quando i prompt sono stati separati a mano.
 - **Il confine con il giornaliero si sfuoca**: la sezione Training della
   settimana rischia di raccontare le singole sedute, che sono della Day. Il
   prompt deve dirlo per nome.
@@ -121,16 +162,20 @@ Resta qui come appunto: quando il report arrivera', il selettore c'e' gia'.
 1. `uv run python -c "from training.api import sections, refresh"`, e un
    report **giornaliero** rifatto per intero: l'orchestratore generalizzato
    non deve cambiare niente per la Day.
-2. Un report settimanale da terminale su una settimana chiusa: sette
-   frammenti in `summary/02.weekly/<lunedi>/`, Next che parla della
-   settimana dopo e Summary che non ripete le altre sezioni.
-3. Il refresh di una sola sezione: cambia solo quel frammento.
-4. Due settimane diverse, una carica e una di scarico: i testi devono
+2. Un report settimanale da terminale su una settimana chiusa: otto
+   frammenti in `summary/02.weekly/<lunedi>/`, Next che dice solo la
+   strategia dei sette giorni e i due Summary che non ripetono le altre
+   sezioni ne' se stessi.
+3. I due momenti separati, come nel todo 49: il giro del lunedi scrive
+   `summary_start` e **non** tocca `summary_end`; quello della domenica
+   scrive la chiusura, che si riferisce all'apertura senza ricopiarla.
+4. Il refresh di una sola sezione: cambia solo quel frammento.
+5. Due settimane diverse, una carica e una di scarico: i testi devono
    essere diversi fra loro, non la stessa frase con altri numeri.
-5. `make frontend_types`, `npm run typecheck`, `npm run build`, e la pagina
+6. `make frontend_types`, `npm run typecheck`, `npm run build`, e la pagina
    in Firefox headless nei due temi.
-6. Il giro del lunedi provato per intero, con il `--moment morning` del
+7. Il giro del lunedi provato per intero, con il `--moment morning` del
    giorno piu' la settimana: deve finire senza che il lock si pesti i piedi
-   da solo.
-7. La striscia dei giorni della Day non e' cambiata dal selettore di
+   da solo. Lo stesso per la domenica sera.
+8. La striscia dei giorni della Day non e' cambiata dal selettore di
    settimane della Week.
