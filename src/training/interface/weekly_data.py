@@ -250,11 +250,15 @@ def _vo2max(health: pd.DataFrame, start: date, end: date) -> list[dict[str, Any]
     dentro la settimana, una per data (Garmin ripete l'ultima nei giorni
     dopo)."""
     rows = health[["vo2max", "vo2max_date"]].dropna()
-    seen = {}
-    for _, r in rows.iterrows():
-        measured = date.fromisoformat(str(r["vo2max_date"])[:10])
-        if start <= measured <= end:
-            seen[measured] = float(r["vo2max"])
+    # Senza il filtro in blocco questa funzione scorreva riga per riga tutto
+    # lo storico, e la chiamano cinque volte per richiesta (la settimana e le
+    # quattro del confronto): da sola era mezzo secondo.
+    measured = rows["vo2max_date"].astype(str).str.slice(0, 10)
+    inside = (measured >= start.isoformat()) & (measured <= end.isoformat())
+    seen = {
+        date.fromisoformat(d): float(v)
+        for d, v in zip(measured[inside], rows.loc[inside, "vo2max"])
+    }
     return [{"date": d.isoformat(), "value": _value(v, 1)} for d, v in sorted(seen.items())]
 
 
