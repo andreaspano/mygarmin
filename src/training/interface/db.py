@@ -25,6 +25,7 @@ file intero e quindi anche lei; il primo `health_db.sync_health()` dopo la
 riempie di nuovo dai JSON.
 """
 
+import json
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -159,6 +160,9 @@ CREATE TABLE IF NOT EXISTS activities (
     workout_name      TEXT,
     workout_active_steps INTEGER,
     workout_active_max_s REAL,
+    min_low_aerobic   REAL,
+    min_high_aerobic  REAL,
+    min_anaerobic     REAL,
     activity_name     TEXT,
     parsed_at         TEXT NOT NULL
 );
@@ -186,6 +190,25 @@ _RECORD_COLUMNS = (
 )
 
 
+# Le colonne che un database costruito prima di loro non ha. `CREATE TABLE
+# IF NOT EXISTS` non le aggiunge, e un `LOGIC_VERSION` nuovo costringerebbe a
+# rileggere 979 file FIT per un dato che si calcola dai record gia' in
+# tabella: tanto vale aggiungerle e riempirle (todo 54).
+_ADDED_COLUMNS = {
+    "min_low_aerobic": "REAL",
+    "min_high_aerobic": "REAL",
+    "min_anaerobic": "REAL",
+}
+
+
+def _add_missing_columns(conn: sqlite3.Connection) -> None:
+    """Le colonne di `_ADDED_COLUMNS` che la tabella non ha ancora."""
+    have = {row[1] for row in conn.execute("PRAGMA table_info(activities)")}
+    for name, kind in _ADDED_COLUMNS.items():
+        if name not in have:
+            conn.execute(f"ALTER TABLE activities ADD COLUMN {name} {kind}")
+
+
 def _db_path(data_dir: Path) -> Path:
     return Path(data_dir) / DB_FILENAME
 
@@ -195,6 +218,7 @@ def _connect(data_dir: Path) -> sqlite3.Connection:
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.executescript(_SCHEMA)
+    _add_missing_columns(conn)
     return conn
 
 
@@ -313,6 +337,100 @@ def _parse_and_store(
 THRESHOLD_FALLBACK_FROM = "2026-08-01"
 
 
+# Oltre mezzo minuto fra due campioni non e' tempo allenato ma una pausa o
+# un buco di registrazione: il campione vale per l'intervallo che lo segue,
+# fino a questo tetto. Sulle corse la somma delle tre zone torna al minuto
+# con la durata della seduta; sul giro di nove ore del 17 ottobre resta
+# sotto di un'ora e mezza, che sono le soste.
+ZONE_GAP_CAP_SECONDS = 30
+
+
+def _zone_minutes(conn: sqlite3.Connection, activity_id: int) -> tuple[float, float, float] | None:
+    """I minuti passati nelle tre fasce di sforzo di Garmin — basso aerobico,
+    alto aerobico, anaerobico — da `records` (todo 54).
+
+    I confini sono quelli **di quella seduta** (`hr_zone_bounds`,
+    `threshold_hr`), non quelli di oggi: una soglia alzata a settembre non
+    deve riscrivere i minuti di agosto. Basso aerobico fino alla cima della
+    terza zona, alto aerobico fino alla soglia, anaerobico oltre — gli stessi
+    tagli di `daily_data._hr_zones`.
+
+    `None` quando la seduta non ha frequenza cardiaca, zone o soglia: e' un
+    dato che manca, e scriverci zero direbbe un'altra cosa. Lo storico
+    prima di `THRESHOLD_FALLBACK_FROM` resta senza, perche' la soglia non
+    si retrodata — sono 926 sedute su 979, tutte anteriori ad agosto 2026,
+    e la Week guarda dodici settimane."""
+    row = conn.execute(
+        "SELECT hr_zone_bounds, threshold_hr FROM activities WHERE activity_id = ?",
+        (activity_id,),
+    ).fetchone()
+    if not row or not row[0] or not row[1]:
+        return None
+    bounds = json.loads(row[0])
+    threshold = row[1]
+    if len(bounds) < 3:
+        return None
+    low_top = bounds[2]
+    samples = conn.execute(
+        "SELECT ts_epoch, heart_rate FROM records WHERE activity_id = ? ORDER BY ts_epoch",
+        (activity_id,),
+    ).fetchall()
+    if len(samples) < 2:
+        return None
+    seconds = [0.0, 0.0, 0.0]
+    for (start, heart_rate), (nxt, _) in zip(samples, samples[1:]):
+        if heart_rate is None:
+            continue
+        span = min(nxt - start, ZONE_GAP_CAP_SECONDS)
+        if heart_rate <= low_top:
+            seconds[0] += span
+        elif heart_rate <= threshold:
+            seconds[1] += span
+        else:
+            seconds[2] += span
+    if not any(seconds):
+        return None
+    return tuple(round(s / 60, 1) for s in seconds)
+
+
+def _store_zone_minutes(conn: sqlite3.Connection, activity_id: int) -> bool:
+    """Scrive i minuti per zona di una seduta. Falso se non si possono
+    calcolare."""
+    minutes = _zone_minutes(conn, activity_id)
+    if minutes is None:
+        return False
+    conn.execute(
+        "UPDATE activities SET min_low_aerobic = ?, min_high_aerobic = ?, min_anaerobic = ? "
+        "WHERE activity_id = ?",
+        (*minutes, activity_id),
+    )
+    return True
+
+
+def fill_zone_minutes(data_dir: Path = DATA_DIR, force: bool = False) -> tuple[int, int]:
+    """Riempie i minuti per zona delle sedute che non li hanno (todo 54).
+    Rende quante ne ha fatte e quante sono rimaste senza.
+
+    Gira dopo ogni `sync()`, come `_fill_missing_thresholds`, cosi' le
+    sedute nuove li hanno senza che nessuno ci pensi; da terminale
+    (`make backfill_zones`) serve a rifare lo storico, e con `force` a
+    ricalcolare tutto quando il modo di contarli cambia."""
+    conn = _connect(data_dir)
+    try:
+        done, missing = _fill_zone_minutes(conn, force)
+        conn.commit()
+        return done, missing
+    finally:
+        conn.close()
+
+
+def _fill_zone_minutes(conn: sqlite3.Connection, force: bool = False) -> tuple[int, int]:
+    where = "" if force else "WHERE min_low_aerobic IS NULL"
+    ids = [r[0] for r in conn.execute(f"SELECT activity_id FROM activities {where}")]
+    done = sum(_store_zone_minutes(conn, activity_id) for activity_id in ids)
+    return done, len(ids) - done
+
+
 def _fill_missing_thresholds(conn: sqlite3.Connection) -> None:
     """La soglia dell'ultima corsa precedente (o, in mancanza, della prima
     successiva) alle attivita' senza soglia o con soglia zero, da
@@ -370,6 +488,7 @@ def rebuild(data_dir: Path = DATA_DIR) -> int:
             "WHERE sub_sport='treadmill'"
         )
         _fill_missing_thresholds(conn)
+        _fill_zone_minutes(conn)
         conn.execute(
             "INSERT INTO schema_meta (key, value) VALUES ('logic_version', ?) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
@@ -440,6 +559,7 @@ def sync(data_dir: Path = DATA_DIR) -> int:
             "WHERE sub_sport='treadmill'"
         )
         _fill_missing_thresholds(conn)
+        _fill_zone_minutes(conn)
         conn.commit()
         return added
     finally:

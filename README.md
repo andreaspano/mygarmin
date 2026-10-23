@@ -113,8 +113,26 @@ settimana si confronta con le **12 settimane precedenti** (todo 52), e ne
 bastano sei misurate. Attorno a una media settimanale una fascia a 28 giorni
 non direbbe niente: sette giorni oscillano molto meno di uno, e il valore
 cadrebbe quasi sempre dentro. Health e Recovery sono medie dei sette giorni,
-Load e Fitness lo stato di fine settimana — il carico e la forma sono stati,
-non cose da mediare.
+Fitness lo stato di fine settimana — la forma e' uno stato, non una cosa da
+mediare.
+
+**Nella Week ogni numero e' della settimana** (todo 54), bande comprese. La
+card Load lo e' diventata per ultima: mostrava i tre carichi per effetto di
+Garmin, che sono finestre di **28 giorni**, e due settimane vicine ne
+condividono tre quarti — si somigliavano per forza. Adesso mostra il carico
+dei sette giorni (`load_acute`, che letto alla domenica e' esattamente
+lunedi-domenica) e il **tempo passato nelle tre fasce di sforzo**, contato
+dalla frequenza cardiaca di ogni seduta con i confini di **quella** seduta:
+una soglia alzata a settembre non riscrive i minuti di agosto. I minuti
+stanno in tre colonne di `activities`, calcolate dai record a ogni `sync()`
+e rifacibili con `make backfill_zones`: ricalcolarli a ogni richiesta
+costerebbe un decimo di secondo per settimana.
+
+Il carico e i minuti non raccontano sempre la stessa settimana, ed e'
+voluto: le sedute senza fascia cardiaca stanno nel carico (Garmin le stima)
+e non nei minuti. Quante sono lo dice `zones.sessions_without_hr`, e la card
+lo scrive quando capita. Il carico cronico e il rapporto fra i due restano
+nella Day, dove il mese e' il contesto giusto per un giorno.
 
 La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
 la seduta suggerita e il verdetto del giorno, una griglia 2x2 con Health e

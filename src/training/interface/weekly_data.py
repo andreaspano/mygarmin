@@ -13,6 +13,7 @@ ogni media dice su quanti giorni e' fatta.
 
 import argparse
 import contextlib
+import math
 import json
 import sys
 from datetime import date, timedelta
@@ -342,13 +343,6 @@ def _as_of(week_health: pd.DataFrame, last_day: date) -> date:
     return min(known.index[-1].date(), last_day)
 
 
-def _load_targets_on(day: date, data_dir: Path) -> dict[str, Any] | None:
-    """I bersagli di Garmin per il carico mensile, nel giorno `day`."""
-    from training.interface.daily_data import _load_targets
-
-    return _load_targets(day.isoformat(), data_dir)
-
-
 # I punteggi di forma che la Week mostra con la loro barra. Niente soglia
 # ne' acclimatamenti: la prima la conosciamo solo nell'ultima versione, i
 # secondi stanno a zero quasi tutto l'anno.
@@ -389,6 +383,116 @@ def _fitness_bands(health: pd.DataFrame, monday: date) -> dict[str, dict[str, An
         )
         out[FITNESS_KEYS[column]] = _band(before, None, digits, MIN_BAND_WEEKS)
     return out
+
+
+# I tre tempi per zona della settimana (todo 54), nell'ordine in cui si
+# leggono nella card: le colonne di `activities` le riempie `db._zone_minutes`
+# dai record, seduta per seduta e con i confini di quella seduta.
+ZONE_MINUTES: tuple[tuple[str, str], ...] = (
+    ("low_aerobic", "min_low_aerobic"),
+    ("high_aerobic", "min_high_aerobic"),
+    ("anaerobic", "min_anaerobic"),
+)
+
+
+def _zone_totals(activities: pd.DataFrame, monday: date) -> dict[str, float | None]:
+    """I minuti per zona sommati sulle sedute di una settimana. `None` dove
+    nessuna seduta della settimana ha quel dato — che non e' zero: zero vuol
+    dire che hai pedalato senza mai arrivarci."""
+    week = _week_activities(activities, monday, monday + timedelta(days=6))
+    totals: dict[str, float | None] = {}
+    for key, column in ZONE_MINUTES:
+        if week.empty or column not in week:
+            totals[key] = None if not week.empty else 0.0
+            continue
+        values = week[column].dropna()
+        # Una settimana senza sedute e' uno zero vero: il riposo e' un dato,
+        # e nella fascia delle dodici settimane deve pesare come tale —
+        # togliere i riposi direbbe "quanto alleni quando alleni", non come
+        # va la stagione. Una settimana con sedute ma **senza** frequenza
+        # cardiaca e' un'altra cosa, ed esce dal conto (`None`).
+        totals[key] = float(values.sum()) if len(values) or week.empty else None
+    return totals
+
+
+# Del carico di Garmin, nella settimana resta quello che e' della settimana
+# (todo 54). Le frasi restano: sono giudizi, non misure, e l'agente le usa
+# per dire a parole quello che i minuti per zona dicono in numeri.
+WEEK_LOAD_KEYS = (
+    "as_of",
+    "load_acute",
+    "training_status",
+    "training_status_phrase",
+    "load_balance_phrase",
+)
+
+
+def _week_load(
+    health: pd.DataFrame, week_health: pd.DataFrame, monday: date, last_day: date
+) -> dict[str, Any] | None:
+    """Il carico della settimana: il carico acuto e le frasi di Garmin,
+    senza le finestre di 28 giorni, con la fascia delle dodici settimane.
+
+    Il carico acuto e' la somma degli ultimi sette giorni: letto alla
+    domenica e' esattamente la settimana, e per questo resta. La fascia
+    prende il carico di ognuna delle dodici settimane prima, allo stesso
+    modo — la domenica di ognuna."""
+    from training.interface.daily_data import _band
+
+    load = _load(week_health, last_day)
+    if not load:
+        return None
+    kept = {k: load[k] for k in WEEK_LOAD_KEYS if k in load}
+    history = []
+    for k in range(BAND_WEEKS, 0, -1):
+        start = monday - timedelta(weeks=k)
+        before = _load(_week_health(health, start), start + timedelta(days=6))
+        history.append(before["load_acute"] if before else None)
+    series = pd.Series(history, dtype="float64")
+    kept["band"] = _band(series, limits=(0, math.inf), digits=0, min_values=MIN_BAND_WEEKS)
+    kept["weeks"] = int(series.notna().sum())
+    return kept
+
+
+def _week_zones(activities: pd.DataFrame, monday: date) -> dict[str, Any]:
+    """Il tempo per zona della settimana, con la fascia delle dodici
+    settimane prima (todo 54).
+
+    Sostituisce i tre carichi per effetto di Garmin, che sono a 28 giorni:
+    due settimane vicine ne condividevano tre quarti e si somigliavano per
+    forza. Questi sono minuti misurati sui sette giorni.
+
+    `sessions_without_hr` dice quante sedute della settimana non entrano nel
+    conto — l'arrampicata, le camminate con l'orologio in tasca: il carico di
+    Garmin le vede e questi minuti no, e la differenza va detta invece che
+    nascosta."""
+    from training.interface.daily_data import _band
+
+    week = _week_activities(activities, monday, monday + timedelta(days=6))
+    totals = _zone_totals(activities, monday)
+    history = [
+        _zone_totals(activities, monday - timedelta(weeks=k)) for k in range(BAND_WEEKS, 0, -1)
+    ]
+    zones: dict[str, Any] = {}
+    for key, _column in ZONE_MINUTES:
+        series = pd.Series([h[key] for h in history], dtype="float64")
+        zones[key] = {
+            "minutes": _value(totals[key], 0),
+            # Il fondo della fascia si ferma a zero: due scarti tipo sotto la
+            # media davano "-203 minuti", che sulla barra sarebbe una scala
+            # piu' lunga del possibile (lo stesso rimedio del body battery,
+            # todo 46).
+            "band": _band(series, limits=(0, math.inf), digits=0, min_values=MIN_BAND_WEEKS),
+            "weeks": int(series.notna().sum()),
+        }
+    missing = 0
+    if not week.empty and "min_low_aerobic" in week:
+        missing = int(week["min_low_aerobic"].isna().sum())
+    zones["sessions_without_hr"] = missing
+    zones["measured_min"] = _value(
+        sum(v for v in (totals[k] for k, _ in ZONE_MINUTES) if v is not None), 0
+    )
+    return zones
 
 
 def _week_fitness(
@@ -472,7 +576,17 @@ def build_weekly_data(
         "activities": [_activity_row(r) for _, r in week.iterrows()],
         "days": _days(week, week_health, monday, last_day),
         "training": _training(week, monday, last_day, today),
-        "load": _load(week_health, last_day),
+        # **Solo le misure della settimana** (todo 54): il carico acuto e'
+        # la somma degli ultimi sette giorni, e letto alla domenica e'
+        # esattamente lunedi-domenica. Il carico cronico, il rapporto fra i
+        # due e i tre carichi per effetto sono finestre di 28 giorni: nella
+        # Day raccontano il mese attorno al giorno, qui facevano somigliare
+        # due settimane vicine solo perche' ne condividevano tre quarti.
+        "load": _week_load(health, week_health, monday, last_day),
+        # Il tempo per zona della settimana: la composizione del carico, che
+        # il totale da solo non dice — lo stesso numero puo' essere dieci ore
+        # lente o tre ore dure.
+        "zones": _week_zones(activities, monday),
         "vo2max": _vo2max(health, monday, end),
         "coverage": {m: int(week_health[m].notna().sum()) for m in COVERAGE_METRICS},
         # Health e Recovery come medie dei sette giorni, con la fascia delle
@@ -485,10 +599,6 @@ def build_weekly_data(
         "fitness": _week_fitness(
             health, activities, monday, _as_of(week_health, last_day), data_dir
         ),
-        # Le fasce obiettivo del carico, per la barra della card Load: sono
-        # di Garmin e stanno nel file del giorno, come nella Day, che le
-        # cerca nel giorno del carico e non in quello chiesto.
-        "load_targets": _load_targets_on(_as_of(week_health, last_day), data_dir),
         # Dalla piu' vecchia a questa; le tre prima sono sempre chiuse.
         "four_weeks": [
             _week_summary(activities, health, start, min(start + timedelta(days=6), last_day), today)

@@ -1338,6 +1338,41 @@ export interface components {
             last_day: string;
         };
         /**
+         * WeekLoad
+         * @description The week's training load (todo 54).
+         *
+         *     Only what belongs to the week: the acute load is the sum of the last seven days, so
+         *     read on the Sunday it is exactly Monday to Sunday. The chronic load, the ratio of the
+         *     two and the per-effect loads are 28-day windows and live on the Day page instead —
+         *     here they made neighbouring weeks look alike, because they share most of the window.
+         */
+        WeekLoad: {
+            /**
+             * As Of
+             * Format: date
+             * @description The last day of the week that carries a load.
+             */
+            as_of: string;
+            /**
+             * Load Acute
+             * @description The load of the week.
+             */
+            load_acute: number | null;
+            /** Training Status */
+            training_status: number | null;
+            /** Training Status Phrase */
+            training_status_phrase: string | null;
+            /** Load Balance Phrase */
+            load_balance_phrase: string | null;
+            /** @description Where the week's load sits against the twelve weeks before it. Null under six measured weeks. */
+            band: components["schemas"]["Band"] | null;
+            /**
+             * Weeks
+             * @description Measured weeks behind the band, out of twelve.
+             */
+            weeks: number;
+        };
+        /**
          * WeekMeasure
          * @description One of the week's measures, with the band it moved in over the last twelve
          *     weeks (todo 52). Health and Recovery are averages of the seven days.
@@ -1373,6 +1408,44 @@ export interface components {
             weeks: number;
         };
         /**
+         * WeekZone
+         * @description Minutes spent in one of Garmin's three effort bands, over the week (todo 54).
+         */
+        WeekZone: {
+            /**
+             * Minutes
+             * @description Null when no session of the week carries heart rate — which is not zero.
+             */
+            minutes: number | null;
+            /** @description The twelve weeks before this one. Null under six. */
+            band: components["schemas"]["Band"] | null;
+            /** Weeks */
+            weeks: number;
+        };
+        /**
+         * WeekZones
+         * @description The week's time by effort: the composition of the load, which the total alone does
+         *     not give — the same load can be ten slow hours or three hard ones.
+         *
+         *     Counted from the heart-rate samples of each session, with that session's own zone
+         *     bounds: a threshold raised in September must not rewrite August.
+         */
+        WeekZones: {
+            low_aerobic: components["schemas"]["WeekZone"];
+            high_aerobic: components["schemas"]["WeekZone"];
+            anaerobic: components["schemas"]["WeekZone"];
+            /**
+             * Measured Min
+             * @description The three added up: time with heart rate.
+             */
+            measured_min: number | null;
+            /**
+             * Sessions Without Hr
+             * @description Sessions of the week with no heart rate, so outside this count. Garmin's load sees them and these minutes do not.
+             */
+            sessions_without_hr: number;
+        };
+        /**
          * WeeklyData
          * @description Everything known about one ISO week, Monday to Sunday (todo 52).
          */
@@ -1385,10 +1458,10 @@ export interface components {
             measures: {
                 [key: string]: components["schemas"]["WeekMeasure"];
             };
-            /** @description Garmin's load at the end of the week. */
-            load: components["schemas"]["LoadNow"] | null;
-            /** @description Garmin's target ranges, for the bars of the Load card. */
-            load_targets: components["schemas"]["LoadTargets"] | null;
+            /** @description The week's load. */
+            load: components["schemas"]["WeekLoad"] | null;
+            /** @description The week's time by effort. */
+            zones: components["schemas"]["WeekZones"];
             /** @description What the body could do at the end of the week. */
             fitness: components["schemas"]["Fitness"];
             /**

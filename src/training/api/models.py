@@ -498,6 +498,53 @@ class WeekInfo(BaseModel):
     last_day: Date = Field(description="The Sunday, or today for a week still running.")
 
 
+class WeekLoad(BaseModel):
+    """The week's training load (todo 54).
+
+    Only what belongs to the week: the acute load is the sum of the last seven days, so
+    read on the Sunday it is exactly Monday to Sunday. The chronic load, the ratio of the
+    two and the per-effect loads are 28-day windows and live on the Day page instead —
+    here they made neighbouring weeks look alike, because they share most of the window."""
+
+    as_of: Date = Field(description="The last day of the week that carries a load.")
+    load_acute: float | None = Field(description="The load of the week.")
+    training_status: float | None
+    training_status_phrase: str | None
+    load_balance_phrase: str | None
+    band: "Band | None" = Field(
+        description="Where the week's load sits against the twelve weeks before it. Null "
+        "under six measured weeks."
+    )
+    weeks: int = Field(description="Measured weeks behind the band, out of twelve.")
+
+
+class WeekZone(BaseModel):
+    """Minutes spent in one of Garmin's three effort bands, over the week (todo 54)."""
+
+    minutes: float | None = Field(
+        description="Null when no session of the week carries heart rate — which is not zero."
+    )
+    band: "Band | None" = Field(description="The twelve weeks before this one. Null under six.")
+    weeks: int
+
+
+class WeekZones(BaseModel):
+    """The week's time by effort: the composition of the load, which the total alone does
+    not give — the same load can be ten slow hours or three hard ones.
+
+    Counted from the heart-rate samples of each session, with that session's own zone
+    bounds: a threshold raised in September must not rewrite August."""
+
+    low_aerobic: WeekZone
+    high_aerobic: WeekZone
+    anaerobic: WeekZone
+    measured_min: float | None = Field(description="The three added up: time with heart rate.")
+    sessions_without_hr: int = Field(
+        description="Sessions of the week with no heart rate, so outside this count. Garmin's "
+        "load sees them and these minutes do not."
+    )
+
+
 class WeeklyData(BaseModel):
     """Everything known about one ISO week, Monday to Sunday (todo 52)."""
 
@@ -505,10 +552,8 @@ class WeeklyData(BaseModel):
     measures: dict[str, WeekMeasure] = Field(
         description="By column name: the Health and Recovery measures, averaged over the week."
     )
-    load: LoadNow | None = Field(description="Garmin's load at the end of the week.")
-    load_targets: LoadTargets | None = Field(
-        description="Garmin's target ranges, for the bars of the Load card."
-    )
+    load: WeekLoad | None = Field(description="The week's load.")
+    zones: WeekZones = Field(description="The week's time by effort.")
     fitness: Fitness = Field(description="What the body could do at the end of the week.")
     training: dict[str, Any] = Field(description="Sessions, time and totals by sport.")
     days: list[dict[str, Any]] = Field(description="One entry per day of the week.")
