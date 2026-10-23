@@ -104,7 +104,9 @@ La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
 ISO per le settimane a cavallo — un selettore di otto settimane (numero,
 lunedi e domenica), le quattro card, e le sedute con il grafico del lavoro
-per sport. Un clic su una seduta apre la Day di quel giorno. Il report della settimana arriva col todo 53.
+per sport. Un clic su una seduta apre la Day di quel giorno, e **ogni card
+porta il testo della sua sezione del report settimanale** (todo 53), con
+l'ora e il tasto per rifarla, come nella Day.
 
 Le fasce della Week **non sono quelle della Day**: qui il valore della
 settimana si confronta con le **12 settimane precedenti** (todo 52), e ne
@@ -217,7 +219,46 @@ decide come parla il testo, l'insieme decide chi gira.
 Siccome ogni sezione porta la sua ora, le card ne mostrano una sotto il
 testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
 
-I due giri sono righe di **cron**, in `deploy/crontab`:
+### Il report della settimana
+
+Dal todo 53 anche la settimana ha il suo report, otto sezioni come il giorno,
+in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
+`w7_summary` — che sono **altri** da quelli del giorno: i prompt del giorno
+parlano di stamattina e della seduta di ieri, e non si riusano. Il ciclo che
+li lancia invece e' lo stesso, parametrato su `sections.Report`
+(`api/sections.py`).
+
+Due giri, agganciati a quelli del giorno:
+
+| | quando | sezioni |
+|---|---|---|
+| apertura | lunedi, 10:00 | summary_start |
+| chiusura | domenica, 22:00 | health, recovery, load, fitness, training, next, summary_end |
+
+**Il lunedi scrive una sezione sola**, e non e' una dimenticanza: una
+settimana al primo giorno non ha numeri da commentare. Chi apre non guarda i
+numeri di questa settimana — guarda **come ci arrivi**, e lo legge nel
+report della settimana prima, scritto la sera avanti. Tutto il resto si
+scrive la domenica, quando i sette giorni ci sono.
+
+Come nel giorno, il verdetto e' in due pezzi e il secondo legge il primo:
+l'apertura del lunedi e la chiusura della domenica stanno una sopra l'altra
+nel riquadro Summary. **Next e' solo la strategia** dei sette giorni che
+vengono — quante sedute, di che tipo, dove l'intensita' e dove il lungo — e
+si scrive la domenica sera, per la settimana che comincia il giorno dopo.
+
+Il settimanale **non scarica mai**: gira in coda al giro del giorno, che ha
+appena chiamato Garmin.
+
+```bash
+make weekly_report                      # la settimana di oggi
+make weekly_report WEEK=2026-10-12      # un lunedi' a scelta
+make weekly_report SECTION=health       # solo una sezione
+```
+
+### Le righe di cron
+
+I giri sono righe di **cron**, in `deploy/crontab`:
 
 ```bash
 make install_cron            # le mette nel tuo crontab, ripetibile
@@ -225,6 +266,14 @@ make uninstall_cron          # le toglie
 crontab -l | grep mygarmin   # cosa c'e' adesso
 tail -f ~/.local/state/mygarmin-report.log   # com'e' andata
 ```
+
+Le righe sono quattro e non due: il lunedi e la domenica il giro del giorno
+**si tira dietro la settimana**, nella stessa riga e con un `;` in mezzo. Il
+settimanale deve girare dopo il giornaliero, perche' il lock ne lascia
+passare uno solo e chi lo trova occupato se ne va senza fare niente; con due
+righe a orari diversi bisognerebbe indovinare quanto dura il primo. Il `;` e
+non `&&`, cosi' una sezione del giorno che fallisce non si porta via anche
+la settimana.
 
 L'installazione toglie le righe che ha messo l'ultima volta (le riconosce dal
 marcatore `# mygarmin` in fondo) e rimette queste: il resto del crontab non

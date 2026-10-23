@@ -141,9 +141,9 @@ class ReportSection(BaseModel):
 
 
 class Report(BaseModel):
-    """A written daily report, split into its sections."""
+    """A written report, split into its sections: one day, or one ISO week."""
 
-    day: date
+    day: date = Field(description="The day, or the Monday of the week (todo 53).")
     sections: list[ReportSection]
 
 
@@ -168,19 +168,28 @@ class Download(BaseModel):
 
 
 class RefreshStatus(BaseModel):
-    """The Refresh job of the Day page: download new data and rewrite a daily report.
+    """A job that rewrites a report: the Day page's Refresh button, the Week page's, or a
+    cron run.
 
     One agent per section, run one after another (todo 44), so a section can fail on its
-    own while the others are rewritten."""
+    own while the others are rewritten. One job at a time, whatever its kind."""
 
     status: Literal["idle", "running", "done", "failed"] = Field(
         description="idle until the first job since the API started. failed when any section did."
     )
-    day: date | None = Field(description="The day whose report the job rewrites.")
-    moment: Literal["morning", "evening"] | None = Field(
+    kind: Literal["daily", "weekly"] = Field(
+        default="daily",
+        description="Which report the job writes. The section keys depend on it, so a page "
+        "should ignore a job of the other kind.",
+    )
+    day: date | None = Field(
+        description="The day whose report the job rewrites, or the Monday of the week."
+    )
+    moment: Literal["morning", "evening", "start", "end"] | None = Field(
         default=None,
-        description="Which part of the day the job speaks from: it decides whether Next "
-        "suggests a session for today or tomorrow.",
+        description="Which part of the period the job speaks from: for a day it decides "
+        "whether Next suggests a session for today or tomorrow; for a week, whether the "
+        "summary opens it (start) or closes it (end).",
     )
     started: datetime | None
     finished: datetime | None
@@ -191,8 +200,9 @@ class RefreshStatus(BaseModel):
         "A failed download does not stop the job: the text is written on the data already here.",
     )
     sections: dict[str, SectionRefresh] = Field(
-        description="One entry per section of the report, by key: summary, training, recovery, "
-        "health, load, fitness, next."
+        description="One entry per section of the report being written, by key: health, load, "
+        "recovery, fitness, training, next, and the two summaries — summary_morning and "
+        "summary_evening for a day, summary_start and summary_end for a week."
     )
 
 

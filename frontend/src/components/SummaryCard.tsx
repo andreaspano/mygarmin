@@ -33,7 +33,10 @@ function Part({
   if (!part.body) return null;
   return (
     <div className="next-main">
-      <span className={tone ? `next-icon ${tone}` : "next-icon"} aria-hidden="true">
+      <span
+        className={tone ? `next-icon ${tone}` : "next-icon"}
+        aria-hidden="true"
+      >
         {glyph}
       </span>
       <div>
@@ -52,15 +55,31 @@ export function SummaryCard({
   morning,
   evening,
   day,
+  week,
 }: {
   morning: SummaryPart;
   evening: SummaryPart;
   day: string;
+  // Il verdetto della settimana (todo 53): gli stessi due blocchi, e anche
+  // qui il primo e' di mattina (il lunedi) e il secondo di sera (la
+  // domenica), quindi i due glifi restano il sole e la luna.
+  week?: boolean;
 }) {
   return (
     <section className="next-card summary-card" aria-label="Summary">
-      <Part part={morning} day={day} glyph="☀" when="morning" />
-      <Part part={evening} day={day} glyph="☾" when="evening" tone="moon" />
+      <Part
+        part={morning}
+        day={day}
+        glyph="☀"
+        when={week ? "week start" : "morning"}
+      />
+      <Part
+        part={evening}
+        day={day}
+        glyph="☾"
+        when={week ? "week end" : "evening"}
+        tone="moon"
+      />
       {!morning.body && !evening.body && (
         <div className="next-main">
           <span className="next-icon" aria-hidden="true">
@@ -68,7 +87,9 @@ export function SummaryCard({
           </span>
           <div>
             <div className="eyebrow">Summary</div>
-            <p className="next-reason">No summary for this day.</p>
+            <p className="next-reason">
+              {week ? "No summary for this week." : "No summary for this day."}
+            </p>
           </div>
         </div>
       )}

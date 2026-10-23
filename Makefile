@@ -1,4 +1,4 @@
-.PHONY: install_cron uninstall_cron daily_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_cron uninstall_cron daily_report weekly_report update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
@@ -71,6 +71,14 @@ weekly_data:
 daily_report:
 	uv run training-daily-report $(if $(DAY),--day $(DAY)) $(if $(SECTION),--section $(SECTION))
 
+# Il report settimanale, scritto dagli otto agenti uno alla volta (todo 53).
+# Non scarica niente: la settimana si scrive sui dati che ci sono.
+#   make weekly_report                       (l'ultima settimana chiusa)
+#   make weekly_report WEEK=2026-10-12       (un lunedi' a scelta)
+#   make weekly_report SECTION=health        (solo una sezione)
+weekly_report:
+	uv run training-weekly-report $(if $(WEEK),--week $(WEEK)) $(if $(SECTION),--section $(SECTION))
+
 # I fatti di un giorno in JSON, per il report giornaliero. Solo dati locali:
 # per il giorno aggiornato, prima make update_activity.
 #   make daily_data                  (oggi)
@@ -94,8 +102,8 @@ install_cron:
 	@test -n "$(UV)" || { echo "uv non e' nel PATH"; exit 1; }
 	@mkdir -p $(dir $(CRON_LOG))
 	@{ crontab -l 2>/dev/null | grep -v '# mygarmin$$' || true; \
-	   sed -e 's|__REPO__|$(CURDIR)|' -e 's|__UV__|$(UV)|' -e 's|__UVDIR__|$(UV_DIR:/=)|' \
-	       -e 's|__LOG__|$(CRON_LOG)|' \
+	   sed -e 's|__REPO__|$(CURDIR)|g' -e 's|__UV__|$(UV)|g' -e 's|__UVDIR__|$(UV_DIR:/=)|g' \
+	       -e 's|__LOG__|$(CRON_LOG)|g' \
 	       deploy/crontab | grep '# mygarmin$$'; } | crontab -
 	@echo "Installato. Il crontab adesso:"
 	@crontab -l | grep '# mygarmin$$'

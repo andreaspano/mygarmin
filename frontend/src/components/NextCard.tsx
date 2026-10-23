@@ -11,12 +11,16 @@ export function NextCard({
   writtenAt,
   day,
   tomorrow,
+  week,
   refresh,
 }: {
   body: string | null;
   writtenAt: string | null;
   day: string;
   tomorrow: boolean;
+  // Il Next della settimana (todo 53): la stessa forma, ma il consiglio e'
+  // la strategia dei sette giorni che vengono, non la prossima seduta.
+  week?: boolean;
   refresh?: ReactNode;
 }) {
   const parts = body ? nextParts(body) : null;
@@ -28,14 +32,18 @@ export function NextCard({
         </span>
         <div>
           <div className="eyebrow">
-            Next · {tomorrow ? "tomorrow" : "today"}
+            Next · {week ? "next week" : tomorrow ? "tomorrow" : "today"}
             {refresh}
           </div>
           <h2>{parts?.title ? inline(parts.title) : "Next"}</h2>
           {parts ? (
             <div className="next-reason">{markdown(parts.reason)}</div>
           ) : (
-            <p className="next-reason">No daily report for this day.</p>
+            <p className="next-reason">
+              {week
+                ? "No weekly report for this week."
+                : "No daily report for this day."}
+            </p>
           )}
           <WrittenAt when={writtenAt} day={day} />
         </div>
