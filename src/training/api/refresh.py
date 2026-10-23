@@ -47,6 +47,7 @@ import threading
 from collections.abc import Iterator
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 from training.api.cache import invalidate
 from training.api.sections import (
@@ -442,11 +443,133 @@ def section_keys(
     return None
 
 
+def _written(folder: Path, key: str) -> bool:
+    """Vero se il frammento di quella sezione c'e' gia' e non e' vuoto."""
+    path = folder / f"{key}.md"
+    return path.exists() and path.stat().st_size > 0
+
+
+def _has_report(folder: Path) -> bool:
+    """Vero se in quella cartella c'e' almeno un frammento scritto."""
+    return folder.is_dir() and any(f.stat().st_size > 0 for f in folder.glob("*.md"))
+
+
+def _subjects(kind: Report, start: date, end: date) -> list[date]:
+    """I periodi dell'intervallo, dal piu' vecchio: i giorni, o i lunedi."""
+    step = timedelta(weeks=1) if kind is WEEKLY else timedelta(days=1)
+    current = start
+    out = []
+    while current <= end:
+        out.append(current)
+        current += step
+    return out
+
+
+def backfill(
+    kind: Report,
+    start: date,
+    end: date,
+    repo_root: Path,
+    summary_dir: Path,
+    data_dir: Path,
+) -> dict[str, Any]:
+    """Riscrive i report di un intervallo nella forma di oggi (todo 50).
+
+    **Salta le sezioni che esistono gia'**, non i periodi: un backfill
+    interrotto riprende da dove si era fermato, e rilanciarlo su un periodo
+    gia' fatto non costa niente. Per rifare un periodo da capo restano
+    `--day`/`--week` e `--section`.
+
+    **Non scarica mai**: i dati storici sono gia' su disco, e una chiamata a
+    Garmin per ognuno degli ottanta giorni sarebbe sbagliata.
+
+    **Se il lock e' occupato si ferma**: il giro dei timer ha la precedenza,
+    e il backfill si rilancia dopo. Rende il riepilogo — periodi toccati,
+    sezioni scritte, saltate e fallite — e dice se si e' fermato."""
+    subjects = _subjects(kind, start, end)
+    tally: dict[str, Any] = {
+        "subjects": len(subjects), "written": 0, "skipped": 0,
+        "failed": [], "stopped": None, "touched": 0,
+    }
+    for index, subject in enumerate(subjects):
+        folder = Path(summary_dir) / kind.folder / subject.isoformat()
+        worked = False
+        for moment, keys in kind.backfill:
+            # Chi apre una settimana legge il report di quella prima: se non
+            # c'e' — la prima dell'intervallo, di solito — si salta, perche'
+            # un'apertura che non sa da dove arrivi non serve a nessuno. Non
+            # basta guardare l'indice: lanciando il backfill su una
+            # settimana sola, quella prima puo' esserci gia'.
+            if "summary_start" in keys and not _has_report(
+                Path(summary_dir) / kind.folder / (subject - timedelta(weeks=1)).isoformat()
+            ):
+                continue
+            missing = [k for k in keys if not _written(folder, k)]
+            tally["skipped"] += len(keys) - len(missing)
+            if not missing:
+                continue
+            sections = tuple(s for s in kind.run_order if s.key in missing)
+            started = datetime.now()
+            if not _run(
+                kind, subject, started, repo_root, summary_dir, data_dir,
+                sections, update=False, moment=moment,
+            ):
+                tally["stopped"] = subject
+                return tally
+            worked = True
+            state = status()
+            for section in sections:
+                if state["sections"][section.key]["status"] == "done":
+                    tally["written"] += 1
+                else:
+                    tally["failed"].append(f"{subject} {section.key}")
+        tally["touched"] += int(worked)
+    return tally
+
+
 def _day(text: str) -> date:
     try:
         return date.fromisoformat(text)
     except ValueError:
         raise argparse.ArgumentTypeError(f"data non valida: {text!r} (serve YYYY-MM-DD)")
+
+
+def _backfill_cli(kind: Report, args, last: date, parser: argparse.ArgumentParser) -> None:
+    """Il ramo `--from` del comando: cicla l'intervallo e esce.
+
+    Non convive con `--section` ne' con `--moment`: quelli scelgono cosa
+    rifare di un periodo solo, qui i giri li decide il registro
+    (`Report.backfill`)."""
+    from training.api.context import REPO_ROOT, SUMMARY_DIR
+    from training.garmin.config import DATA_DIR
+
+    if args.section or args.moment:
+        parser.error("--from non si usa insieme a --section o --moment")
+    start, end = args.start, args.end or last
+    if kind is WEEKLY:
+        if start.weekday() != 0 or end.weekday() != 0:
+            parser.error("con --from e --to servono due lunedi'")
+    if end < start:
+        parser.error(f"l'intervallo e' al contrario: {start} ... {end}")
+    if end > last:
+        parser.error(f"non si puo' arrivare oltre {last}")
+
+    quanti = len(_subjects(kind, start, end))
+    quale, tocchi = ("settimane", "toccate") if kind is WEEKLY else ("giorni", "toccati")
+    print(f"Riscrivo {quanti} {quale}, dal {start} al {end}. Le sezioni gia' scritte si saltano.")
+    tally = backfill(kind, start, end, REPO_ROOT, SUMMARY_DIR, DATA_DIR)
+    print(
+        f"  {tally['touched']} {quale} {tocchi}, {tally['written']} sezioni scritte, "
+        f"{tally['skipped']} gia' c'erano"
+    )
+    if tally["failed"]:
+        print(f"  {len(tally['failed'])} fallite: " + ", ".join(tally["failed"][:10]))
+    if tally["stopped"]:
+        print(
+            f"  Fermato al {tally['stopped']}: un altro lavoro ha il lock. "
+            "Rilancia lo stesso comando quando ha finito, riprende da li'."
+        )
+    raise SystemExit(1 if (tally["failed"] or tally["stopped"]) else 0)
 
 
 def _cli(kind: Report) -> None:
@@ -491,6 +614,20 @@ def _cli(kind: Report) -> None:
             action="store_true",
             help="non richiamare Garmin: riscrive il testo sui dati che ci sono gia'",
         )
+    quale = "il lunedi" if weekly else "il giorno"
+    parser.add_argument(
+        "--from",
+        dest="start",
+        type=_day,
+        help=f"riscrive tutto l'intervallo invece di un periodo solo: {quale} da cui "
+        "partire (todo 50). Salta le sezioni che esistono gia' e non scarica niente.",
+    )
+    parser.add_argument(
+        "--to",
+        dest="end",
+        type=_day,
+        help="l'ultimo dell'intervallo di --from; di default l'ultimo possibile",
+    )
     args = parser.parse_args()
     today = date.today()
     if weekly:
@@ -506,6 +643,8 @@ def _cli(kind: Report) -> None:
         subject = args.day or today
         if subject > today:
             parser.error(f"il {subject} non e' ancora arrivato")
+    if args.start:
+        _backfill_cli(kind, args, subject, parser)
     try:
         keys = section_keys(args.section, args.moment, kind)
     except KeyError:

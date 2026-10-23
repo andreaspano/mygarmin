@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Lo storico nella forma nuova: dal 1 agosto a oggi, giorni e settimane
@@ -185,9 +185,78 @@ decisione successiva.
 5. Un giorno di riposo e un giorno con allenamento, per vedere che la card
    Training si comporta nei due modi.
 6. **Le settimane**: `make backfill_weeks FROM=2026-09-28 TO=2026-09-28` —
-   una settimana sola, otto agenti. La cartella deve avere otto file,
-   l'apertura deve riferirsi alla settimana prima e la chiusura non deve
-   ripeterla.
+   una settimana sola. Sette sezioni se la settimana prima non ha un
+   report (l'apertura si salta), otto se ce l'ha; l'apertura deve riferirsi
+   a quella settimana e la chiusura non deve ripeterla.
 7. Rilanciare lo stesso comando su un periodo che comprende le due settimane
    di ottobre gia' scritte: non deve rifarle.
 8. Il periodo intero **non** si lancia: si lascia ad Andrea.
+
+## Come e' andata
+
+Il comando e' **uno solo per giorni e settimane**, come sperato: dal todo 53
+l'orchestratore e' parametrato su `sections.Report`, quindi `--from`/`--to`
+e il ciclo sono scritti una volta e `training-weekly-report` li ha avuti
+gratis. I giri del backfill stanno nel registro accanto a quelli dei timer
+(`Report.backfill`), con due `assert` che controllano che ogni sezione
+compaia una volta e che insieme le coprano tutte: un giro dimenticato non
+arriva a schermo, si ferma all'import.
+
+### L'apertura della settimana: la regola e' cambiata
+
+Il todo diceva di saltare l'apertura **della prima settimana
+dell'intervallo**. Guardandola all'opera non e' la condizione giusta: con
+`FROM=2026-09-28 TO=2026-09-28` la prima e' anche l'unica, e l'apertura
+verrebbe saltata anche se la settimana prima fosse gia' scritta. La regola
+vera e' **"salta se il report della settimana precedente non c'e'"** — che
+sulla prima di un intervallo lungo e' quasi sempre vero, ma non per
+costruzione.
+
+Si vede bene nelle prove: la settimana del 28 settembre ha avuto sette
+sezioni e non otto, perche' il 21 non ha report; e il rilancio su
+28/09-12/10, che non doveva rifare niente, ha invece scritto **una** sezione
+— l'apertura del 5 ottobre, diventata possibile perche' nel frattempo il 28
+era stato scritto. Il backfill progressivo si completa da se' a ogni giro.
+
+### I tempi veri
+
+**16 secondi per agente**, misurato sui 56 della prova: sette giorni in 15
+minuti. La stima di cinque ore nel todo era prudente — per gli 80 giorni da
+agosto sono **circa tre ore**, e per le nove settimane mezz'ora. Il rilancio
+su un periodo gia' fatto costa **0,6 secondi**.
+
+### Il lock ha funzionato, e me l'ha fatto vedere dal lato sbagliato
+
+Alle 22:00, mentre giravano le prove, e' partito il giro serale di cron e
+**si e' fermato**: *"Ce n'e' gia' uno in corso: non faccio niente"*, scritto
+nel registro. E' il rischio previsto qui sopra, successo davvero al primo
+colpo. La protezione ha fatto il suo mestiere — niente due serie di agenti
+sugli stessi file — ma il report di quella sera **non e' stato scritto**, e
+il recupero e' a mano.
+
+Da tenere presente quando si lancia il backfill completo: tre ore coprono
+per forza uno dei due giri, quindi va lanciato subito **dopo** le 10 o le
+22, non prima.
+
+### Quello che non ho lanciato
+
+Il periodo intero, come dice il todo. E nemmeno il recupero del giro serale
+saltato: scarica da Garmin, e lo scaricamento non e' cosa di questo todo.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_50'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: restano i frammenti scritti durante le prove — i
+sette giorni dal 1 al 7 settembre in `summary/01.daily/`, 56 file, e le
+settimane `02.weekly/2026-09-28/` (sette sezioni) piu' le aperture di
+`2026-10-05` e `2026-10-12`. Dopo il revert si continuano a leggere: sono
+report nella forma di oggi, e il codice che li compone non cambia. I file
+unici dei giorni precedenti non sono stati toccati, ma per quei sette
+giorni non si leggono piu' (la cartella vince sul file unico), ed e'
+esattamente quello che il backfill doveva ottenere.
+
+Dopo il revert, rifare il merge di `todo_50` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

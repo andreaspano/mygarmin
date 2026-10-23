@@ -274,6 +274,39 @@ make weekly_report WEEK=2026-10-12      # un lunedi' a scelta
 make weekly_report SECTION=health       # solo una sezione
 ```
 
+### Riscrivere lo storico
+
+I report vecchi non si aggiornano da soli quando le card cambiano, e dal
+todo 44 in poi sono cambiate molto. `--from` (todo 50) riscrive un
+intervallo invece di un periodo solo, e vale per tutti e due i comandi:
+
+```bash
+make backfill_reports FROM=2026-09-01 TO=2026-09-07    # una settimana di giorni
+make backfill_reports FROM=2026-08-01                  # fino a oggi
+make backfill_weeks FROM=2026-08-03                    # le settimane, FROM e TO lunedi'
+```
+
+Tre regole, e sono quelle che lo rendono ripetibile:
+
+- **Salta le sezioni che ci sono gia'**, non i periodi: un backfill
+  interrotto riprende da dove si era fermato, e rilanciarlo su un periodo
+  gia' fatto costa qualche secondo. Per rifare da capo ci sono `--day` /
+  `--week` con `--section`.
+- **Non scarica niente**: i dati storici sono gia' su disco.
+- **Se trova il lock occupato si ferma** e lo dice. I giri dei timer hanno
+  la precedenza: il backfill si rilancia dopo, e riprende da li'.
+
+I giri non sono quelli dei timer, perche' qui il periodo e' finito: il
+giorno si scrive in tre passate (le card e Next con la voce della sera, poi
+il sole, poi la luna che legge il sole), la settimana in due (prima la
+chiusura, poi l'apertura). L'apertura di una settimana legge il report di
+quella **precedente**: se non c'e' ancora, si salta e la scrive il
+rilancio dopo, quando c'e'.
+
+**Sono ore di agenti**: otto sezioni per giorno, a una ventina di secondi
+l'una, fanno circa tre ore e mezza per gli ottanta giorni da agosto; le
+settimane mezz'ora. Si lancia quando non c'e' altro in corso.
+
 ### Le righe di cron
 
 I giri sono righe di **cron**, in `deploy/crontab`:

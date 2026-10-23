@@ -151,6 +151,27 @@ _WEEK_MOMENT_LINES = {
 }
 
 
+# I giri del backfill (todo 50): non sono quelli dei timer, perche' li' si
+# scrive il presente e qui un periodo finito.
+#
+# Il giorno ne vuole tre. Le card e Next con la voce della sera, perche' su
+# un giorno concluso il consiglio e' per il giorno dopo — ed e' quello che
+# dicevano i report vecchi ("Tomorrow, ..."). Poi il sole, che e' del
+# mattino, e infine la luna, che il sole lo legge e quindi va dopo.
+_DAY_BACKFILL = (
+    ("evening", ("health", "recovery", "load", "fitness", "training", "next")),
+    ("morning", ("summary_morning",)),
+    ("evening", ("summary_evening",)),
+)
+# La settimana ne vuole due, perche' i momenti sono due: prima la chiusura
+# con tutto, poi l'apertura. Chi apre legge il report della settimana
+# **precedente**, quindi il ciclo va dalla piu' vecchia alla piu' recente.
+_WEEK_BACKFILL = (
+    ("end", ("health", "recovery", "load", "fitness", "training", "next", "summary_end")),
+    ("start", ("summary_start",)),
+)
+
+
 @dataclass(frozen=True)
 class Report:
     """Un tipo di report: quello del giorno o quello della settimana.
@@ -172,6 +193,8 @@ class Report:
     moments: dict[str, tuple[str, ...]]
     # La riga che dice all'agente a che punto del periodo siamo.
     moment_lines: dict[str, str]
+    # I giri con cui si riscrive un periodo passato, nell'ordine.
+    backfill: tuple[tuple[str, tuple[str, ...]], ...]
 
     @property
     def by_key(self) -> dict[str, Section]:
@@ -193,6 +216,7 @@ DAILY = Report(
     run_order=RUN_ORDER,
     moments=MOMENT_SECTIONS,
     moment_lines=_DAY_MOMENT_LINES,
+    backfill=_DAY_BACKFILL,
 )
 WEEKLY = Report(
     name="weekly",
@@ -202,8 +226,15 @@ WEEKLY = Report(
     run_order=WEEK_RUN_ORDER,
     moments=WEEK_MOMENT_SECTIONS,
     moment_lines=_WEEK_MOMENT_LINES,
+    backfill=_WEEK_BACKFILL,
 )
 KINDS = {report.name: report for report in (DAILY, WEEKLY)}
+
+
+for _report in (DAILY, WEEKLY):
+    _keys = [k for _moment, keys in _report.backfill for k in keys]
+    assert len(_keys) == len(set(_keys)), f"{_report.name}: una sezione due volte nel backfill"
+    assert set(_keys) == {s.key for s in _report.sections}, f"{_report.name}: backfill incompleto"
 
 
 # L'ora da cui una giornata si considera alle spalle. Serve alla **voce** del
