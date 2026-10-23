@@ -6,7 +6,20 @@
 // sono locali e senza fuso ("2026-10-07T12:28:50"): si leggono dalla stringa.
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function parts(day: string): [number, number, number] {
@@ -37,7 +50,8 @@ export function addDays(day: string, days: number): string {
 /** I giorni da `end` a `start`, compresi, dal piu' recente. */
 export function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];
-  for (let ms = utc(end); ms >= utc(start); ms -= DAY_MS) days.push(fromUtc(ms));
+  for (let ms = utc(end); ms >= utc(start); ms -= DAY_MS)
+    days.push(fromUtc(ms));
   return days;
 }
 
@@ -63,14 +77,36 @@ export function roundHalfEven(value: number): number {
 }
 
 /** Un numero con `digits` decimali, o "-" se manca. */
-export function fixed(value: number | null | undefined, digits: number, suffix = ""): string {
+export function fixed(
+  value: number | null | undefined,
+  digits: number,
+  suffix = "",
+): string {
   return value == null ? "-" : `${value.toFixed(digits)}${suffix}`;
 }
 
-const WEEKDAYS_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS_LONG = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const MONTHS_LONG = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 /** Il giorno della settimana, 0 = domenica. */
@@ -147,7 +183,11 @@ export function isoWeek(day: string): number {
  * e' la regola ISO per le settimane a cavallo di due mesi (la 5 del 2026 va
  * dal 26 gennaio al 1 febbraio ed e' di gennaio). */
 export function weekLabel(day: string): string {
-  const thursday = addDays(mondayOf(day), 3);
-  const [y, m] = parts(thursday);
-  return `Week ${String(isoWeek(day)).padStart(2, "0")} · ${MONTHS_LONG[m - 1]} ${y}`;
+  return `Week ${String(isoWeek(day)).padStart(2, "0")} · ${weekMonthLabel(day)}`;
+}
+
+/** "October 2026": il mese di una settimana, che e' quello del giovedi'. */
+export function weekMonthLabel(day: string): string {
+  const [y, m] = parts(addDays(mondayOf(day), 3));
+  return `${MONTHS_LONG[m - 1]} ${y}`;
 }
