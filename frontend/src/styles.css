@@ -297,6 +297,23 @@ h2 {
   font-weight: 600;
 }
 
+/* La settimana in corso lo dice accanto al titolo: le medie di Health e
+   Recovery stanno su quanti giorni ci sono finora, mentre le fasce sono
+   dodici settimane piene, e a inizio settimana il confronto zoppica. Carico
+   e forma no: quelli sono lo stato di adesso e si leggono come sempre. */
+.week-partial {
+  margin-left: 10px;
+  padding: 3px 8px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 999px;
+  vertical-align: middle;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: help;
+}
+
 /* Il calendario della Week: una lista di settimane, non di giorni. Le
    righe dicono quello che dicono i bottoni della striscia — il numero ISO e
    le due date — e si leggono con gli stessi segni: riquadro sulla settimana

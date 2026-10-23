@@ -21,8 +21,10 @@ import {
 } from "../api/client";
 import {
   addDays,
+  daysBetween,
   durationLabel,
   fixed,
+  longDayLabel,
   mondayOf,
   timeOf,
   today,
@@ -236,7 +238,17 @@ export function WeekPage() {
       <main className="page">
         <div className="day-header">
           <div className="day-title">
-            <h1>{weekLabel(monday)}</h1>
+            <h1>
+              {weekLabel(monday)}
+              {data?.week.partial && (
+                <span
+                  className="week-partial"
+                  title={`The week is still running: the Health and Recovery averages cover Monday to ${longDayLabel(data.week.last_day)}, while the bands are twelve full weeks. Load and fitness are the state right now, so they read as usual.`}
+                >
+                  {daysBetween(monday, data.week.last_day).length} of 7 days
+                </span>
+              )}
+            </h1>
             <div className="day-nav">
               <button
                 type="button"

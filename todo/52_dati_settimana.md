@@ -107,7 +107,12 @@ seduta, dove c'e' gia'.
 - **Una settimana a meta' falsa le medie**: la settimana in corso ha tre
   giorni e la sua media non si confronta con dodici settimane piene.
   `build_weekly_data` sa gia' se la settimana e' `partial`: o la fascia non
-  si disegna, o lo si dice a schermo.
+  si disegna, o lo si dice a schermo. **Scelta la seconda**: accanto al
+  titolo, un'etichetta tratteggiata "5 of 7 days" che compare solo nella
+  settimana in corso, e il tooltip spiega che le medie arrivano a oggi
+  mentre le fasce sono dodici settimane piene. Le barre restano: toglierle
+  avrebbe nascosto anche quello che si legge bene, perche' carico e forma
+  non sono medie ma lo stato di adesso.
 
 ## Verifica
 
