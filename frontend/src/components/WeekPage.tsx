@@ -30,6 +30,7 @@ import {
 } from "../format";
 import { paramFromUrl, pushUrl } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
+import { DatePick } from "./DatePick";
 import { CardHead, EmptyBar, RangeBar, Stat, num } from "./Stat";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
@@ -266,6 +267,15 @@ export function WeekPage() {
               >
                 ›|
               </button>
+              {/* Lo stesso calendario della Day, con un mestiere in piu':
+                  qui un giorno qualunque vale per la settimana che lo
+                  contiene, e si atterra sul suo lunedi. */}
+              <DatePick
+                value={monday}
+                max={now}
+                onPick={(day) => changeWeek(mondayOf(day))}
+                label="Pick a week"
+              />
             </div>
           </div>
           <WeekPicker
