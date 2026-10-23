@@ -1,4 +1,4 @@
-// Il selettore di settimane della pagina Week (todo 53): otto bottoni, uno
+// Il selettore di settimane della pagina Week (todo 53): sei bottoni, uno
 // per settimana, ognuno con il numero ISO e le date del lunedi' e della
 // domenica.
 //
@@ -8,11 +8,12 @@ import { useEffect, useRef } from "react";
 
 import { addDays, isoWeek, shortDayLabel } from "../format";
 
-// Otto settimane, come gli otto giorni della striscia della Day. Per una
-// settimana vecchia la striscia finisce qualche settimana dopo di lei,
-// cosi' si vede anche cosa e' venuto dopo.
-const WEEKS = 8;
-const AFTER = 3;
+// Sei settimane: un mese e mezzo, che si guarda tutto in un colpo senza
+// che la striscia diventi un muro di riquadri. Per una settimana vecchia
+// la striscia finisce due settimane dopo di lei, cosi' si vede anche cosa
+// e' venuto dopo.
+const WEEKS = 6;
+const AFTER = 2;
 
 /** Le otto settimane da mostrare, dalla piu' vecchia, quando si guarda
  * `monday` e la settimana corrente e' `current`. */
