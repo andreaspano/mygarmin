@@ -151,12 +151,3 @@ export function weekLabel(day: string): string {
   const [y, m] = parts(thursday);
   return `Week ${String(isoWeek(day)).padStart(2, "0")} · ${MONTHS_LONG[m - 1]} ${y}`;
 }
-
-/** "12 – 18 October", o "28 September – 4 October" a cavallo di due mesi. */
-export function weekRangeLabel(monday: string): string {
-  const sunday = addDays(monday, 6);
-  const [, m1, d1] = parts(monday);
-  const [, m2, d2] = parts(sunday);
-  const inizio = m1 === m2 ? `${d1}` : `${d1} ${MONTHS_LONG[m1 - 1]}`;
-  return `${inizio} – ${d2} ${MONTHS_LONG[m2 - 1]}`;
-}

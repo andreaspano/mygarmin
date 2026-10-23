@@ -27,7 +27,6 @@ import {
   timeOf,
   today,
   weekLabel,
-  weekRangeLabel,
 } from "../format";
 import { paramFromUrl, pushUrl } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
@@ -225,10 +224,6 @@ export function WeekPage() {
       [...activities].sort((a, b) => a.start_time.localeCompare(b.start_time)),
     [activities],
   );
-  const totalMin = ordered.reduce((sum, a) => sum + (a.total_time_min ?? 0), 0);
-  const restDays =
-    7 - new Set(ordered.map((a) => a.start_time.slice(0, 10))).size;
-
   // Un giorno della striscia, o una seduta, aprono la Day di quel giorno:
   // `pushUrl` cambia l'URL e avvisa `App`, che scambia la pagina senza
   // ricaricare niente.
@@ -241,12 +236,6 @@ export function WeekPage() {
         <div className="day-header">
           <div className="day-title">
             <h1>{weekLabel(monday)}</h1>
-            <p className="caption">
-              {weekRangeLabel(monday)} · {ordered.length}
-              {ordered.length === 1 ? " session" : " sessions"} ·{" "}
-              {durationLabel(totalMin)} · {restDays}{" "}
-              {restDays === 1 ? "rest day" : "rest days"}
-            </p>
             <div className="day-nav">
               <button
                 type="button"
