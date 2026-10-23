@@ -82,6 +82,24 @@ sei del giorno. Il lunedi diventa il giro piu' lungo, una decina di minuti.
 La settimana **in corso** mostra i numeri, che sono sempre freschi, e al
 posto del testo il tasto per scriverlo a mano.
 
+## Un ritocco alla pagina, fuori dal report
+
+Chiesto da Andrea il 2026-10-23, guardando la Week: **la striscia dei sette
+giorni in alto a destra deve portare il numero della settimana**.
+
+Oggi il numero sta solo nel titolo a sinistra (`Week 43 · October 2026`), e
+la striscia e' quella della Day cosi' com'e' (`WeekStrip`), con i soli
+giorni. Chi guarda a destra non sa che settimana sta vedendo.
+
+Una etichetta `W43` all'inizio della striscia, prima del lunedi, nello
+stesso tono smorzato delle sigle dei giorni. Serve solo sulla Week: nella
+Day la striscia scavalca due settimane e un numero solo sarebbe sbagliato,
+quindi `WeekStrip` prende una proprieta' e di suo non la mostra.
+
+**Se non e' questo che intendevi, e' qui che si cambia**: l'alternativa e'
+che ogni giorno porti il suo numero di settimana, o che la striscia diventi
+un selettore di settimane invece che di giorni.
+
 ## Vincoli
 
 - Nessuna dipendenza nuova.
@@ -123,3 +141,4 @@ posto del testo il tasto per scriverlo a mano.
 6. Il giro del lunedi provato per intero, con il `--moment morning` del
    giorno piu' la settimana: deve finire senza che il lock si pesti i piedi
    da solo.
+7. La striscia della Week porta `W43`, quella della Day no.
