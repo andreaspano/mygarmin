@@ -305,6 +305,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/reports/weekly/{monday}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly report
+         * @description The written weekly report of the week starting `monday`, split into its sections
+         *     (todo 53).
+         *
+         *     One file per section in `02.weekly/<monday>/`, written by its agent. The three old
+         *     single-file reports of the previous format are not read: nobody writes them any more.
+         */
+        get: operations["get_weekly_report_api_reports_weekly__monday__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/weekly/{monday}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rewrite the whole weekly report
+         * @description Rewrite every section of the weekly report, in the background: one agent per
+         *     section, one after another, so a few minutes. It does not download: the week is
+         *     written on the data already here. One job at a time, daily ones included.
+         */
+        post: operations["post_weekly_refresh_api_reports_weekly__monday__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/reports/weekly/{monday}/refresh/{section}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rewrite one section of the weekly report
+         * @description Rewrite a single section of the week: only its agent runs, the other sections keep
+         *     the text they have. 422 for a section that does not exist.
+         */
+        post: operations["post_weekly_refresh_section_api_reports_weekly__monday__refresh__section__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/refresh": {
         parameters: {
             query?: never;
@@ -952,10 +1019,11 @@ export interface components {
         };
         /**
          * RefreshStatus
-         * @description The Refresh job of the Day page: download new data and rewrite a daily report.
+         * @description A job that rewrites a report: the Day page's Refresh button, the Week page's, or a
+         *     cron run.
          *
          *     One agent per section, run one after another (todo 44), so a section can fail on its
-         *     own while the others are rewritten.
+         *     own while the others are rewritten. One job at a time, whatever its kind.
          */
         RefreshStatus: {
             /**
@@ -965,15 +1033,22 @@ export interface components {
              */
             status: "idle" | "running" | "done" | "failed";
             /**
+             * Kind
+             * @description Which report the job writes. The section keys depend on it, so a page should ignore a job of the other kind.
+             * @default daily
+             * @enum {string}
+             */
+            kind: "daily" | "weekly";
+            /**
              * Day
-             * @description The day whose report the job rewrites.
+             * @description The day whose report the job rewrites, or the Monday of the week.
              */
             day: string | null;
             /**
              * Moment
-             * @description Which part of the day the job speaks from: it decides whether Next suggests a session for today or tomorrow.
+             * @description Which part of the period the job speaks from: for a day it decides whether Next suggests a session for today or tomorrow; for a week, whether the summary opens it (start) or closes it (end).
              */
-            moment?: ("morning" | "evening") | null;
+            moment?: ("morning" | "evening" | "start" | "end") | null;
             /** Started */
             started: string | null;
             /** Finished */
@@ -987,7 +1062,7 @@ export interface components {
             download?: components["schemas"]["Download"] | null;
             /**
              * Sections
-             * @description One entry per section of the report, by key: summary, training, recovery, health, load, fitness, next.
+             * @description One entry per section of the report being written, by key: health, load, recovery, fitness, training, next, and the two summaries — summary_morning and summary_evening for a day, summary_start and summary_end for a week.
              */
             sections: {
                 [key: string]: components["schemas"]["SectionRefresh"];
@@ -995,12 +1070,13 @@ export interface components {
         };
         /**
          * Report
-         * @description A written daily report, split into its sections.
+         * @description A written report, split into its sections: one day, or one ISO week.
          */
         Report: {
             /**
              * Day
              * Format: date
+             * @description The day, or the Monday of the week (todo 53).
              */
             day: string;
             /** Sections */
@@ -1792,6 +1868,100 @@ export interface operations {
             header?: never;
             path: {
                 day: string;
+                section: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weekly_report_api_reports_weekly__monday__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                monday: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_weekly_refresh_api_reports_weekly__monday__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                monday: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefreshStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_weekly_refresh_section_api_reports_weekly__monday__refresh__section__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                monday: string;
                 section: string;
             };
             cookie?: never;

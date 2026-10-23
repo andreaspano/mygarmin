@@ -1,7 +1,8 @@
 """I fatti di una settimana (lunedi'-domenica) per il report settimanale.
 
-Lo script prepara i numeri, l'agente `.claude/agents/weekly-report.md` scrive
-il testo: i conti non li fa il modello. Legge solo dati locali
+Lo script prepara i numeri, gli otto agenti `w1_health` ... `w7_summary` ne
+scrivono il testo (todo 53): i conti non li fa il modello. Legge solo dati
+locali
 (`activities.db`, aggiornato dai FIT e dai JSON gia' scaricati): nessuna
 chiamata a Garmin. Per avere la settimana aggiornata si lancia prima
 `make update_activity`.

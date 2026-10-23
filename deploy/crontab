@@ -1,8 +1,9 @@
-# I due giri del report giornaliero (todo 47, passati a cron il 2026-10-21).
+# I giri che scrivono i report da soli (todo 47, passati a cron il
+# 2026-10-21; la settimana dal todo 53).
 #
-# Li installa `make install_cron`, che riempie i tre segnaposto e lascia in
-# pace il resto del crontab: ogni riga finisce con il marcatore `# mygarmin`,
-# e l'installazione toglie le vecchie righe che ce l'hanno. Il `#` finale lo
+# Li installa `make install_cron`, che riempie i segnaposto e lascia in pace
+# il resto del crontab: ogni riga finisce con il marcatore `# mygarmin`, e
+# l'installazione toglie le vecchie righe che ce l'hanno. Il `#` finale lo
 # legge la shell, non cron, che gli passa la riga intera.
 #
 # La mattina sei agenti, la sera cinque: quali sono lo dice `--moment` (vedi
@@ -14,5 +15,18 @@
 # primi due giri automatici (21/10) hanno scritto i report su dati vecchi
 # proprio per questo: "uv: not found", scritto nel registro e segnalato
 # dalla pagina, ma lo scaricamento non era avvenuto.
-0 10 * * * cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
-0 22 * * * cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
+#
+# **Il lunedi e la domenica il giorno si tira dietro la settimana**, nella
+# stessa riga e con un `;` in mezzo: il report settimanale deve girare
+# **dopo** quello del giorno, perche' il lock ne lascia passare uno solo e
+# chi lo trova occupato se ne va senza fare niente. Con due righe a orari
+# diversi bisognerebbe indovinare quanto dura il giro del giorno; cosi' non
+# serve. Il `;` e non `&&`: se una sezione del giorno fallisce il comando
+# esce 1, e la settimana deve girare lo stesso.
+#
+# Percio' i giorni sono divisi: il giorno da solo quando non c'e' la
+# settimana, e la coppia quando c'e' (1 = lunedi, 0 = domenica).
+0 10 * * 0,2-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
+0 22 * * 1-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
+0 10 * * 1 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment morning; __UV__ run training-weekly-report --moment start' >> __LOG__ 2>&1 # mygarmin
+0 22 * * 0 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment evening; __UV__ run training-weekly-report --moment end' >> __LOG__ 2>&1 # mygarmin

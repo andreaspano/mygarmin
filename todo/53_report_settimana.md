@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il report della settimana
@@ -195,3 +195,94 @@ Resta qui come appunto: quando il report arrivera', il selettore c'e' gia'.
    da solo. Lo stesso per la domenica sera.
 8. La striscia dei giorni della Day non e' cambiata dal selettore di
    settimane della Week.
+
+## Come e' andata
+
+Fatto come scritto, con **una correzione all'impianto dei due giri** e un
+difetto trovato per strada.
+
+### Il lunedi scrive una sezione sola, non sei
+
+La tabella qui sopra dava al giro del lunedi sei sezioni: health, recovery,
+load, fitness, training e `summary_start`. Non sta in piedi, e si vede
+guardando i numeri invece del disegno: **il lunedi la settimana ha un giorno
+di vita**. Le medie di Health e Recovery starebbero su una notte sola, il
+carico su un giorno, Training su zero sedute. Provato sui dati veri: la
+settimana del 19 ottobre, chiesta a meta' settimana, dichiara
+`health_days: 5` su sette e tre sedute — al primo giorno sarebbe stata uno e
+zero.
+
+Delle due letture possibili — il lunedi scrive la settimana *appena chiusa*,
+oppure quella che *comincia* — vale la seconda, perche' e' quella delle
+parole con cui il lavoro e' stato chiesto: *"lunedi spiego come e' cominciata
+la settimana, domenica come e' finita"*. Allora l'apertura sta nella cartella
+della settimana che apre, e le sezioni numeriche si scrivono quando i numeri
+ci sono:
+
+| | quando | sezioni |
+|---|---|---|
+| apertura | lunedi, 10 | summary_start |
+| chiusura | domenica, 22 | health, recovery, load, fitness, training, next, summary_end |
+
+**Chi apre non ha frammenti suoi da leggere** — la sua cartella e' vuota — e
+il prompt glielo dice: gli passa la cartella della **settimana precedente**,
+dove c'e' tutto, Next compreso. E' lo stesso meccanismo della luna che legge
+il sole, allungato di una settimana. Otto agenti in tutto, come previsto:
+sette la domenica e uno il lunedi.
+
+### Il `sed` di `install_cron` sostituiva una occorrenza per riga
+
+Le righe del lunedi e della domenica nominano `uv` **due volte** (il giorno e
+poi la settimana), e `sed 's|__UV__|...|'` senza `g` lasciava il secondo
+segnaposto intatto: cron avrebbe trovato `__UV__ run training-weekly-report`
+e il settimanale non sarebbe mai partito. Aggiunto `g` a tutte e quattro le
+sostituzioni. E' lo stesso tipo di guasto del todo 47 (`uv: not found`), che
+allora si vide solo dopo due giri automatici.
+
+### Altre due cose decise per strada
+
+- **Il tipo di report sta nello stato** (`RefreshStatus.kind`). Giorno e
+  settimana condividono un lavoro alla volta e un solo `_state`, ma le
+  chiavi delle sezioni sono diverse: senza, la Day avrebbe visto girare un
+  lavoro con chiavi che non conosce. Ogni pagina ignora i lavori dell'altro
+  tipo.
+- **`_run` si prepara lo stato da solo.** Il comando da terminale non passa
+  da `start()`, e il primo giro settimanale e' morto su
+  `KeyError: 'summary_end'` perche' lo stato aveva ancora le chiavi del
+  giorno.
+
+### I testi
+
+Due settimane scritte per intero (5-11 e 12-18 ottobre) e l'apertura della
+terza. Parlano della settimana e non dei giorni, usano le fasce a dodici
+settimane, e si confrontano con le settimane prima: *"il tuo mese piu' lungo
+di orologio e il piu' leggero di carico"*, *"una settimana grande, tutta
+schiacciata nella seconda meta'"*. La chiusura del 12-18 nomina il
+disaccordo fra le sezioni senza addolcirlo — il corpo calmo tutta la
+settimana e il recupero che crolla nel fine settimana — ed e' esattamente
+quello che il prompt chiedeva.
+
+**Una cosa da tenere d'occhio**: le due chiusure scritte finiscono tutte e
+due con la stessa formula (*"Good work, paid for late"*, *"Strong week, paid
+for late"*). Due settimane sono poche per dirlo, ma se la cosa si ripete e'
+il prompt del Summary che va stretto. Il rischio era previsto qui sopra, in
+un'altra forma.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_53'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: restano i frammenti scritti durante la verifica —
+`summary/02.weekly/2026-10-05/` e `2026-10-12/` con sette file ciascuna, e
+`2026-10-19/summary_start.md` — piu' il `health.md` del 2026-10-22 rifatto
+per provare che il giornaliero non fosse cambiato. Dopo il revert nessuno li
+legge piu' (l'endpoint della settimana sparisce) e sono innocui; i tre
+vecchi report settimanali a file unico (`2026-08-31.md`, `2026-09-21.md`,
+`2026-09-28.md`) non sono stati toccati e tornerebbero a essere gli unici.
+Il crontab installato non cambia da solo: `make install_cron` va rilanciato
+per tornare a due righe.
+
+Dopo il revert, rifare il merge di `todo_53` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

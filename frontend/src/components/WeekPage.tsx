@@ -7,7 +7,7 @@
 // Il lunedi sta nell'URL (`?page=week&monday=2026-10-19`), come il giorno
 // nella Day: una settimana si apre da un link e il tasto indietro torna a
 // quella prima.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   api,
@@ -15,6 +15,8 @@ import {
   isAbort,
   type Activity,
   type Band,
+  type RefreshStatus,
+  type Report,
   type SportList,
   type WeeklyData,
   type WeekMeasure,
@@ -30,10 +32,14 @@ import {
   today,
   weekLabel,
 } from "../format";
+import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
 import { paramFromUrl, pushUrl } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { WeekCalendar } from "./WeekCalendar";
-import { CardHead, EmptyBar, RangeBar, Stat, num } from "./Stat";
+import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
+import { NextCard } from "./NextCard";
+import { SectionRefresh } from "./SectionRefresh";
+import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
 import { WeekPicker } from "./WeekPicker";
@@ -80,26 +86,38 @@ function WeekStat({ m }: { m: WeekMeasure }) {
   );
 }
 
-/** Una card di misure settimanali: Health o Recovery. */
+/** Una card di misure settimanali: Health o Recovery. Sotto i numeri, il
+ * testo della sua sezione del report (todo 53) con l'ora in cui e' stato
+ * scritto e il tasto per rifarlo, come nella Day. */
 function MeasureCard({
   title,
   icon,
   cls,
   measures,
+  text,
+  writtenAt,
+  monday,
+  refresh,
 }: {
   title: string;
   icon: string | null;
   cls?: string;
   measures: WeekMeasure[];
+  text: string | null;
+  writtenAt: string | null;
+  monday: string;
+  refresh?: ReactNode;
 }) {
   return (
     <section className={cls ? `card ${cls}` : "card"} aria-label={title}>
-      <CardHead icon={icon} title={title} />
+      <CardHead icon={icon} title={title} refresh={refresh} />
       <div className="stats two">
         {measures.map((m) => (
           <WeekStat key={m.label} m={m} />
         ))}
       </div>
+      {text && <div className="prose">{markdown(text)}</div>}
+      <WrittenAt when={writtenAt} day={monday} />
     </section>
   );
 }
@@ -117,6 +135,7 @@ const CARD_ICONS: Record<string, string> = {
   load: "trend.png",
   recovery: "recovery.png",
   fitness: "fitness.png",
+  training: "training.png",
 };
 const sectionIconFile = (card: string) => CARD_ICONS[card] ?? null;
 
@@ -163,6 +182,12 @@ export function WeekPage() {
   const [sportList, setSportList] = useState<SportList | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [data, setData] = useState<WeeklyData | null>(null);
+  const [report, setReport] = useState<Report | null>(null);
+  const [refresh, setRefresh] = useState<RefreshStatus | null>(null);
+  // Vero da quando si e' premuto un tasto: prima di allora un lavoro
+  // fallito e' roba di qualcun altro, e non si annuncia.
+  const [watched, setWatched] = useState(false);
+  const [reloads, setReloads] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const sunday = addDays(monday, 6);
 
@@ -212,6 +237,78 @@ export function WeekPage() {
       .catch((e) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
   }, [monday]);
+
+  // Il testo della settimana. `reloads` lo rilegge quando un lavoro
+  // finisce, senza ricaricare la pagina.
+  useEffect(() => {
+    const controller = new AbortController();
+    setReport(null);
+    api
+      .weeklyReport(monday, controller.signal)
+      .then(setReport)
+      .catch((e) => !isAbort(e) && setError(API_DOWN));
+    return () => controller.abort();
+  }, [monday, reloads]);
+
+  // Lo stato del lavoro, solo se e' di questo tipo: giorno e settimana
+  // condividono un lavoro alla volta, e le chiavi delle sezioni sono
+  // diverse. Finche' gira si richiede ogni due secondi.
+  const running = refresh?.status === "running";
+  useEffect(() => {
+    const controller = new AbortController();
+    api
+      .refresh(controller.signal)
+      .then((status) => {
+        if (status.kind !== "weekly") return;
+        if (status.status === "running") setWatched(true);
+        setRefresh(status);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [monday]);
+
+  useEffect(() => {
+    if (!running) return;
+    const timer = window.setInterval(() => {
+      api
+        .refresh()
+        .then((status) => {
+          if (status.kind !== "weekly") return;
+          setRefresh(status);
+          if (status.status !== "running") setReloads((n) => n + 1);
+        })
+        .catch(() => undefined);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [running]);
+
+  // Il tasto di una sezione: gira il suo agente e lascia le altre com'erano.
+  const refreshSection = (section: string) => {
+    setWatched(true);
+    api
+      .startWeeklySectionRefresh(monday, section)
+      .then((status) => {
+        setRefresh(status);
+        setWatched(true);
+      })
+      .catch(() => undefined);
+  };
+  const sectionButton = (key: string) => (
+    <SectionRefresh
+      section={key}
+      state={refresh?.sections?.[key]}
+      onRefresh={refreshSection}
+    />
+  );
+  const rewriteWeek = () => {
+    setWatched(true);
+    api
+      .startWeeklyRefresh(monday)
+      .then(setRefresh)
+      .catch(() => undefined);
+  };
+  const text = (title: string) => sectionBody(report, title);
+  const when = (title: string) => sectionWrittenAt(report, title);
 
   const sportIcons = useMemo(
     () =>
@@ -284,6 +381,49 @@ export function WeekPage() {
                 current={currentMonday}
                 onSelect={changeWeek}
               />
+              {/* Rifa' tutta la settimana: otto agenti in fila, qualche
+                  minuto. Non scarica niente, a differenza del Refresh
+                  della Day: la settimana si scrive sui dati che ci sono. */}
+              <button
+                type="button"
+                className="btn icon-btn refresh-btn"
+                onClick={rewriteWeek}
+                disabled={running}
+                aria-busy={running}
+                aria-label={
+                  running
+                    ? "Rewriting the week…"
+                    : "Rewrite the whole weekly report"
+                }
+                title={
+                  running
+                    ? "Rewriting the week…"
+                    : "Rewrite the whole weekly report (a few minutes)"
+                }
+              >
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 16 16"
+                  width="14"
+                  height="14"
+                >
+                  <path
+                    d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    d="M12.5 1.5v3h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
             </div>
           </div>
           <WeekPicker
@@ -293,15 +433,52 @@ export function WeekPage() {
           />
         </div>
         {error && <p className="warning">{error}</p>}
+        {watched && refresh?.status === "failed" && (
+          <p className="warning">
+            The week of {refresh.day} was not rewritten: {refresh.message}
+          </p>
+        )}
+        <div className="head-row">
+          <NextCard
+            body={text("Next")}
+            writtenAt={when("Next")}
+            day={monday}
+            tomorrow
+            week
+            refresh={sectionButton("next")}
+          />
+          <SummaryCard
+            day={monday}
+            morning={{
+              body: text("Week start"),
+              writtenAt: when("Week start"),
+              refresh: sectionButton("summary_start"),
+            }}
+            evening={{
+              body: text("Week end"),
+              writtenAt: when("Week end"),
+              refresh: sectionButton("summary_end"),
+            }}
+            week
+          />
+        </div>
         {data && (
           <div className="cards-grid">
             <MeasureCard
               title="Health"
               icon={sectionIconFile("health")}
               measures={byCard(data, "health")}
+              text={text("Health")}
+              writtenAt={when("Health")}
+              monday={monday}
+              refresh={sectionButton("health")}
             />
             <section className="card load-card" aria-label="Load">
-              <CardHead icon={sectionIconFile("load")} title="Load" />
+              <CardHead
+                icon={sectionIconFile("load")}
+                title="Load"
+                refresh={sectionButton("load")}
+              />
               <div className="stats two">
                 {LOAD_ROWS.map(({ key, label }) => {
                   const value = data.load?.[key] ?? null;
@@ -332,15 +509,27 @@ export function WeekPage() {
                 })}
                 <Stat label="Load ratio" value={num(data.load?.acwr, 1)} />
               </div>
+              {text("Load") && (
+                <div className="prose">{markdown(text("Load")!)}</div>
+              )}
+              <WrittenAt when={when("Load")} day={monday} />
             </section>
             <MeasureCard
               title="Recovery"
               icon={sectionIconFile("recovery")}
               cls="recovery-card"
               measures={byCard(data, "recovery")}
+              text={text("Recovery")}
+              writtenAt={when("Recovery")}
+              monday={monday}
+              refresh={sectionButton("recovery")}
             />
             <section className="card fitness-card" aria-label="Fitness">
-              <CardHead icon={sectionIconFile("fitness")} title="Fitness" />
+              <CardHead
+                icon={sectionIconFile("fitness")}
+                title="Fitness"
+                refresh={sectionButton("fitness")}
+              />
               <div className="stats">
                 <ScoreStat
                   label="VO2max"
@@ -375,13 +564,23 @@ export function WeekPage() {
                   unit="%"
                 />
               </div>
+              {text("Fitness") && (
+                <div className="prose">{markdown(text("Fitness")!)}</div>
+              )}
+              <WrittenAt when={when("Fitness")} day={monday} />
             </section>
           </div>
         )}
         <section className="card" aria-label="Training">
-          <div className="block-head">
-            <span>Training</span>
-          </div>
+          <CardHead
+            icon={sectionIconFile("training")}
+            title="Training"
+            refresh={sectionButton("training")}
+          />
+          {text("Training") && (
+            <div className="prose">{markdown(text("Training")!)}</div>
+          )}
+          <WrittenAt when={when("Training")} day={monday} />
           {ordered.length === 0 ? (
             <p className="caption">No sessions this week.</p>
           ) : (

@@ -23,7 +23,9 @@ from training.api import refresh
 from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.daily import daily_payload
-from training.api.sections import SECTIONS
+from training.api.sections import DAILY, SECTIONS, WEEKLY
+from training.api.sections import Report as Report_
+from training.api.weekly import weekly_payload
 from training.api.models import (
     Activity,
     ActivityDetail,
@@ -44,7 +46,6 @@ from training.api.models import (
     ZoneBand,
 )
 from training.interface.daily_data import build_daily_data, fitness_on
-from training.interface.weekly_data import build_weekly_data
 from training.interface.db import _clean, load_activity_records
 from training.interface.health import load_lactate_threshold
 from training.interface.report_text import parse_report, section_icon
@@ -265,18 +266,6 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     return DailyData(**daily_payload(day, ctx.data_dir))
 
 
-def _weekly(monday: date, data_dir: Path) -> dict[str, Any]:
-    """I fatti della settimana, con salute e attivita' dalla cache: senza,
-    ogni richiesta rifa' la scansione dei file di salute (circa un secondo,
-    dieci volte il conto della settimana)."""
-    return build_weekly_data(
-        monday,
-        data_dir,
-        activities=load_activities(data_dir),
-        health=load_health(data_dir),
-    )
-
-
 @app.get("/api/weekly/{monday}", response_model=WeeklyData, summary="Weekly data")
 def get_weekly(monday: date, ctx: Context) -> WeeklyData:
     """Everything known about one ISO week, Monday to Sunday (todo 52).
@@ -288,7 +277,7 @@ def get_weekly(monday: date, ctx: Context) -> WeeklyData:
         raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
     if monday > date.today():
         raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
-    data = _weekly(monday, ctx.data_dir)
+    data = weekly_payload(monday, ctx.data_dir)
     return WeeklyData(**{name: data[name] for name in WeeklyData.model_fields})
 
 
@@ -301,15 +290,17 @@ def get_weekly_chart_vega(
     """The week's work by sport, as a ready-to-render Vega-Lite specification."""
     if monday.weekday() != 0:
         raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
-    data = _weekly(monday, ctx.data_dir)
+    data = weekly_payload(monday, ctx.data_dir)
     chart = week_sports_chart(data["training"]["by_sport"], theme)
     if chart is None:
         raise HTTPException(status_code=404, detail="No sessions to plot for this week.")
     return chart.to_dict()
 
 
-def _fragment_sections(folder: Path) -> list[tuple[str | None, str, datetime | None]]:
-    """Le sezioni dai frammenti di una cartella (todo 44): un file per
+def _fragment_sections(
+    folder: Path, kind: Report_ = DAILY
+) -> list[tuple[str | None, str, datetime | None]]:
+    """Le sezioni dai frammenti di una cartella (todo 44, 53): un file per
     sezione, nell'ordine in cui si leggono.
 
     **Le sezioni ci sono tutte, anche quelle senza frammento**, con il corpo
@@ -328,7 +319,7 @@ def _fragment_sections(folder: Path) -> list[tuple[str | None, str, datetime | N
     Niente testo senza titolo: la riga "Data: ..." del file unico la scartava
     gia' `parse_report`, quindi alla pagina non e' mai arrivata."""
     found: list[tuple[str | None, str, datetime | None]] = []
-    for section in SECTIONS:
+    for section in kind.sections:
         path = folder / f"{section.key}.md"
         body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
         written = datetime.fromtimestamp(path.stat().st_mtime) if body else None
@@ -403,6 +394,76 @@ def post_daily_refresh_section(day: date, section: str, ctx: Context) -> Refresh
         known = ", ".join(s.key for s in SECTIONS)
         raise HTTPException(status_code=422, detail=f"Unknown section {section!r}. Known: {known}.")
     return RefreshStatus(**refresh.start(day, REPO_ROOT, ctx.summary_dir, ctx.data_dir, keys))
+
+
+@app.get("/api/reports/weekly/{monday}", response_model=Report, summary="Weekly report")
+def get_weekly_report(monday: date, ctx: Context) -> Report:
+    """The written weekly report of the week starting `monday`, split into its sections
+    (todo 53).
+
+    One file per section in `02.weekly/<monday>/`, written by its agent. The three old
+    single-file reports of the previous format are not read: nobody writes them any more."""
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    folder = ctx.summary_dir / WEEKLY.folder / monday.isoformat()
+    if not folder.is_dir():
+        raise HTTPException(status_code=404, detail=f"No weekly report for {monday}.")
+    found = _fragment_sections(folder, WEEKLY)
+    if not any(body for _, body, _written in found):
+        raise HTTPException(status_code=404, detail=f"No weekly report for {monday}.")
+    sections = [
+        ReportSection(
+            title=title,
+            body=body,
+            icon=section_icon(title) if title else None,
+            written_at=written,
+        )
+        for title, body, written in found
+    ]
+    return Report(day=monday, sections=sections)
+
+
+@app.post(
+    "/api/reports/weekly/{monday}/refresh",
+    response_model=RefreshStatus,
+    status_code=202,
+    summary="Rewrite the whole weekly report",
+)
+def post_weekly_refresh(monday: date, ctx: Context) -> RefreshStatus:
+    """Rewrite every section of the weekly report, in the background: one agent per
+    section, one after another, so a few minutes. It does not download: the week is
+    written on the data already here. One job at a time, daily ones included."""
+    _check_week(monday)
+    return RefreshStatus(
+        **refresh.start(monday, REPO_ROOT, ctx.summary_dir, ctx.data_dir, kind=WEEKLY)
+    )
+
+
+@app.post(
+    "/api/reports/weekly/{monday}/refresh/{section}",
+    response_model=RefreshStatus,
+    status_code=202,
+    summary="Rewrite one section of the weekly report",
+)
+def post_weekly_refresh_section(monday: date, section: str, ctx: Context) -> RefreshStatus:
+    """Rewrite a single section of the week: only its agent runs, the other sections keep
+    the text they have. 422 for a section that does not exist."""
+    _check_week(monday)
+    try:
+        keys = refresh.section_keys(section, kind=WEEKLY)
+    except KeyError:
+        known = ", ".join(WEEKLY.by_key)
+        raise HTTPException(status_code=422, detail=f"Unknown section {section!r}. Known: {known}.")
+    return RefreshStatus(
+        **refresh.start(monday, REPO_ROOT, ctx.summary_dir, ctx.data_dir, keys, kind=WEEKLY)
+    )
+
+
+def _check_week(monday: date) -> None:
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    if monday > date.today():
+        raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
 
 
 @app.get("/api/refresh", response_model=RefreshStatus, summary="Refresh job status")

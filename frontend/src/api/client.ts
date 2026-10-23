@@ -66,7 +66,10 @@ async function postJson<T>(url: string): Promise<T> {
 
 // Per gli endpoint dove il 404 vuol dire "non c'e'" (il report di un giorno,
 // il grafico di un'attivita' senza dati), non un errore.
-async function getOrNull<T>(url: string, signal?: AbortSignal): Promise<T | null> {
+async function getOrNull<T>(
+  url: string,
+  signal?: AbortSignal,
+): Promise<T | null> {
   try {
     return await getJson<T>(url, signal);
   } catch (error) {
@@ -82,13 +85,19 @@ export function iconUrl(file: string): string {
 export const api = {
   sports: (signal?: AbortSignal) => getJson<SportList>("/api/sports", signal),
 
-  activities: (start: string, end: string, sports: string[], signal?: AbortSignal) => {
+  activities: (
+    start: string,
+    end: string,
+    sports: string[],
+    signal?: AbortSignal,
+  ) => {
     const params = new URLSearchParams({ start, end });
     for (const sport of sports) params.append("sport", sport);
     return getJson<Activity[]>(`/api/activities?${params}`, signal);
   },
 
-  activity: (id: number, signal?: AbortSignal) => getJson<ActivityDetail>(`/api/activities/${id}`, signal),
+  activity: (id: number, signal?: AbortSignal) =>
+    getJson<ActivityDetail>(`/api/activities/${id}`, signal),
 
   // `null` toglie la scelta di Andrea e torna alla stima.
   setTerrain: (id: number, terrain: Terrain | null) =>
@@ -99,11 +108,16 @@ export const api = {
     putJson<Activity>(`/api/activities/${id}/run_type`, { run_type }),
 
   chartVega: (id: number, theme: "light" | "dark", signal?: AbortSignal) =>
-    getOrNull<VegaSpec>(`/api/activities/${id}/chart/vega?theme=${theme}`, signal),
+    getOrNull<VegaSpec>(
+      `/api/activities/${id}/chart/vega?theme=${theme}`,
+      signal,
+    ),
 
-  route: (id: number, signal?: AbortSignal) => getJson<Route>(`/api/activities/${id}/route`, signal),
+  route: (id: number, signal?: AbortSignal) =>
+    getJson<Route>(`/api/activities/${id}/route`, signal),
 
-  daily: (day: string, signal?: AbortSignal) => getJson<DailyData>(`/api/daily/${day}`, signal),
+  daily: (day: string, signal?: AbortSignal) =>
+    getJson<DailyData>(`/api/daily/${day}`, signal),
 
   // I fatti di una settimana ISO (todo 52): `monday` e' sempre un lunedi'.
   weekly: (monday: string, signal?: AbortSignal) =>
@@ -111,18 +125,43 @@ export const api = {
 
   // Il lavoro della settimana per sport, gia' pronto da disegnare. `null`
   // quando la settimana non ha sedute.
-  weeklyChartVega: (monday: string, theme: "light" | "dark", signal?: AbortSignal) =>
-    getOrNull<VegaSpec>(`/api/weekly/${monday}/chart/vega?theme=${theme}`, signal),
+  weeklyChartVega: (
+    monday: string,
+    theme: "light" | "dark",
+    signal?: AbortSignal,
+  ) =>
+    getOrNull<VegaSpec>(
+      `/api/weekly/${monday}/chart/vega?theme=${theme}`,
+      signal,
+    ),
 
-  dailyReport: (day: string, signal?: AbortSignal) => getOrNull<Report>(`/api/reports/daily/${day}`, signal),
+  dailyReport: (day: string, signal?: AbortSignal) =>
+    getOrNull<Report>(`/api/reports/daily/${day}`, signal),
 
   // Aggiorna i dati e riscrive il report del giorno, in background: lo stato
   // si segue con `refresh()`.
-  startRefresh: (day: string) => postJson<RefreshStatus>(`/api/reports/daily/${day}/refresh`),
+  startRefresh: (day: string) =>
+    postJson<RefreshStatus>(`/api/reports/daily/${day}/refresh`),
 
   // Una sezione sola: gira il suo agente, le altre tengono il testo che hanno.
   startSectionRefresh: (day: string, section: string) =>
     postJson<RefreshStatus>(`/api/reports/daily/${day}/refresh/${section}`),
 
-  refresh: (signal?: AbortSignal) => getJson<RefreshStatus>("/api/refresh", signal),
+  // Il report della settimana (todo 53), composto dalle otto sezioni.
+  weeklyReport: (monday: string, signal?: AbortSignal) =>
+    getOrNull<Report>(`/api/reports/weekly/${monday}`, signal),
+
+  // Riscrive la settimana, in background. Non scarica niente: la settimana
+  // si scrive sui dati che ci sono.
+  startWeeklyRefresh: (monday: string) =>
+    postJson<RefreshStatus>(`/api/reports/weekly/${monday}/refresh`),
+
+  startWeeklySectionRefresh: (monday: string, section: string) =>
+    postJson<RefreshStatus>(`/api/reports/weekly/${monday}/refresh/${section}`),
+
+  // Lo stato del lavoro in corso, di qualunque tipo: `kind` dice se e' il
+  // report di un giorno o di una settimana, e le chiavi delle sezioni
+  // dipendono da quello.
+  refresh: (signal?: AbortSignal) =>
+    getJson<RefreshStatus>("/api/refresh", signal),
 };
