@@ -2,7 +2,7 @@
 status: todo
 ---
 
-# Lo storico nella forma nuova: dal 1 agosto a oggi
+# Lo storico nella forma nuova: dal 1 agosto a oggi, giorni e settimane
 
 Dal todo 44 il report e' fatto di sezioni, una per card, e da allora le card
 sono cambiate molto: Fitness ha un testo e le barre, Load ha le soglie di
@@ -32,8 +32,9 @@ Prese con Andrea il 2026-10-21:
   carico e forma, e sono i giorni in cui la card Training dice "Rest day" e
   le altre quattro raccontano come stavi.
 
-**Circa 630 agenti, cinque ore in fila.** E' il costo, ed e' il motivo per
-cui il comando dev'essere interrompibile e ripetibile.
+**Circa 630 agenti per i giorni, cinque ore in fila**, piu' **72 per le
+settimane**, meno di un'ora. E' il costo, ed e' il motivo per cui il comando
+dev'essere interrompibile e ripetibile.
 
 ## Work
 
@@ -88,6 +89,65 @@ legge piu' (`app.get_daily_report`), ma resta come copia di sicurezza: se il
 backfill va storto, basta cancellare le cartelle nuove per riavere tutto.
 Cancellarli e' una decisione successiva, e non e' di questo lavoro.
 
+## Anche le settimane (aggiunto il 2026-10-23)
+
+Quando questo todo e' stato scritto la pagina Week non esisteva. Adesso c'e',
+con il suo report di otto sezioni (todo 53), e **lo storico settimanale e'
+quasi tutto vuoto**: delle dodici settimane dal 3 agosto a oggi, nove non
+hanno niente, due sono scritte per intero (5-11 e 12-18 ottobre, fatte
+durante la verifica del 53) e quella in corso ha la sola apertura. Restano
+anche tre file del formato vecchio a tre sezioni (`2026-08-31.md`,
+`2026-09-21.md`, `2026-09-28.md`), che nessuno legge piu'.
+
+Aprire una settimana di settembre oggi vuol dire vedere i numeri giusti e
+sei card mute.
+
+**Sono nove settimane per otto sezioni: 72 agenti, meno di un'ora.** Un
+ottavo del backfill giornaliero, e si puo' lanciare subito dopo — o anche
+prima, visto che le sezioni settimanali leggono i numeri, non i report dei
+giorni.
+
+### Il comando
+
+Lo stesso lavoro, sull'altro ciclo: dal todo 53 l'orchestratore e' uno solo,
+parametrato su `sections.Report`, quindi `--from`/`--to` va scritto una
+volta e vale per tutti e due i comandi. `training-weekly-report --from
+2026-08-03` cicla sui lunedi dell'intervallo.
+
+**Due giri per settimana, non tre**, perche' i momenti sono due:
+
+| giro | momento | sezioni |
+|---|---|---|
+| 1 | end | health, recovery, load, fitness, training, next, summary_end |
+| 2 | start | summary_start |
+
+L'ordine conta come nel giorno: l'apertura di una settimana legge il report
+della settimana **precedente**, quindi il ciclo va dalla piu' vecchia alla
+piu' recente, e la chiusura di una settimana va scritta prima
+dell'apertura di quella dopo. Con il giro `end` prima di `start` dentro
+ogni settimana, e le settimane in ordine, la cosa si risolve da se'.
+
+**La prima settimana dell'intervallo non ha quella prima**: la sua apertura
+non trova niente da leggere. Due vie — saltarla, o lasciarle scrivere
+l'apertura sui soli fatti della settimana. Si salta: un'apertura che dice
+"non so come ci sei arrivato" non serve a nessuno, e una settimana su nove
+senza il blocco di testa non e' un buco che si nota.
+
+Come per i giorni: **si saltano le sezioni gia' scritte**, non le settimane,
+cosi' le due settimane di ottobre gia' fatte non si rifanno e un backfill
+interrotto riprende da dove si era fermato.
+
+```makefile
+make backfill_weeks FROM=2026-08-03        # TO di default la settimana di oggi
+```
+
+### Quello che non va toccato
+
+I tre file del formato vecchio (`summary/02.weekly/<lunedi>.md`) **restano
+dove sono**, come i 77 giornalieri: l'API non li legge piu' da quando esiste
+la cartella per settimana, ma sono la copia di sicurezza. Cancellarli e' una
+decisione successiva.
+
 ## Vincoli
 
 - Nessuna dipendenza nuova; il modello dell'API non cambia.
@@ -124,4 +184,10 @@ Cancellarli e' una decisione successiva, e non e' di questo lavoro.
    posto, le barre, le due parti del Summary, nessun errore in console.
 5. Un giorno di riposo e un giorno con allenamento, per vedere che la card
    Training si comporta nei due modi.
-6. Il periodo intero **non** si lancia: si lascia ad Andrea.
+6. **Le settimane**: `make backfill_weeks FROM=2026-09-28 TO=2026-09-28` —
+   una settimana sola, otto agenti. La cartella deve avere otto file,
+   l'apertura deve riferirsi alla settimana prima e la chiusura non deve
+   ripeterla.
+7. Rilanciare lo stesso comando su un periodo che comprende le due settimane
+   di ottobre gia' scritte: non deve rifarle.
+8. Il periodo intero **non** si lancia: si lascia ad Andrea.
