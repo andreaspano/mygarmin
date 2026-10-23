@@ -22,6 +22,11 @@ Prese con Andrea il 2026-10-22:
   tipo, dove va l'intensita' e dove il lungo. Non lo stato con cui arrivi e
   non il verdetto: quelli sono del Summary. Una sezione che dice una cosa
   sola e' anche l'unico modo perche' non finisca per ripetere l'altra.
+- **Next si scrive la domenica alle 22 e vale per la settimana dopo.** Sta
+  nella pagina della settimana che si chiude, come il Next del giorno sta
+  nella pagina di oggi e parla di domani: la domenica sera si guarda il
+  riepilogo di quello che e' appena finito e li' si legge cosa fare dal
+  giorno dopo.
 - Il vecchio `weekly-report` e il suo formato a tre sezioni **spariscono**,
   come e' sparito `fitness-status` col todo 44. I tre file gia' scritti
   restano dove sono: nessuno li legge piu'.
@@ -55,8 +60,11 @@ Come nel giorno, i due Summary sono **due chiavi e un agente solo**
 
 | | sezioni |
 |---|---|
-| lunedi, 10 | health, recovery, load, fitness, training, next, **summary_start** |
-| domenica, 22 | load, fitness, training, next, **summary_end** |
+| lunedi, 10 | health, recovery, load, fitness, training, **summary_start** |
+| domenica, 22 | load, fitness, training, **next**, **summary_end** |
+
+Next gira solo la domenica, e prima di `summary_end`: la chiusura puo'
+tenerne conto senza ripeterla.
 
 I frammenti vanno in `summary/02.weekly/<lunedi>/`, una cartella per
 settimana, come `01.daily/<giorno>/`.
@@ -104,9 +112,10 @@ Due momenti, tutti e due su giri che gia' girano:
 
 - **lunedi alle 10**, in coda ai sei agenti del giorno: apre la settimana
   che comincia, con la notte appena finita e la settimana chiusa alle
-  spalle. Il lunedi diventa il giro piu' lungo, una decina di minuti.
-- **domenica alle 22**, in coda ai cinque della sera: chiude la settimana,
-  e lo fa leggendo quello che il lunedi aveva detto.
+  spalle. Sei sezioni, una decina di minuti.
+- **domenica alle 22**, in coda ai cinque della sera: chiude la settimana
+  leggendo quello che il lunedi aveva detto, e scrive la strategia per la
+  settimana che comincia il giorno dopo.
 
 Nei giorni in mezzo la settimana **in corso** mostra i numeri, che sono
 sempre freschi, e il testo resta quello di lunedi, con la sua ora accanto
@@ -141,12 +150,19 @@ Resta qui come appunto: quando il report arrivera', il selettore c'e' gia'.
 - **Sette prompt nuovi sono sette tarature.** Quelli del giorno hanno
   richiesto parecchi giri per smettere di ripetersi e di sconfinare: qui
   succedera' di nuovo, e la prova costa sette agenti per volta.
-- **Next e Summary d'inizio guardano tutti e due avanti.** E' il rischio
-  che il confine qui sopra deve tenere: uno dice lo stato e l'intenzione,
-  l'altro il lavoro. Se dopo qualche settimana i due testi si somigliano,
-  il ripiego e' fondere Next dentro il Summary d'inizio e restare a sette
-  sezioni — e' successo nel giornaliero, dove Load e Fitness hanno smesso
-  di ripetersi solo quando i prompt sono stati separati a mano.
+- **Next e Summary d'inizio parlano della stessa settimana a dodici ore di
+  distanza**, uno la domenica sera e l'altro il lunedi mattina. Il confine
+  regge solo se uno dice il lavoro e l'altro lo stato con cui ci arrivi; se
+  i testi si somigliano, il ripiego e' fondere Next nel Summary d'inizio e
+  restare a sette sezioni — e' successo nel giornaliero, dove Load e
+  Fitness hanno smesso di ripetersi solo quando i prompt sono stati
+  separati a mano.
+- **Da decidere quando il testo esistera': se il Summary d'inizio debba
+  leggere il Next della domenica prima.** Sta in un'altra cartella (la
+  settimana che si e' chiusa), quindi non arriva da solo. Leggerlo
+  chiuderebbe il cerchio fra settimane — "la strategia era tre uscite con
+  un lungo" — ma e' anche il modo piu' facile perche' lunedi riscriva
+  domenica. Si prova prima senza.
 - **Il confine con il giornaliero si sfuoca**: la sezione Training della
   settimana rischia di raccontare le singole sedute, che sono della Day. Il
   prompt deve dirlo per nome.
@@ -164,8 +180,8 @@ Resta qui come appunto: quando il report arrivera', il selettore c'e' gia'.
    non deve cambiare niente per la Day.
 2. Un report settimanale da terminale su una settimana chiusa: otto
    frammenti in `summary/02.weekly/<lunedi>/`, Next che dice solo la
-   strategia dei sette giorni e i due Summary che non ripetono le altre
-   sezioni ne' se stessi.
+   strategia della settimana **dopo** e i due Summary che non ripetono le
+   altre sezioni ne' se stessi.
 3. I due momenti separati, come nel todo 49: il giro del lunedi scrive
    `summary_start` e **non** tocca `summary_end`; quello della domenica
    scrive la chiusura, che si riferisce all'apertura senza ricopiarla.
