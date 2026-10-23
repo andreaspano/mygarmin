@@ -82,23 +82,46 @@ sei del giorno. Il lunedi diventa il giro piu' lungo, una decina di minuti.
 La settimana **in corso** mostra i numeri, che sono sempre freschi, e al
 posto del testo il tasto per scriverlo a mano.
 
-## Un ritocco alla pagina, fuori dal report
+## La striscia diventa un selettore di settimane
 
-Chiesto da Andrea il 2026-10-23, guardando la Week: **la striscia dei sette
-giorni in alto a destra deve portare il numero della settimana**.
+Chiesto da Andrea il 2026-10-23, guardando la Week. Oggi in alto a destra
+c'e' la striscia dei **giorni**, riusata dalla Day cosi' com'era (todo 51):
+mostra i sette giorni della settimana e un clic ne apre uno. Ma su una
+pagina che parla di settimane il navigatore giusto e' fatto di settimane,
+non di giorni.
 
-Oggi il numero sta solo nel titolo a sinistra (`Week 43 · October 2026`), e
-la striscia e' quella della Day cosi' com'e' (`WeekStrip`), con i soli
-giorni. Chi guarda a destra non sa che settimana sta vedendo.
+**Ogni bottone porta tre cose**: il numero della settimana, la data del
+lunedi e quella della domenica.
 
-Una etichetta `W43` all'inizio della striscia, prima del lunedi, nello
-stesso tono smorzato delle sigle dei giorni. Serve solo sulla Week: nella
-Day la striscia scavalca due settimane e un numero solo sarebbe sbagliato,
-quindi `WeekStrip` prende una proprieta' e di suo non la mostra.
+```
+┌────────┐ ┌────────┐ ┌────────┐
+│  W41   │ │  W42   │ │  W43   │
+│  5 Oct │ │ 12 Oct │ │ 19 Oct │
+│ 11 Oct │ │ 18 Oct │ │ 25 Oct │
+└────────┘ └────────┘ └────────┘
+```
 
-**Se non e' questo che intendevi, e' qui che si cambia**: l'alternativa e'
-che ogni giorno porti il suo numero di settimana, o che la striscia diventi
-un selettore di settimane invece che di giorni.
+Un componente nuovo (`WeekPicker`), non una variante di `WeekStrip`: le due
+strisce mostrano cose diverse e mescolarle con una proprieta' le
+complicherebbe tutte e due. `WeekStrip` resta alla Day, intatta.
+
+- **Otto settimane**, come gli otto giorni della striscia della Day, e con
+  la stessa regola: finiscono con la settimana corrente finche' quella
+  scelta ci sta dentro, altrimenti qualche settimana dopo quella scelta,
+  cosi' si vede anche cosa e' venuto dopo.
+- La settimana aperta e' in un riquadro; quella corrente tratteggiata, come
+  "oggi" nella Day.
+- I tasti freccia restano: fanno la stessa cosa, un passo alla volta.
+
+**Cosa si perde**: oggi un clic su un giorno della striscia apre la Day di
+quel giorno. Con il selettore di settimane quella strada sparisce, ma resta
+quella che conta — le sedute nella card Training sono gia' cliccabili e
+aprono la Day del loro giorno.
+
+**Da decidere a occhio, quando si vede**: se sotto le date serva anche un
+numero che dia il peso della settimana (le sedute, o le ore), come la
+striscia della Day mette i chilometri sotto ogni giorno. Tre righe per
+bottone potrebbero gia' bastare.
 
 ## Vincoli
 
@@ -141,4 +164,6 @@ un selettore di settimane invece che di giorni.
 6. Il giro del lunedi provato per intero, con il `--moment morning` del
    giorno piu' la settimana: deve finire senza che il lock si pesti i piedi
    da solo.
-7. La striscia della Week porta `W43`, quella della Day no.
+7. Il selettore di settimane: otto bottoni con numero, lunedi e domenica;
+   un clic cambia settimana e l'URL; la settimana corrente e' segnata;
+   la striscia dei giorni della Day non e' cambiata.
