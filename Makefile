@@ -1,8 +1,7 @@
-.PHONY: install_cron uninstall_cron daily_report weekly_report backfill_zones backfill_reports backfill_weeks update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types activity_reports weekly_data daily_data
+.PHONY: install_cron uninstall_cron daily_report weekly_report backfill_zones backfill_reports backfill_weeks update_activity backfill_activity_names backfill_health backfill fitness_status api frontend frontend_types weekly_data daily_data
 
 update_activity:
 	uv run python -c "from training.garmin import update_activity; update_activity()"
-	$(MAKE) activity_reports
 
 backfill_activity_names:
 	uv run python -c "from training.garmin import backfill_activity_names; backfill_activity_names()"
@@ -31,7 +30,6 @@ backfill:
 	api = init_api(); \
 	download_activities_between(api, start.isoformat(), end.isoformat()); \
 	export_daily_health(api, DATA_DIR, start, end)"
-	$(MAKE) activity_reports
 
 fitness_status:
 	uv run training-fitness-status
@@ -52,8 +50,6 @@ frontend:
 frontend_types:
 	cd frontend && npm run gen:api
 
-activity_reports:
-	uv run training-activity-reports
 
 # I fatti di una settimana in JSON, per il report settimanale. Solo dati
 # locali: per la settimana aggiornata, prima make update_activity.
