@@ -1,5 +1,5 @@
 ---
-status: todo
+status: done
 ---
 
 # Il Trend della Day: ventotto giorni di grafici
@@ -187,3 +187,85 @@ viste.
 6. `make frontend_types`, `npm run typecheck`, `npm run build`, e la pagina
    in Firefox headless nei due temi: un giorno pieno, un giorno di maggio
    2026 senza dati, e il giorno piu' vecchio che c'e'.
+
+## Come e' andata
+
+Fatto, con una deviazione dalla specifica che vale la pena spiegare.
+
+**Un grafico per misura, non per pannello.** La specifica diceva "un grafico
+per pannello", ma dentro un pannello le unita' non sono le stesse: il VO2max
+sta a 42 e il punteggio di resistenza a 5000, il carico acuto a 500 e il
+rapporto acuto/cronico a 1,1. Su un asse solo la misura piccola viene una
+riga piatta. Si poteva normalizzare ogni serie sul suo minimo e massimo, ma
+allora la fascia di `_band` non si sarebbe potuta disegnare, e la fascia e'
+meta' del motivo per cui il Trend esiste.
+
+La via d'uscita e' stata guardare meglio il vincolo del todo 52. Li' a non
+funzionare era il `facet`: `width: "container"` non vale **nelle viste
+composte** (`facet`, `vconcat`, `repeat`). Ma `layer` non e' una di quelle —
+le barre della settimana sono gia' un `layer` con `width: "container"` e
+stanno nel riquadro. Quindi ogni misura e' un grafico a strati (le due
+fasce sotto, la linea sopra), con il suo asse nei numeri veri. Sono 22
+grafici invece di 5; la richiesta pero' resta **una per pannello**, come
+chiedeva la verifica, perche' la rotta rende tutte le specifiche del
+pannello in un colpo.
+
+Altre cose decise per strada:
+
+- **Il riposo e' zero, non "non misurato".** Nel pannello Training un giorno
+  senza sedute vale 0: e' un dato, al contrario di una notte che l'orologio
+  non ha registrato. Per lo stesso motivo li' non c'e' la fascia: fra i
+  giorni a zero media e scarto tipo direbbero poco.
+- **Le fasce hanno il pavimento a zero.** A 365 giorni il carico acuto sta a
+  zero per meta' finestra, e due scarti tipo sotto la media portavano la
+  fascia a -200: l'asse si allungava su numeri che non esistono. Stesso
+  rimedio di `MORNING_LIMITS` (todo 46), applicato a tutte le misure che non
+  possono essere negative.
+- **Month e' sparito dalla barra**, invece di restare grigio: il todo dice
+  che si aggiunge quando ci sara'. Activities resta, staccata a destra,
+  perche' il todo la mette li' esplicitamente.
+- **L'ampiezza nell'URL con `replaceState`, non `pushState`.** Il cursore ne
+  attraversa decine, e con una voce di cronologia per valore il tasto
+  indietro non sarebbe piu' tornato al giorno di prima.
+- **La vista non viaggia dove non esiste.** Il collegamento alla Week non si
+  porta dietro `view=trend`: la Week il Trend non ce l'ha, e nell'URL sarebbe
+  rimasta una vista che quella pagina ignora.
+- **L'API prende `from` e `to`, l'URL porta `days`.** Le due date sono quello
+  che la pagina ha in mano quando chiede; l'ampiezza e' quello che resta vero
+  quando si cambia giorno.
+- **La rotta del Trend sta scritta prima di `/api/daily/{day}`**, che le
+  prova nell'ordine in cui sono scritte: "trend" sarebbe finito dentro
+  `{day}` come data non valida.
+
+Due inciampi, trovati provando:
+
+- `daysFromUrl` partiva da **5 giorni invece di 28**: senza il parametro
+  `days`, `Number(null)` e' `0`, che e' un numero finito, e passava il
+  controllo per finire schiacciato sul minimo.
+- A 365 giorni l'etichetta diceva "26 Oct - 25 Oct", che sembra un giorno.
+  Adesso l'anno compare sul primo estremo quando la finestra lo scavalca.
+
+**Un avviso resta in console**, gia' presente prima di questo todo: `WARN
+Conflicting legend property "disable"`. Si vede anche sul Report, dove i
+grafici sono quelli di sempre: non viene dal Trend e non l'ho inseguito.
+
+**Il tema scuro e' verificato a meta'.** I grafici si': la palette cambia
+davvero (`rgb(74,58,167)` chiaro, `rgb(144,133,233)` scuro). Il resto della
+pagina no: lo snap di Firefox non lascia aprire una seconda istanza con un
+profilo diverso, e `prefers-color-scheme` da BiDi non si falsifica. Non c'e'
+niente di nuovo da rompere comunque: le regole CSS aggiunte usano solo le
+variabili del tema che c'erano gia'.
+
+## Revert
+
+```bash
+git revert -m 1 $(git log main --merges --grep="^Merge branch 'todo_55'$" --format=%H -1)
+```
+
+Effetti fuori dal repo: nessuno. Il Trend legge e basta: niente scritture in
+`summary/`, nessuna colonna nuova in `activities.db`, nessuna chiamata a
+Garmin. `LOGIC_VERSION` non si muove, quindi il revert non fa rileggere i
+file FIT.
+
+Dopo il revert, rifare il merge di `todo_55` non riporta le modifiche (git le
+considera gia' unite): per riaverle serve il revert del revert.

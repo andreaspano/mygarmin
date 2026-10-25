@@ -680,3 +680,105 @@ def week_sports_chart(by_sport: dict[str, dict], theme: str = "light") -> alt.Ch
     # lamentare ("Dropping fit-y") a ogni disegno. Trentasei pixel per sport
     # bastano alle due barre e al loro spazio.
     return (barre + etichette).properties(height=36 * data["sport"].nunique(), width="container")
+
+
+# Oltre questa ampiezza i pallini sui punti si impastano e restano le linee.
+TREND_POINTS_UP_TO_DAYS = 60
+# L'altezza di un grafico del Trend: bassa, perche' sono una ventina sulla
+# stessa pagina e si leggono a colpo d'occhio, non uno alla volta.
+TREND_HEIGHT = 110
+
+
+def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | None:
+    """Una serie del Trend (todo 55): la linea giorno per giorno, con la
+    fascia di `_band` come sfondo.
+
+    Un grafico **per serie** e non per pannello: dentro un pannello le misure
+    non hanno la stessa unita' (il VO2max sta a 42, il punteggio di resistenza
+    a 5000), e su un asse solo la linea bassa diventa piatta. Ognuno tiene il
+    suo asse nei numeri veri.
+
+    E' una vista **a strati**, non composta: `width: "container"` dentro un
+    `facet` o un `vconcat` viene largo zero (todo 52), mentre con `layer`
+    funziona - e' gia' cosi' che si disegnano le barre della settimana.
+
+    I giorni senza misura arrivano con `value` nullo e non si tolgono: la
+    linea si spezza li', invece di unire i due estremi di un buco.
+
+    `None` se nella finestra non c'e' nemmeno un valore."""
+    points = [p for p in series["points"] if p["value"] is not None]
+    if not points:
+        return None
+    palette = _PALETTES.get(theme, _PALETTES["light"])
+    unit = series.get("unit")
+    title = f"{series['label']} ({unit})" if unit else series["label"]
+
+    data = pd.DataFrame(series["points"])
+    data["day"] = pd.to_datetime(data["day"])
+    # Il testo del tooltip si prepara qui: con i decimali della misura, che
+    # Vega non conosce.
+    digits = int(series.get("digits") or 0)
+    data["testo"] = [
+        "-" if v is None else (f"{v:.{digits}f}" if digits else f"{v:.0f}")
+        for v in data["value"]
+    ]
+
+    strati = []
+    banda = series.get("band")
+    if banda:
+        # Due rettangoli senza `x`: presi per tutta la larghezza, come le
+        # fasce delle barre della Day. Il piu' largo (due scarti tipo) sotto
+        # e piu' chiaro, quello stretto sopra.
+        for low, high, opacity in (
+            ("outer_low", "outer_high", 0.10),
+            ("low", "high", 0.18),
+        ):
+            if banda.get(low) is None or banda.get(high) is None:
+                continue
+            strati.append(
+                alt.Chart(pd.DataFrame([{"low": banda[low], "high": banda[high]}]))
+                .mark_rect(color=palette["low_aerobic"], opacity=opacity)
+                .encode(y=alt.Y("low:Q", title=title), y2=alt.Y2("high:Q"))
+            )
+
+    linea = (
+        alt.Chart(data)
+        .mark_line(
+            color=palette["zone"],
+            strokeWidth=2,
+            point=(
+                alt.OverlayMarkDef(color=palette["zone"], size=22)
+                if days <= TREND_POINTS_UP_TO_DAYS
+                else False
+            ),
+        )
+        .encode(
+            x=alt.X("day:T", title=None, axis=alt.Axis(format="%d %b", tickCount=5)),
+            y=alt.Y(
+                "value:Q",
+                title=title,
+                scale=alt.Scale(zero=False, nice=True),
+                axis=alt.Axis(titleFontSize=11, labelFontSize=10),
+            ),
+            tooltip=[
+                alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
+                alt.Tooltip("testo:N", title=series["label"]),
+            ],
+        )
+    )
+    strati.append(linea)
+    return alt.layer(*strati).properties(height=TREND_HEIGHT, width="container")
+
+
+def trend_panel_charts(panel: dict, days: int, theme: str = "light") -> list[dict]:
+    """I grafici di un pannello: uno per serie, gia' in dizionario Vega-Lite.
+
+    Le serie senza nemmeno un valore nella finestra si saltano, invece di
+    lasciare un riquadro vuoto."""
+    charts = []
+    for series in panel["series"]:
+        chart = trend_chart(series, days, theme)
+        if chart is None:
+            continue
+        charts.append({"key": series["key"], "label": series["label"], "spec": chart.to_dict()})
+    return charts

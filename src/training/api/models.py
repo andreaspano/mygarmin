@@ -545,6 +545,48 @@ class WeekZones(BaseModel):
     )
 
 
+
+class TrendPoint(BaseModel):
+    """One day of a trend series. `value` is null where the day has no measure: the line
+    breaks there instead of joining the two sides of a gap."""
+
+    day: date
+    value: float | None
+
+
+class TrendSeries(BaseModel):
+    """One measure over the window, with the band it usually sits in."""
+
+    key: str = Field(description="The column it is read from.")
+    label: str
+    unit: str | None = Field(description="Null for plain scores.")
+    digits: int = Field(description="Decimals the measure is worth.")
+    points: list[TrendPoint]
+    band: Band | None = Field(
+        description="Null under MIN_BAND_DAYS measured days, and for the Training panel."
+    )
+
+
+class TrendPanel(BaseModel):
+    """One panel of the Trend, in the order of the Day cards."""
+
+    key: str
+    title: str
+    series: list[TrendSeries]
+
+
+class TrendData(BaseModel):
+    """The daily series between two days, panel by panel (todo 55)."""
+
+    from_: date = Field(alias="from", description="First day, included.")
+    to: date = Field(description="Last day, included.")
+    days: int = Field(description="Width of the window, in days.")
+    min_band_days: int = Field(description="Measured days a band needs; under it there is none.")
+    panels: list[TrendPanel]
+
+    model_config = {"populate_by_name": True}
+
+
 class WeeklyData(BaseModel):
     """Everything known about one ISO week, Monday to Sunday (todo 52)."""
 

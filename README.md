@@ -93,12 +93,29 @@ report giornaliero non legge nessuna delle tre.
 ### La pagina Day in React
 
 `frontend/` e' l'interfaccia (React, TypeScript, Vite), l'unica dal todo 40.
-Le pagine sono due (todo 51): la **Day** e la **Week**; Month, Recovery e
-Activities restano grigie nella barra. Quale si apre lo dice `?page=` —
-senza, la Day, cosi' i collegamenti di prima continuano a funzionare — e il
-resto dei parametri lo sceglie la pagina: `?day=2026-10-07` per la Day,
-`?page=week&monday=2026-10-19` per la Week. Niente router di libreria:
-`URLSearchParams` e `history.pushState` (`src/navigation.ts`).
+La barra in alto ha **due menu su due righe** (todo 55): sopra il periodo —
+la **Day** e la **Week** — sotto che cosa se ne guarda, **Report** o
+**Trend**. Sono due assi, non una fila sola: Activities non e' un periodo e
+sta a destra, staccata e ancora grigia. Month e Year si aggiungeranno quando
+esisteranno, non prima.
+
+L'URL dice i due assi: `?period=` e `?view=`, piu' i parametri della pagina
+(`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90`
+per l'ampiezza del Trend). Cambiando vista **il periodo resta**: da
+Day/Report si clicca Trend e si resta sul giorno che si stava guardando. La
+forma vecchia `?page=week` continua a valere, e senza niente si apre
+Day/Report. Niente router di libreria: `URLSearchParams` e
+`history.pushState` (`src/navigation.ts`).
+
+Il **Trend** della Day (todo 55) disegna quello che il Report racconta: le
+misure giorno per giorno nei cinque pannelli delle card, in una finestra che
+si sceglie col cursore fra 5 e 365 giorni (28 di partenza, la stessa di
+`BASELINE_LONG`). Un grafico **per misura** e non per pannello — dentro un
+pannello le unita' non sono le stesse, e su un asse solo la linea bassa
+verrebbe piatta — con la fascia di `_band` come sfondo, che si muove insieme
+alla finestra. Sotto `MIN_BAND_DAYS` giorni misurati la fascia non c'e', e
+la pagina lo dice; i giorni senza misura spezzano la linea invece di farle
+attraversare il buco.
 
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
