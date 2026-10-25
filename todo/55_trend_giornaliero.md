@@ -256,6 +256,42 @@ profilo diverso, e `prefers-color-scheme` da BiDi non si falsifica. Non c'e'
 niente di nuovo da rompere comunque: le regole CSS aggiunte usano solo le
 variabili del tema che c'erano gia'.
 
+### Rifiniture, dopo il merge
+
+Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
+(branch `rifiniture_trend`), fuori da questo todo perche' arrivate dopo.
+
+- **I colori delle card.** Ogni pannello prende quelli della sua card del
+  Report, letti da `styles.css`: l'indaco di Health, il cremisi di
+  Recovery, il turchese di Load, il blu di Fitness. I tre livelli delle
+  barre delle fasce sono riprodotti uno a uno — la linea e' la tinta piena
+  dell'icona, la banda stretta il `--range-fill`, quella larga il
+  `--range-wide-fill` con la sua opacita'. L'unico numero scelto invece che
+  copiato e' l'opacita' della banda stretta (0.38 chiaro, 0.32 scuro): sulla
+  barra alta otto pixel e' una tinta piena, stesa su mezza area di grafico
+  coprirebbe la linea. Training non ha un colore solo perche' non ce l'ha
+  nemmeno la sua card: le serie prendono i colori dei rispettivi effetti.
+- **L'icona di sezione su ogni pannello**, dal campo `icon` di `TrendPanel`.
+  Non e' una mappa nuova nel frontend: la calcola l'API con
+  `report_text.section_icon()`, la stessa che da' l'icona alle card. Una
+  fonte sola, cosi' Report e Trend non possono divergere. Load mostra
+  `trend.png` come la sua card, perche' nella mappa `"load"` e `"trend"`
+  puntano allo stesso file.
+- **Nome e unita' in due posti.** Il nome della misura e' il titolo del
+  grafico, orizzontale in alto a sinistra; l'unita' e' il titolo dell'asse
+  y, in grigio sopra i numeri a cui si riferisce. Prima stavano insieme
+  ("Resting HR (bpm)") girati lungo l'asse, e con venti grafici bassi uno
+  sotto l'altro un titolo verticale si legge uno alla volta. Le misure
+  senza unita' lasciano l'asse muto.
+- **Il dislivello in Training**, da `total_ascent_m`, nel verde della salita
+  (`up`), lo stesso che ha nel grafico della seduta. Due righe: la serie in
+  `TREND_TRAINING` e il colore in `TREND_TRAINING_COLORS`.
+
+Una nota qui sopra invecchia: la prova del tema scuro cita
+`rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo
+pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo
+stesso modo.
+
 ## Revert
 
 ```bash
