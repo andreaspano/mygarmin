@@ -30,6 +30,7 @@ from training.interface.activity_report import NUMBERS_WITHOUT_DISTANCE, activit
 from training.interface.db import list_activities, load_activity_records
 from training.interface.health import _day_paths, _dig, _primary_entry, _read_json
 from training.interface.health_db import load_health_db
+from training.interface.report_text import section_icon
 from training.interface.grade import EQUIV_SPEED_SPORTS
 from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
 from training.interface.sports import has_distance
@@ -632,13 +633,14 @@ TREND_PANELS: dict[str, tuple[str, tuple[TrendSeries, ...]]] = {
     ),
 }
 
-# Il pannello Training: i minuti per intensita' e i chilometri delle sedute,
-# sommati per giorno. Le colonne sono quelle di `activities`.
+# Il pannello Training: i minuti per intensita', i chilometri e il dislivello
+# delle sedute, sommati per giorno. Le colonne sono quelle di `activities`.
 TREND_TRAINING: tuple[TrendSeries, ...] = (
     ("min_low_aerobic", "Low aerobic", "min", 0),
     ("min_high_aerobic", "High aerobic", "min", 0),
     ("min_anaerobic", "Anaerobic", "min", 0),
     ("total_distance_km", "Distance", "km", 1),
+    ("total_ascent_m", "Ascent", "m", 0),
 )
 
 # Le misure chiuse fra 0 e 100, come in `MORNING_LIMITS` e `FITNESS_LIMITS`:
@@ -695,6 +697,7 @@ def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[st
     return {
         "key": "training",
         "title": "Training",
+        "icon": section_icon("training"),
         "series": [
             {
                 "key": column,
@@ -740,6 +743,10 @@ def trend_data(
             {
                 "key": key,
                 "title": title,
+                # L'icona e' quella della sezione omonima del Report
+                # (`report_text.section_icon`): il pannello e la card si
+                # riconoscono dallo stesso segno, non da due.
+                "icon": section_icon(title),
                 "series": [
                     {
                         "key": column,

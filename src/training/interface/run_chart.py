@@ -689,7 +689,68 @@ TREND_POINTS_UP_TO_DAYS = 60
 TREND_HEIGHT = 110
 
 
-def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | None:
+# I colori delle card del Report (`styles.css`): ogni pannello del Trend
+# prende quelli della sua, cosi' le due viste si leggono come la stessa cosa
+# e non come due applicazioni diverse. `line` e' la tinta piena dell'icona
+# della card, `band` il suo `--range-fill` e `wide` il `--range-wide-fill`:
+# gli stessi tre livelli delle barre delle fasce, solo stesi su un'area
+# invece che su una barra alta otto pixel.
+TREND_PALETTES: dict[str, dict[str, dict[str, str]]] = {
+    "health": {
+        "light": {"line": "rgb(74,58,167)", "band": "rgb(170,162,222)", "wide": "rgb(74,58,167)"},
+        "dark": {"line": "rgb(144,133,233)", "band": "rgb(92,85,158)", "wide": "rgb(144,133,233)"},
+    },
+    "recovery": {
+        "light": {"line": "rgb(194,37,92)", "band": "rgb(226,153,178)", "wide": "rgb(194,37,92)"},
+        "dark": {"line": "rgb(218,124,157)", "band": "rgb(171,69,105)", "wide": "rgb(218,124,157)"},
+    },
+    "load": {
+        "light": {"line": "rgb(16,152,173)", "band": "rgb(136,203,214)", "wide": "rgb(16,152,173)"},
+        "dark": {"line": "rgb(110,200,215)", "band": "rgb(50,122,138)", "wide": "rgb(110,200,215)"},
+    },
+    "fitness": {
+        "light": {"line": "rgb(37,99,200)", "band": "rgb(154,184,232)", "wide": "rgb(37,99,200)"},
+        "dark": {"line": "rgb(130,170,230)", "band": "rgb(70,108,166)", "wide": "rgb(130,170,230)"},
+    },
+}
+
+# Il pannello Training non ha un colore solo: le sue serie sono i tre effetti,
+# che nella card hanno gia' il loro (`--low`, `--high`, `--anaerobic`, gli
+# stessi di `_PALETTES`). La distanza prende l'arancione della velocita'
+# equivalente e il dislivello il verde della salita, gli stessi due che hanno
+# nel grafico della seduta: le altre misure, che devono staccare dai tre.
+TREND_TRAINING_COLORS = {
+    "min_low_aerobic": "low_aerobic",
+    "min_high_aerobic": "zone",
+    "min_anaerobic": "anaerobic",
+    "total_distance_km": "equiv",
+    "total_ascent_m": "up",
+}
+
+# Sulla barra della card la fascia stretta e' una tinta piena; qui copre meta'
+# del riquadro, e piena coprirebbe la linea. Queste sono le opacita' con cui
+# le stesse tinte restano leggibili stese su un'area: la larga e' quella che
+# `--range-wide-fill` ha gia' nel CSS.
+TREND_BAND_OPACITY = {"light": 0.38, "dark": 0.32}
+TREND_WIDE_OPACITY = {"light": 0.16, "dark": 0.22}
+
+
+def palette_muted(theme: str) -> str:
+    """Il grigio del tema, per i testi di contorno dei grafici del Trend."""
+    return _PALETTES.get(theme, _PALETTES["light"])["muted"]
+
+
+def _trend_colors(panel: str, series_key: str, theme: str) -> dict[str, str]:
+    """I colori di una serie: quelli della card a cui il pannello
+    corrisponde, o quelli del suo effetto nel pannello Training."""
+    if panel in TREND_PALETTES:
+        return TREND_PALETTES[panel].get(theme, TREND_PALETTES[panel]["light"])
+    palette = _PALETTES.get(theme, _PALETTES["light"])
+    tinta = palette[TREND_TRAINING_COLORS.get(series_key, "zone")]
+    return {"line": tinta, "band": tinta, "wide": tinta}
+
+
+def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "health") -> alt.Chart | None:
     """Una serie del Trend (todo 55): la linea giorno per giorno, con la
     fascia di `_band` come sfondo.
 
@@ -709,9 +770,13 @@ def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | No
     points = [p for p in series["points"] if p["value"] is not None]
     if not points:
         return None
-    palette = _PALETTES.get(theme, _PALETTES["light"])
+    colors = _trend_colors(panel, series["key"], theme)
+    # Il nome della misura e la sua unita' stanno in due posti diversi: il
+    # nome e' il titolo del grafico, in alto a sinistra e orizzontale;
+    # l'unita' e' il titolo dell'asse y, sopra i numeri a cui si riferisce.
+    # Le misure senza unita' (i punteggi, i carichi, il rapporto) l'asse lo
+    # lasciano muto.
     unit = series.get("unit")
-    title = f"{series['label']} ({unit})" if unit else series["label"]
 
     data = pd.DataFrame(series["points"])
     data["day"] = pd.to_datetime(data["day"])
@@ -729,25 +794,25 @@ def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | No
         # Due rettangoli senza `x`: presi per tutta la larghezza, come le
         # fasce delle barre della Day. Il piu' largo (due scarti tipo) sotto
         # e piu' chiaro, quello stretto sopra.
-        for low, high, opacity in (
-            ("outer_low", "outer_high", 0.10),
-            ("low", "high", 0.18),
+        for low, high, tinta, opacity in (
+            ("outer_low", "outer_high", colors["wide"], TREND_WIDE_OPACITY.get(theme, 0.16)),
+            ("low", "high", colors["band"], TREND_BAND_OPACITY.get(theme, 0.38)),
         ):
             if banda.get(low) is None or banda.get(high) is None:
                 continue
             strati.append(
                 alt.Chart(pd.DataFrame([{"low": banda[low], "high": banda[high]}]))
-                .mark_rect(color=palette["low_aerobic"], opacity=opacity)
-                .encode(y=alt.Y("low:Q", title=title), y2=alt.Y2("high:Q"))
+                .mark_rect(color=tinta, opacity=opacity)
+                .encode(y=alt.Y("low:Q", title=unit), y2=alt.Y2("high:Q"))
             )
 
     linea = (
         alt.Chart(data)
         .mark_line(
-            color=palette["zone"],
+            color=colors["line"],
             strokeWidth=2,
             point=(
-                alt.OverlayMarkDef(color=palette["zone"], size=22)
+                alt.OverlayMarkDef(color=colors["line"], size=22)
                 if days <= TREND_POINTS_UP_TO_DAYS
                 else False
             ),
@@ -756,9 +821,22 @@ def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | No
             x=alt.X("day:T", title=None, axis=alt.Axis(format="%d %b", tickCount=5)),
             y=alt.Y(
                 "value:Q",
-                title=title,
+                title=unit,
                 scale=alt.Scale(zero=False, nice=True),
-                axis=alt.Axis(titleFontSize=11, labelFontSize=10),
+                # L'unita' sopra i numeri dell'asse, orizzontale e allineata
+                # a destra sulla riga dell'asse: girata lungo l'asse si
+                # leggerebbe una alla volta, e sono venti grafici bassi uno
+                # sotto l'altro.
+                axis=alt.Axis(
+                    titleFontSize=10,
+                    labelFontSize=10,
+                    titleAngle=0,
+                    titleAlign="right",
+                    titleX=0,
+                    titleY=-7,
+                    titleBaseline="bottom",
+                    titleColor=palette_muted(theme),
+                ),
             ),
             tooltip=[
                 alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
@@ -767,7 +845,13 @@ def trend_chart(series: dict, days: int, theme: str = "light") -> alt.Chart | No
         )
     )
     strati.append(linea)
-    return alt.layer(*strati).properties(height=TREND_HEIGHT, width="container")
+    return alt.layer(*strati).properties(
+        height=TREND_HEIGHT,
+        width="container",
+        title=alt.TitleParams(
+            series["label"], anchor="start", fontSize=11, offset=6, dy=-2
+        ),
+    )
 
 
 def trend_panel_charts(panel: dict, days: int, theme: str = "light") -> list[dict]:
@@ -777,7 +861,7 @@ def trend_panel_charts(panel: dict, days: int, theme: str = "light") -> list[dic
     lasciare un riquadro vuoto."""
     charts = []
     for series in panel["series"]:
-        chart = trend_chart(series, days, theme)
+        chart = trend_chart(series, days, theme, panel["key"])
         if chart is None:
             continue
         charts.append({"key": series["key"], "label": series["label"], "spec": chart.to_dict()})
