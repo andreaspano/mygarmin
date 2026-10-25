@@ -12,7 +12,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Result, VisualizationSpec } from "vega-embed";
 
-import { api, isAbort, type TrendChart, type TrendData } from "../api/client";
+import { api, iconUrl, isAbort, type TrendChart, type TrendData } from "../api/client";
 import { addDays, shortDayLabel } from "../format";
 import { MAX_DAYS, MIN_DAYS } from "../navigation";
 import type { ColorScheme } from "../useColorScheme";
@@ -77,12 +77,14 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
 function Panel({
   panel,
   title,
+  icon,
   from,
   to,
   theme,
 }: {
   panel: string;
   title: string;
+  icon: string | null;
   from: string;
   to: string;
   theme: ColorScheme;
@@ -107,7 +109,10 @@ function Panel({
 
   return (
     <section className="card trend-panel" aria-label={title}>
-      <h2 className="card-title">{title}</h2>
+      <div className="trend-head">
+        {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
+        <h2>{title}</h2>
+      </div>
       {error && <p className="warning">The charts could not be loaded.</p>}
       {!error && charts === null && <p className="caption">Loading…</p>}
       {charts !== null && charts.length === 0 && (
@@ -161,7 +166,7 @@ export function TrendPanels({
   // Le fasce vogliono un minimo di giorni misurati: sotto non si disegnano,
   // e senza una riga che lo dica sembra che manchi meta' del grafico.
   const minBand = data?.min_band_days ?? 14;
-  const titles = new Map((data?.panels ?? []).map((p) => [p.key, p.title]));
+  const heads = new Map((data?.panels ?? []).map((p) => [p.key, p]));
 
   return (
     <>
@@ -190,7 +195,8 @@ export function TrendPanels({
         <Panel
           key={panel}
           panel={panel}
-          title={titles.get(panel) ?? panel}
+          title={heads.get(panel)?.title ?? panel}
+          icon={heads.get(panel)?.icon ?? null}
           from={from}
           to={day}
           theme={theme}

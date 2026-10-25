@@ -572,6 +572,7 @@ class TrendPanel(BaseModel):
 
     key: str
     title: str
+    icon: str | None = Field(description="The icon of the Report section with the same name.")
     series: list[TrendSeries]
 
 

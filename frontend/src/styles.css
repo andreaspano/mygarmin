@@ -206,6 +206,16 @@ h2 {
 .trend-panel {
   margin-top: 18px;
 }
+/* L'intestazione di un pannello: l'icona della sezione accanto al titolo,
+   la stessa che la card del Report porta nel suo `block-head`. */
+.trend-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.trend-head h2 {
+  margin: 0;
+}
 /* I grafici di un pannello: due per riga dove ci stanno, uno su schermo
    stretto. Ognuno ha il suo asse, nei numeri veri della sua misura. */
 .trend-grid {

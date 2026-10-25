@@ -1348,6 +1348,11 @@ export interface components {
             key: string;
             /** Title */
             title: string;
+            /**
+             * Icon
+             * @description The icon of the Report section with the same name.
+             */
+            icon: string | null;
             /** Series */
             series: components["schemas"]["TrendSeries"][];
         };
