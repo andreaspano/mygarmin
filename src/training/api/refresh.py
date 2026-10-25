@@ -465,6 +465,24 @@ def _subjects(kind: Report, start: date, end: date) -> list[date]:
     return out
 
 
+def _last_complete(kind: Report, today: date) -> date:
+    """L'ultimo periodo **concluso** prima di `today`: ieri, o il lunedi'
+    della settimana prima di quella in corso.
+
+    E' il confine del backfill. I giri del registro (`Report.backfill`)
+    aprono con il momento di chiusura — `end` per la settimana, `evening`
+    per il giorno — che dice all'agente che il periodo e' finito. Su un
+    periodo ancora aperto quella riga e' falsa, e il testo esce come un
+    verdetto su qualcosa che deve ancora succedere (todo 56).
+
+    Il confine della settimana e' il lunedi', non le 22 della domenica: a
+    chiudere la settimana e' il giro delle 22, e un backfill lanciato dopo
+    non deve rifare quello che il timer ha appena scritto."""
+    if kind is WEEKLY:
+        return today - timedelta(days=today.weekday()) - timedelta(weeks=1)
+    return today - timedelta(days=1)
+
+
 def backfill(
     kind: Report,
     start: date,
@@ -487,9 +505,15 @@ def backfill(
     e il backfill si rilancia dopo. Rende il riepilogo — periodi toccati,
     sezioni scritte, saltate e fallite — e dice se si e' fermato."""
     subjects = _subjects(kind, start, end)
+    # I periodi non ancora conclusi si lasciano fuori, e si contano: un
+    # backfill che annuncia otto settimane e ne riscrive sette deve dirlo.
+    limite = _last_complete(kind, date.today())
+    left_out = [s for s in subjects if s > limite]
+    subjects = [s for s in subjects if s <= limite]
     tally: dict[str, Any] = {
         "subjects": len(subjects), "written": 0, "skipped": 0,
         "failed": [], "stopped": None, "touched": 0,
+        "left_out": len(left_out),
     }
     for index, subject in enumerate(subjects):
         folder = Path(summary_dir) / kind.folder / subject.isoformat()
@@ -545,14 +569,23 @@ def _backfill_cli(kind: Report, args, last: date, parser: argparse.ArgumentParse
 
     if args.section or args.moment:
         parser.error("--from non si usa insieme a --section o --moment")
-    start, end = args.start, args.end or last
+    # Il backfill riscrive periodi **conclusi**: il presente lo scrive gia'
+    # il comando senza `--from`, che e' quello che lanciano i timer.
+    ultimo = _last_complete(kind, date.today())
+    start, end = args.start, args.end or ultimo
     if kind is WEEKLY:
         if start.weekday() != 0 or end.weekday() != 0:
             parser.error("con --from e --to servono due lunedi'")
     if end < start:
         parser.error(f"l'intervallo e' al contrario: {start} ... {end}")
-    if end > last:
-        parser.error(f"non si puo' arrivare oltre {last}")
+    if end > ultimo:
+        quello = "la settimana" if kind is WEEKLY else "il giorno"
+        comando = "training-weekly-report" if kind is WEEKLY else "training-daily-report"
+        parser.error(
+            f"il backfill arriva al {ultimo}, l'ultimo periodo finito: {quello} dopo e'"
+            f" ancora in corso, e chiuderla adesso vorrebbe dire giudicarla prima del"
+            f" tempo. Per il presente c'e' {comando} senza --from."
+        )
 
     quanti = len(_subjects(kind, start, end))
     quale, tocchi = ("settimane", "toccate") if kind is WEEKLY else ("giorni", "toccati")
@@ -562,6 +595,12 @@ def _backfill_cli(kind: Report, args, last: date, parser: argparse.ArgumentParse
         f"  {tally['touched']} {quale} {tocchi}, {tally['written']} sezioni scritte, "
         f"{tally['skipped']} gia' c'erano"
     )
+    if tally["left_out"]:
+        print(
+            f"  {tally['left_out']} {quale} lasciate fuori: non sono ancora finite."
+            if kind is WEEKLY
+            else f"  {tally['left_out']} giorni lasciati fuori: non sono ancora finiti."
+        )
     if tally["failed"]:
         print(f"  {len(tally['failed'])} fallite: " + ", ".join(tally["failed"][:10]))
     if tally["stopped"]:
