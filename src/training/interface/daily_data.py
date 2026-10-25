@@ -574,6 +574,201 @@ def fitness_on(health: pd.DataFrame, day: date) -> dict[str, Any]:
     }
 
 
+# --- Il Trend della Day (todo 55) ---
+
+# L'ampiezza della finestra: il cursore della pagina si muove fra questi due,
+# e di suo parte dai 28 giorni di `BASELINE_LONG`, la finestra con cui le
+# card del Report gia' si confrontano.
+TREND_MIN_DAYS = 5
+TREND_MAX_DAYS = 365
+TREND_DEFAULT_DAYS = BASELINE_LONG
+
+# Una serie del Trend: la colonna da cui si legge, come si chiama a schermo,
+# l'unita' (`None` per i punteggi puri) e i decimali.
+TrendSeries = tuple[str, str, str | None, int]
+
+# I pannelli, nell'ordine delle card della Day: Report e Trend raccontano le
+# stesse cose nello stesso ordine. Le colonne sono quelle di `health_daily`;
+# il pannello Training non sta qui perche' i suoi numeri vengono dalle
+# attivita'.
+TREND_PANELS: dict[str, tuple[str, tuple[TrendSeries, ...]]] = {
+    "health": (
+        "Health",
+        (
+            ("resting_hr", "Resting HR", "bpm", 0),
+            ("hrv_last_night", "HRV last night", "ms", 0),
+            ("resp_sleep_avg", "Breathing in sleep", "br/min", 1),
+            ("stress_avg", "Stress", None, 0),
+        ),
+    ),
+    "recovery": (
+        "Recovery",
+        (
+            ("readiness", "Readiness", None, 0),
+            ("sleep_hours", "Sleep", "h", 2),
+            ("sleep_score", "Sleep score", None, 0),
+            ("body_battery_high", "Body battery high", None, 0),
+            ("body_battery_low", "Body battery low", None, 0),
+        ),
+    ),
+    "load": (
+        "Load",
+        (
+            ("load_acute", "Acute load", None, 0),
+            ("load_chronic", "Chronic load", None, 0),
+            ("acwr", "Acute/chronic ratio", None, 2),
+            ("load_aerobic_low", "Low aerobic load", None, 0),
+            ("load_aerobic_high", "High aerobic load", None, 0),
+            ("load_anaerobic", "Anaerobic load", None, 0),
+        ),
+    ),
+    "fitness": (
+        "Fitness",
+        (
+            ("vo2max", "VO2max", "ml/kg/min", 1),
+            ("endurance_score", "Endurance score", None, 0),
+            ("hill_score", "Hill score", None, 0),
+        ),
+    ),
+}
+
+# Il pannello Training: i minuti per intensita' e i chilometri delle sedute,
+# sommati per giorno. Le colonne sono quelle di `activities`.
+TREND_TRAINING: tuple[TrendSeries, ...] = (
+    ("min_low_aerobic", "Low aerobic", "min", 0),
+    ("min_high_aerobic", "High aerobic", "min", 0),
+    ("min_anaerobic", "Anaerobic", "min", 0),
+    ("total_distance_km", "Distance", "km", 1),
+)
+
+# Le misure chiuse fra 0 e 100, come in `MORNING_LIMITS` e `FITNESS_LIMITS`:
+# li' la chiave e' il nome della misura, qui la colonna.
+TREND_LIMITS: dict[str, tuple[float, float]] = {
+    column: (0, 100)
+    for column in (
+        "readiness",
+        "sleep_score",
+        "stress_avg",
+        "body_battery_high",
+        "body_battery_low",
+        "hill_score",
+    )
+}
+# Tutte le altre hanno comunque un pavimento a zero: nessuna di queste misure
+# puo' essere negativa, e due scarti tipo sotto la media di un carico che per
+# meta' finestra sta a zero portavano la fascia a -200, allungando l'asse su
+# numeri che non esistono (e' lo stesso motivo di `MORNING_LIMITS`, todo 46).
+TREND_FLOOR = (0, math.inf)
+
+
+def _trend_points(window: pd.Series, digits: int) -> list[dict[str, Any]]:
+    """I punti di una serie, uno per giorno della finestra.
+
+    I giorni senza misura restano con `value` a `None` e **non si tolgono**:
+    e' quello che fa spezzare la linea dove i dati mancano invece di tirare
+    una retta fra due punti lontani mesi (il buco fra dicembre 2024 e agosto
+    2026 si attraversa tutto con il cursore a 365 giorni)."""
+    return [
+        {"day": stamp.date().isoformat(), "value": _value(value, digits)}
+        for stamp, value in window.items()
+    ]
+
+
+def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[str, Any]:
+    """Il pannello Training: minuti per intensita' e chilometri, per giorno.
+
+    Un giorno senza sedute vale **zero**, non "non misurato": il riposo e' un
+    dato, al contrario di una notte che l'orologio non ha registrato. Per lo
+    stesso motivo qui non c'e' la fascia di `_band`: fra i giorni a zero la
+    media e lo scarto tipo direbbero poco."""
+    index = pd.date_range(start, end, freq="D")
+    columns = [column for column, *_ in TREND_TRAINING]
+    if activities.empty:
+        daily = pd.DataFrame(0.0, index=index, columns=columns)
+    else:
+        inside = activities[
+            (activities["start_time"] >= pd.Timestamp(start))
+            & (activities["start_time"] < pd.Timestamp(end) + pd.Timedelta(days=1))
+        ]
+        by_day = inside.set_index(inside["start_time"].dt.normalize())[columns]
+        daily = by_day.groupby(level=0).sum().reindex(index).fillna(0.0)
+    return {
+        "key": "training",
+        "title": "Training",
+        "series": [
+            {
+                "key": column,
+                "label": label,
+                "unit": unit,
+                "digits": digits,
+                "points": _trend_points(daily[column], digits),
+                "band": None,
+            }
+            for column, label, unit, digits in TREND_TRAINING
+        ],
+    }
+
+
+def trend_data(
+    start: date,
+    end: date,
+    data_dir: Path = DATA_DIR,
+    activities: pd.DataFrame | None = None,
+    health: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Le serie giornaliere fra `start` e `end` compresi, pannello per
+    pannello, con la fascia di ognuna.
+
+    E' la stessa finestra delle card del Report, solo disegnata invece che
+    raccontata: `_window` e `_band` sono quelle, non copie. `_window` conta
+    all'indietro da un estremo escluso, quindi si chiede il giorno dopo
+    `end`; l'ampiezza la controlla chi chiama (l'API rifiuta fuori da
+    `TREND_MIN_DAYS`-`TREND_MAX_DAYS`).
+
+    La fascia segue la finestra, perche' segue la serie su cui e' calcolata:
+    sotto `MIN_BAND_DAYS` giorni misurati `_band` da' `None` e la banda non
+    si disegna."""
+    if activities is None:
+        activities = list_activities(data_dir)
+    if health is None:
+        health = load_health_db(data_dir)
+
+    span = (end - start).days + 1
+    panels = []
+    for key, (title, series) in TREND_PANELS.items():
+        panels.append(
+            {
+                "key": key,
+                "title": title,
+                "series": [
+                    {
+                        "key": column,
+                        "label": label,
+                        "unit": unit,
+                        "digits": digits,
+                        "points": _trend_points(
+                            _window(health, column, end + timedelta(days=1), span), digits
+                        ),
+                        "band": _band(
+                            _window(health, column, end + timedelta(days=1), span),
+                            TREND_LIMITS.get(column, TREND_FLOOR),
+                            digits,
+                        ),
+                    }
+                    for column, label, unit, digits in series
+                ],
+            }
+        )
+    panels.append(_trend_training(activities, start, end))
+    return {
+        "from": start.isoformat(),
+        "to": end.isoformat(),
+        "days": span,
+        "min_band_days": MIN_BAND_DAYS,
+        "panels": panels,
+    }
+
+
 def _hr_zones(activities: pd.DataFrame, day: date) -> dict[str, Any] | None:
     """Le zone cardiache in bpm in vigore il giorno `day`: quelle dell'ultima
     attivita' a piedi fino a quel giorno che le ha salvate (l'orologio le scrive nel

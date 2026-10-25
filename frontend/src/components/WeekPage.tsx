@@ -196,7 +196,7 @@ export function WeekPage() {
 
   const changeWeek = (next: string) => {
     if (next === monday || next > currentMonday) return;
-    pushUrl({ page: "week", monday: next });
+    pushUrl({ period: "week", page: null, monday: next });
     setMonday(next);
   };
 
@@ -330,7 +330,8 @@ export function WeekPage() {
   // Un giorno della striscia, o una seduta, aprono la Day di quel giorno:
   // `pushUrl` cambia l'URL e avvisa `App`, che scambia la pagina senza
   // ricaricare niente.
-  const openDay = (day: string) => pushUrl({ page: null, monday: null, day });
+  const openDay = (day: string) =>
+    pushUrl({ period: null, page: null, view: null, monday: null, day });
 
   return (
     <>

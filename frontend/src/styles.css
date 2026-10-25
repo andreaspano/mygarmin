@@ -132,6 +132,20 @@ h2 {
   gap: 28px;
   overflow-x: auto;
 }
+/* I due menu incolonnati: il periodo sopra, la vista sotto (todo 55). */
+.topbar-menus {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.topbar-menus nav {
+  display: flex;
+  gap: 4px;
+}
+/* Activities non e' un periodo: sta fuori dalla griglia, a destra. */
+.topbar-aside {
+  margin-left: auto;
+}
 .brand {
   font-weight: 700;
   font-size: 1.1rem;
@@ -156,6 +170,53 @@ h2 {
 .tab.disabled {
   opacity: 0.55;
   cursor: default;
+}
+/* Su due righe le voci si stringono: la barra resta alta come prima. */
+.topbar-menus .tab {
+  padding: 10px 10px 4px;
+}
+.topbar-menus .tab.sub {
+  padding: 2px 10px 8px;
+  font-size: 0.82rem;
+}
+
+/* --- Il Trend della Day (todo 55) --- */
+
+/* Il cursore della finestra, con l'ampiezza e i due estremi accanto. */
+.trend-window {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin: 18px 0 6px;
+}
+.trend-slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.trend-slider input[type="range"] {
+  width: clamp(160px, 40vw, 420px);
+  accent-color: var(--text);
+}
+.trend-range {
+  margin: 0;
+}
+.trend-panel {
+  margin-top: 18px;
+}
+/* I grafici di un pannello: due per riga dove ci stanno, uno su schermo
+   stretto. Ognuno ha il suo asse, nei numeri veri della sua misura. */
+.trend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px 24px;
+  margin-top: 10px;
+}
+.trend-chart {
+  margin: 0;
+  min-width: 0;
 }
 
 /* Intestazione del giorno */

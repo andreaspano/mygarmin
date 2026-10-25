@@ -172,6 +172,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/daily/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily trend series
+         * @description The daily series between two days, panel by panel, each with its band (todo 55).
+         *
+         *     The window is the one the Day cards already compare against, drawn instead of told.
+         *     It must be between 5 and 365 days wide.
+         */
+        get: operations["get_daily_trend_api_daily_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/daily/trend/chart/vega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily trend charts, Vega-Lite
+         * @description One panel's charts, ready to render: one Vega-Lite specification per measure.
+         *
+         *     One chart per measure and not per panel: inside a panel the measures do not share a
+         *     unit, and on a single axis the small one would read flat.
+         */
+        get: operations["get_daily_trend_charts_api_daily_trend_chart_vega_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/daily/{day}": {
         parameters: {
             query?: never;
@@ -1263,6 +1309,89 @@ export interface components {
              */
             as_of: string;
         };
+        /**
+         * TrendData
+         * @description The daily series between two days, panel by panel (todo 55).
+         */
+        TrendData: {
+            /**
+             * From
+             * Format: date
+             * @description First day, included.
+             */
+            from: string;
+            /**
+             * To
+             * Format: date
+             * @description Last day, included.
+             */
+            to: string;
+            /**
+             * Days
+             * @description Width of the window, in days.
+             */
+            days: number;
+            /**
+             * Min Band Days
+             * @description Measured days a band needs; under it there is none.
+             */
+            min_band_days: number;
+            /** Panels */
+            panels: components["schemas"]["TrendPanel"][];
+        };
+        /**
+         * TrendPanel
+         * @description One panel of the Trend, in the order of the Day cards.
+         */
+        TrendPanel: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /** Series */
+            series: components["schemas"]["TrendSeries"][];
+        };
+        /**
+         * TrendPoint
+         * @description One day of a trend series. `value` is null where the day has no measure: the line
+         *     breaks there instead of joining the two sides of a gap.
+         */
+        TrendPoint: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Value */
+            value: number | null;
+        };
+        /**
+         * TrendSeries
+         * @description One measure over the window, with the band it usually sits in.
+         */
+        TrendSeries: {
+            /**
+             * Key
+             * @description The column it is read from.
+             */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Unit
+             * @description Null for plain scores.
+             */
+            unit: string | null;
+            /**
+             * Digits
+             * @description Decimals the measure is worth.
+             */
+            digits: number;
+            /** Points */
+            points: components["schemas"]["TrendPoint"][];
+            /** @description Null under MIN_BAND_DAYS measured days, and for the Training panel. */
+            band: components["schemas"]["Band"] | null;
+        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -1763,6 +1892,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Route"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_daily_trend_api_daily_trend_get: {
+        parameters: {
+            query: {
+                /** @description First day, included. */
+                from: string;
+                /** @description Last day, included. */
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_daily_trend_charts_api_daily_trend_chart_vega_get: {
+        parameters: {
+            query: {
+                /** @description First day, included. */
+                from: string;
+                /** @description Last day, included. */
+                to: string;
+                panel: string;
+                theme?: "light" | "dark";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
             /** @description Validation Error */

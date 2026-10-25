@@ -42,10 +42,17 @@ from training.api.models import (
     Sport,
     SportList,
     TerrainUpdate,
+    TrendData,
     WeeklyData,
     ZoneBand,
 )
-from training.interface.daily_data import build_daily_data, fitness_on
+from training.interface.daily_data import (
+    TREND_MAX_DAYS,
+    TREND_MIN_DAYS,
+    build_daily_data,
+    fitness_on,
+    trend_data,
+)
 from training.interface.db import _clean, load_activity_records
 from training.interface.health import load_lactate_threshold
 from training.interface.report_text import parse_report, section_icon
@@ -56,6 +63,7 @@ from training.interface.run_chart import (
     has_effects,
     pauses,
     run_analysis_chart,
+    trend_panel_charts,
     week_sports_chart,
     zone_bands,
     zone_settings,
@@ -252,6 +260,60 @@ def get_activity_route(
         keep = list(range(0, len(points) - 1, step)) + [len(points) - 1]
         points = points[np.array(keep)]
     return Route(points=[(float(lat), float(lon)) for lat, lon in points])
+
+
+def _trend_window(start: date, end: date) -> int:
+    """L'ampiezza della finestra in giorni, o 422 se gli estremi non stanno
+    in piedi. Stesso stile del lunedi' di `/api/weekly/{monday}`: la pagina
+    non deve poter chiedere una finestra che non si disegna."""
+    if start > end:
+        raise HTTPException(status_code=422, detail=f"{start} comes after {end}.")
+    if end > date.today():
+        raise HTTPException(status_code=422, detail=f"{end} is in the future.")
+    days = (end - start).days + 1
+    if not TREND_MIN_DAYS <= days <= TREND_MAX_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"The window is {days} days: it must be between {TREND_MIN_DAYS} and {TREND_MAX_DAYS}.",
+        )
+    return days
+
+
+# Prima di `/api/daily/{day}`: le rotte si provano nell'ordine in cui sono
+# scritte, e "trend" finirebbe dentro `{day}` come data non valida.
+@app.get("/api/daily/trend", response_model=TrendData, summary="Daily trend series")
+def get_daily_trend(
+    ctx: Context,
+    start: Annotated[date, Query(alias="from", description="First day, included.")],
+    end: Annotated[date, Query(alias="to", description="Last day, included.")],
+) -> TrendData:
+    """The daily series between two days, panel by panel, each with its band (todo 55).
+
+    The window is the one the Day cards already compare against, drawn instead of told.
+    It must be between 5 and 365 days wide."""
+    _trend_window(start, end)
+    data = trend_data(start, end, ctx.data_dir, load_activities(ctx.data_dir), load_health(ctx.data_dir))
+    return TrendData(**data)
+
+
+@app.get("/api/daily/trend/chart/vega", summary="Daily trend charts, Vega-Lite")
+def get_daily_trend_charts(
+    ctx: Context,
+    start: Annotated[date, Query(alias="from", description="First day, included.")],
+    end: Annotated[date, Query(alias="to", description="Last day, included.")],
+    panel: str,
+    theme: Literal["light", "dark"] = "light",
+) -> list[dict[str, Any]]:
+    """One panel's charts, ready to render: one Vega-Lite specification per measure.
+
+    One chart per measure and not per panel: inside a panel the measures do not share a
+    unit, and on a single axis the small one would read flat."""
+    days = _trend_window(start, end)
+    data = trend_data(start, end, ctx.data_dir, load_activities(ctx.data_dir), load_health(ctx.data_dir))
+    for item in data["panels"]:
+        if item["key"] == panel:
+            return trend_panel_charts(item, days, theme)
+    raise HTTPException(status_code=404, detail=f"No panel named {panel!r}.")
 
 
 @app.get("/api/daily/{day}", response_model=DailyData, summary="Daily data")

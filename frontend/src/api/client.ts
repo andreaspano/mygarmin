@@ -17,12 +17,20 @@ export type Route = Schemas["Route"];
 export type Sport = Schemas["Sport"];
 export type SportList = Schemas["SportList"];
 export type WeeklyData = Schemas["WeeklyData"];
+export type TrendData = Schemas["TrendData"];
+export type TrendPanel = Schemas["TrendPanel"];
+export type TrendSeries = Schemas["TrendSeries"];
 export type WeekMeasure = Schemas["WeekMeasure"];
 export type Terrain = NonNullable<Activity["terrain"]>;
 export type RunType = NonNullable<Activity["run_type"]>;
 
 // La specifica Vega-Lite del grafico non ha un modello: e' quella di Altair.
 export type VegaSpec = Record<string, unknown>;
+
+// Un grafico del Trend (todo 55): la specifica, piu' da che misura viene.
+// Scritto a mano per lo stesso motivo di `VegaSpec`: dentro c'e' una
+// specifica di Altair, che un modello non ce l'ha.
+export type TrendChart = { key: string; label: string; spec: VegaSpec };
 
 export class ApiError extends Error {
   constructor(
@@ -132,6 +140,24 @@ export const api = {
   ) =>
     getOrNull<VegaSpec>(
       `/api/weekly/${monday}/chart/vega?theme=${theme}`,
+      signal,
+    ),
+
+  // Le serie giornaliere fra due giorni compresi (todo 55). La finestra sta
+  // fra 5 e 365 giorni: fuori, l'API risponde 422.
+  trend: (from: string, to: string, signal?: AbortSignal) =>
+    getJson<TrendData>(`/api/daily/trend?from=${from}&to=${to}`, signal),
+
+  // I grafici di un pannello, uno per misura, gia' pronti da disegnare.
+  trendCharts: (
+    from: string,
+    to: string,
+    panel: string,
+    theme: "light" | "dark",
+    signal?: AbortSignal,
+  ) =>
+    getJson<TrendChart[]>(
+      `/api/daily/trend/chart/vega?from=${from}&to=${to}&panel=${panel}&theme=${theme}`,
       signal,
     ),
 

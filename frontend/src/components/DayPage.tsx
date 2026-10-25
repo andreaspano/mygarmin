@@ -9,11 +9,17 @@
 // Il giorno sta nell'URL (`?day=2026-10-07`): un giorno si apre da un link e
 // il tasto indietro torna a quello prima. Senza router: `URLSearchParams` e
 // `history.pushState`.
-import { useEffect, useMemo, useState } from "react";
+//
+// Dal todo 55 la pagina ha due viste, che il menu sceglie con `?view=`: il
+// Report (le card) e il Trend (i grafici della finestra scelta col cursore).
+// L'intestazione e la scelta del giorno sono le stesse, che il giorno serve
+// a tutte e due.
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon, sectionWrittenAt } from "../markdown";
+import { daysFromUrl, type View } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { DayHeader } from "./DayHeader";
 import { FitnessCard } from "./FitnessCard";
@@ -25,6 +31,7 @@ import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { TrainingCard } from "./TrainingCard";
+import { TrendPanels } from "./TrendPanels";
 import { WeekStrip } from "./WeekStrip";
 
 // La striscia: otto giorni. Finisce oggi finche' il giorno scelto ci sta
@@ -52,10 +59,11 @@ const API_DOWN = "Cannot reach the API. Is it running (make api)?";
 // Ogni quanto si chiede lo stato del Refresh mentre gira.
 const REFRESH_POLL_MS = 3000;
 
-export function DayPage() {
+export function DayPage({ view = "report" }: { view?: View }) {
   const theme = useColorScheme();
   const now = today();
   const [day, setDay] = useState(() => dayFromUrl(now));
+  const [days, setDays] = useState(() => daysFromUrl());
   const [sportList, setSportList] = useState<SportList | null>(null);
   const [stripActivities, setStripActivities] = useState<Activity[]>([]);
   const [data, setData] = useState<DailyData | null>(null);
@@ -103,8 +111,22 @@ export function DayPage() {
     setDay(next);
   };
 
+  // L'ampiezza del Trend va nell'URL, cosi' un link se la porta dietro, ma
+  // **senza lasciare una voce nella cronologia**: il cursore ne
+  // attraverserebbe decine, e il tasto indietro non tornerebbe piu' al
+  // giorno di prima.
+  const changeDays = useCallback((next: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("days", String(next));
+    window.history.replaceState(window.history.state, "", url);
+    setDays(next);
+  }, []);
+
   useEffect(() => {
-    const onPop = () => setDay(dayFromUrl(today()));
+    const onPop = () => {
+      setDay(dayFromUrl(today()));
+      setDays(daysFromUrl());
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
@@ -158,6 +180,7 @@ export function DayPage() {
   }, [stripStart, stripEnd, reloads]);
 
   useEffect(() => {
+    if (view !== "report") return;
     const controller = new AbortController();
     setData(null);
     setReport(null);
@@ -170,11 +193,11 @@ export function DayPage() {
       .then(setReport)
       .catch((e: unknown) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, [day, reloads]);
+  }, [day, reloads, view]);
 
   useEffect(() => {
-    document.title = `Training · ${day}`;
-  }, [day]);
+    document.title = view === "trend" ? `Training · ${day} · Trend` : `Training · ${day}`;
+  }, [day, view]);
 
   const dayActivities = useMemo(
     () =>
@@ -196,7 +219,7 @@ export function DayPage() {
 
   return (
     <>
-      <TopBar />
+      <TopBar view={view} />
       <main className="page">
         <DayHeader
           day={day}
@@ -231,6 +254,10 @@ export function DayPage() {
             {refresh.download.message && ` ${refresh.download.message}`}
           </p>
         )}
+        {view === "trend" ? (
+          <TrendPanels day={day} days={days} onDays={changeDays} theme={theme} />
+        ) : (
+        <>
         <div className="head-row">
           <NextCard
             body={sectionBody(report, "Next")}
@@ -306,6 +333,8 @@ export function DayPage() {
           refresh={sectionButton("training")}
         />
         {dataNote && <p className="caption">{dataNote}</p>}
+        </>
+        )}
       </main>
     </>
   );
