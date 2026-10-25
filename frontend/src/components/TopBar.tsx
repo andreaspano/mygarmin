@@ -1,5 +1,5 @@
 // La barra in alto (todo 34): il nome dell'app e le pagine. Dal todo 51 la
-// Day e la Week sono collegamenti veri; Month, Recovery e Activities si
+// Day e la Week sono collegamenti veri; Month e Activities si
 // vedono ancora disattivate, per dare la forma della barra. "Profile" non
 // c'e' finche' non c'e' il login.
 import { hrefFor, type Page } from "../navigation";
@@ -8,7 +8,7 @@ const PRONTE: { page: Page; label: string }[] = [
   { page: "day", label: "Day" },
   { page: "week", label: "Week" },
 ];
-const DA_FARE = ["Month", "Recovery", "Activities"];
+const DA_FARE = ["Month", "Activities"];
 
 export function TopBar({ current = "day" }: { current?: Page }) {
   return (
