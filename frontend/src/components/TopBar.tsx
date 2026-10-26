@@ -36,7 +36,6 @@ export function TopBar({
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <span className="brand">Training</span>
         <div className="topbar-menus">
           <nav aria-label="Periods">
             {PERIODI.map(({ page, label }) => (
