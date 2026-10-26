@@ -14,7 +14,7 @@ import type { Result, VisualizationSpec } from "vega-embed";
 
 import { api, iconUrl, isAbort, type TrendChart, type TrendData } from "../api/client";
 import { addDays, shortDayLabel } from "../format";
-import { MAX_DAYS, MIN_DAYS } from "../navigation";
+import { MAX_DAYS, MIN_DAYS, pushUrl } from "../navigation";
 import type { ColorScheme } from "../useColorScheme";
 import { themeConfig } from "./RunChart";
 
@@ -37,6 +37,32 @@ function rangeLabel(from: string, to: string): string {
   return `${shortDayLabel(from)}${anno} \u2013 ${shortDayLabel(to)}`;
 }
 
+/** Il giorno sotto il cursore, da un clic nel grafico.
+ *
+ * Non si guarda **su quale segno** si e' cliccato: a 365 giorni la linea e'
+ * spessa due pixel e i pallini non ci sono nemmeno, e colpirli sarebbe un
+ * gioco di mira. Si prende invece la x del clic e si chiede alla scala che
+ * giorno sia (`scale.invert`), cosi' vale tutta l'altezza della colonna di
+ * quel giorno, a qualunque ampiezza.
+ *
+ * `null` se il clic cade fuori dall'area disegnata (sui numeri dell'asse,
+ * nel margine) o se la scala non e' ancora pronta. */
+function dayAt(view: Result["view"], box: HTMLElement, event: MouseEvent): string | null {
+  const scale = view.scale("x");
+  const plot = box.querySelector("svg")?.getBoundingClientRect();
+  if (!scale || !plot) return null;
+  const [originX] = view.origin();
+  const x = event.clientX - plot.left - originX;
+  const [from, to] = scale.range() as [number, number];
+  if (x < from || x > to) return null;
+  const value = scale.invert(x) as Date;
+  if (!(value instanceof Date) || Number.isNaN(value.getTime())) return null;
+  // Il giorno locale, non quello UTC: `toISOString` su una mezzanotte
+  // italiana d'estate tornerebbe il giorno prima.
+  const giorno = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
+  return giorno.toISOString().slice(0, 10);
+}
+
 function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
@@ -54,7 +80,18 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
           renderer: "svg",
           config: themeConfig(theme),
         });
-        if (cancelled) view.finalize();
+        if (cancelled) {
+          view.finalize();
+          return;
+        }
+        // Un clic nel grafico apre il Report di quel giorno. `pushUrl`
+        // avvisa chi segue l'URL, quindi la pagina si scambia da sola
+        // senza ricaricare, e il tasto indietro torna al Trend.
+        view.view.addEventListener("click", (event) => {
+          if (!box.current || !view) return;
+          const day = dayAt(view.view, box.current, event as MouseEvent);
+          if (day) pushUrl({ day, view: null });
+        });
       } catch (error) {
         console.error(error);
         if (!cancelled) setFailed(true);
