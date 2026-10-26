@@ -74,10 +74,16 @@ export function RangeBar({
   const pad = (outerHigh - outerLow) * 0.12;
   // Lo stesso margine anche attorno a un valore fuori dalla fascia: senza,
   // la tacca finiva esattamente sul bordo della traccia e si vedeva a meta'
-  // (il carico anaerobico, molto sotto il bersaglio di Garmin).
+  // (il carico anaerobico, molto sotto la sua fascia).
   const min = Math.min(outerLow, value ?? outerLow) - pad;
   const max = Math.max(outerHigh, value ?? outerHigh) + pad;
-  const at = (v: number) => `${((v - min) / (max - min)) * 100}%`;
+  // Una misura ferma sullo stesso valore per tutta la finestra ha scarto
+  // tipo zero: fascia e valore cadono tutti nello stesso punto e la scala
+  // sarebbe larga zero (una divisione per zero, e il CSS con "NaN%" dentro
+  // non si applica). Capita al carico anaerobico di chi non supera mai la
+  // soglia: in quel caso la barra e' tutta nel mezzo.
+  const at = (v: number) =>
+    max === min ? "50%" : `${((v - min) / (max - min)) * 100}%`;
   const span = (a: number, b: number) => ({
     left: at(a),
     width: `calc(${at(b)} - ${at(a)})`,

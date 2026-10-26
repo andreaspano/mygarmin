@@ -794,10 +794,10 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
         # Due rettangoli senza `x`: presi per tutta la larghezza, come le
         # fasce delle barre della Day. Il piu' largo (due scarti tipo) sotto
         # e piu' chiaro, quello stretto sopra.
-        # Il bersaglio di Garmin ha **un livello solo** (`outer` coincide con
-        # gli estremi): disegnarlo due volte lo scurirebbe e basta, quindi il
-        # rettangolo largo si salta. E' lo stesso motivo per cui nella card
-        # quelle barre non hanno la tinta piu' chiara.
+        # Una fascia a **un livello solo** (`outer` coincide con gli estremi,
+        # cioe' scarto tipo zero: una misura ferma su un valore per tutta la
+        # finestra) si disegna una volta: due rettangoli uguali sovrapposti
+        # la scurirebbero e basta.
         un_livello = (
             banda.get("outer_low") == banda.get("low")
             and banda.get("outer_high") == banda.get("high")
@@ -887,12 +887,6 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
         width="container",
         title=alt.TitleParams(
             series["label"],
-            # Dove la fascia non e' la solita media, lo dice qui sotto:
-            # senza, la stessa barra significherebbe due cose nello stesso
-            # pannello senza che si veda.
-            subtitle=series.get("band_label") or "",
-            subtitleColor=palette_muted(theme),
-            subtitleFontSize=10,
             anchor="start",
             fontSize=11,
             offset=6,
