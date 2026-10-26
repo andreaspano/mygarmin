@@ -622,3 +622,37 @@ class DailyData(BaseModel):
     hr_zones: dict[str, Any] | None
     missing: list[str]
     fitness: Fitness
+
+
+# I piani di allenamento scritti a mano in `plan/`: il front matter da' i
+# numeri dei riquadri, il Markdown il testo. Tutti i campi del front matter
+# sono facoltativi: un piano senza front matter si vede comunque, col solo
+# testo (`api/plans.py`).
+class PlanSummary(BaseModel):
+    """One training plan, without its text: what the picker needs."""
+
+    slug: str = Field(description="The file name without `.md`: the plan's id in the URL.")
+    file: str = Field(description="The file name in `plan/`.")
+    title: str = Field(description="The first heading of the text, or the slug when it has none.")
+    race: date | None = Field(description="Race day.")
+    race_name: str | None
+    distance_km: float | None
+    target_time: str | None = Field(description='Target finishing time, as written ("2:20:00").')
+    target_pace: str | None = Field(description='Target pace per kilometre, as written ("6:38").')
+    target_speed_kmh: float | None
+    block_start: date | None = Field(description="First day of the block.")
+    weeks: int | None = Field(description="How many weeks the block lasts.")
+    peak_weekly_km: float | None = Field(description="The heaviest week of the block.")
+    written_at: datetime | None = Field(description="When the file was last written.")
+
+
+class Plan(PlanSummary):
+    """One training plan, with its text."""
+
+    body: str = Field(description="Markdown, without the front matter and without the title.")
+
+
+class PlanList(BaseModel):
+    """The plans in `plan/`, the nearest race first."""
+
+    plans: list[PlanSummary]

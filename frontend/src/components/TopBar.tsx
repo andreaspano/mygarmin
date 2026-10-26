@@ -5,6 +5,10 @@
 // stavano in fila come se fossero la stessa cosa. Activities non e' un
 // periodo e sta a destra, staccata, ancora disattivata.
 //
+// A destra sta anche **Plan**, per lo stesso motivo: un piano non e' un
+// periodo. Non guarda indietro a un giorno o a una settimana, guarda avanti
+// a una gara, e dura quanto dura il blocco.
+//
 // Niente voci grigie nei due menu: Month e Year si aggiungono quando
 // esistono, non prima. Resta disattivata solo Activities, che la forma della
 // barra ce l'ha gia'.
@@ -64,9 +68,18 @@ export function TopBar({
             </nav>
           )}
         </div>
-        <span className="tab disabled topbar-aside" aria-disabled="true" title="Coming soon">
-          Activities
-        </span>
+        <nav aria-label="Other pages" className="topbar-aside">
+          <a
+            className={current === "plan" ? "tab active" : "tab"}
+            href={hrefFor("plan")}
+            aria-current={current === "plan" ? "page" : undefined}
+          >
+            Plan
+          </a>
+          <span className="tab disabled" aria-disabled="true" title="Coming soon">
+            Activities
+          </span>
+        </nav>
       </div>
     </header>
   );

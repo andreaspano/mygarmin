@@ -23,6 +23,31 @@ written every evening and knows things you cannot know on a Sunday.
 If `hr_zones` is in the facts file you may name a zone, never a bpm number:
 the day's Next does that, with the data of that morning.
 
+## When the prompt names a plan
+
+Some weeks have a written plan in `summary/05.plan/<monday>.md`, and the
+prompt names the file. Then **the plan is the default shape of the week**:
+read it, and write its week — the sessions it lists, its volume, where it
+puts the long one and where the quality goes.
+
+You are still the one who decides, and the sections are what you decide
+from. So:
+
+- **The sections agree with the plan** — write the planned week, and say it
+  is the planned one in a few words (`the plan's build week`). Keep the shape
+  of the bullets: one per session or kind of session, not a copy of the
+  plan's table.
+- **The sections disagree** — change it, and **say what you cut and why** in
+  one clause: volume down 30%, the quality session dropped, the long run
+  shortened. A week quietly different from the plan is a plan nobody is
+  following.
+- **The week is a down week in the plan** — it stays a down week, even if
+  everything reads well. Down weeks are where the work before them turns
+  into fitness.
+
+Name the block, once, when the plan has one: `week 6 of 18`. It tells him
+where he is, and no other section can say it.
+
 ## Shape, exactly — the page shows the three parts apart
 
 1. A title alone on the first line, in bold, a few words naming the week:

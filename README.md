@@ -17,7 +17,8 @@ qualunque sia la cartella da cui si lancia il comando.
 
 Un'API (FastAPI) espone i dati della pagina Day: attivita',
 dettaglio, dati e specifica Vega-Lite del grafico, traccia, i fatti del
-giorno e il report giornaliero. Si lancia con:
+giorno e il report giornaliero, piu' i piani di allenamento di `plan/`. Si
+lancia con:
 
 ```bash
 make api
@@ -96,8 +97,9 @@ report giornaliero non legge nessuna delle tre.
 La barra in alto ha **due menu su due righe** (todo 55): sopra il periodo —
 la **Day** e la **Week** — sotto che cosa se ne guarda, **Report** o
 **Trend**. Sono due assi, non una fila sola: Activities non e' un periodo e
-sta a destra, staccata e ancora grigia. Month e Year si aggiungeranno quando
-esisteranno, non prima.
+sta a destra, staccata e ancora grigia. Accanto a lei, a destra per lo stesso
+motivo, c'e' **Plan**: un piano guarda avanti a una gara, non indietro a un
+giorno. Month e Year si aggiungeranno quando esisteranno, non prima.
 
 L'URL dice i due assi: `?period=` e `?view=`, piu' i parametri della pagina
 (`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90`
@@ -242,6 +244,79 @@ report si scrive sui dati locali **e la pagina lo dice**, e il login si rifa'
 da terminale con `make update_activity`. I report scritti prima del todo 44
 stanno ancora nel file unico `summary/01.daily/<giorno>.md` e si continuano a
 leggere da li'.
+
+### I piani di allenamento
+
+In `plan/` stanno i piani scritti a mano: un file Markdown per piano, e la
+pagina **Plan** li mostra tutti, la gara piu' vicina per prima. Nessun elenco
+nel codice — un file nuovo nella cartella si vede ricaricando la pagina — e
+nessun agente: questi li scrive una persona, mentre `summary/` lo riscrivono
+gli agenti. Per questo `plan/` sta nel repo e `summary/` no.
+
+Davanti al testo c'e' un front matter YAML, nello spirito del todo 14 ma per
+un blocco intero invece che per una settimana: le chiavi dicono la gara, non
+le sedute.
+
+```yaml
+---
+race: 2027-02-28
+race_name: mezza maratona (da scegliere)
+distance_km: 21.097
+target_time: "2:20:00"
+target_pace_min_km: "6:38"
+target_speed_kmh: 9.04
+block_start: 2026-10-26
+block_weeks: 18
+peak_weekly_km: 46
+---
+```
+
+Da quelle chiavi la pagina ricava i riquadri in cima (la gara, quanti giorni
+mancano, il bersaglio, il ritmo, la velocita', la settimana piu' pesante);
+tutto il resto e' il testo. **Il front matter non e' obbligatorio**: un file
+che non ce l'ha si vede comunque, col solo testo e i riquadri vuoti. Un piano
+invisibile perche' gli manca una chiave sarebbe peggio di un piano senza
+numeri. I bersagli con i due punti vanno fra apici, se no YAML li legge come
+minuti.
+
+Il titolo non sta nel front matter: e' il primo `# ...` del testo, che la
+pagina si prende per la sua intestazione e toglie dal corpo. Senza titolo
+resta il nome del file.
+
+Due endpoint, entrambi in sola lettura: `GET /api/plans` da' l'elenco senza i
+testi, quello che serve al selettore, e `GET /api/plans/<slug>` un piano col
+suo Markdown. Lo `slug` e' il nome del file senza `.md` (`?plan=` nell'URL), e
+si cerca fra i file trovati invece di essere attaccato a un percorso: non puo'
+uscire da `plan/`.
+
+Il Markdown dei piani ha **titoli e tabelle**, che i report non hanno — un
+piano e' quasi tutto tabelle, le settimane e i ritmi — e `src/markdown.tsx` li
+converte come il resto, senza una libreria in piu'. Le tabelle larghe scorrono
+da sole dentro il loro riquadro: scorre la tabella, non la pagina.
+
+### Il piano dentro i report
+
+I piani di `plan/` sono il blocco; le sedute giorno per giorno stanno in
+`summary/05.plan/`, un file per settimana col nome del lunedi', col front
+matter del todo 14 e la tabella dei sette giorni. Il formato e' documentato in
+`summary/05.plan/README.md`.
+
+**Next li legge.** Quando esiste il file della settimana per cui sta
+prescrivendo, l'orchestratore (`_week_plan` in `api/refresh.py`) lo nomina nel
+prompt, e per l'agente la seduta prevista e' il punto di partenza: la
+prescrive com'e' se le sezioni sono d'accordo, la cambia se non lo sono — e
+allora **deve dire cosa ha cambiato e perche'**. Una settimana che si discosta
+dal piano in silenzio e' un piano che nessuno segue.
+
+La data che conta non e' quella del report: **il Next della sera parla di
+domani**, e quello della settimana della settimana che comincia il giorno dopo
+(`_next_subject`). La domenica sera la riga da leggere sta quindi nel file
+della settimana successiva, non in quello del report. Le altre sezioni il
+piano non lo vedono: raccontano com'e' andata, e quello che era previsto non
+cambia i loro numeri.
+
+Nessun file, nessuna frase nel prompt: i giorni fuori da un blocco si
+scrivono come prima, dalle sole sezioni.
 
 ### I due giri dei timer
 

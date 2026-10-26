@@ -14,6 +14,9 @@ from training.garmin.config import DATA_DIR
 # l'API non deve dipendere dalla cartella da cui si lancia.
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SUMMARY_DIR = REPO_ROOT / "summary"
+# I piani di allenamento, scritti a mano: a differenza di `summary/`, che lo
+# riscrivono gli agenti, questi stanno nel repo.
+PLAN_DIR = REPO_ROOT / "plan"
 # Le icone sono del repo, non dell'utente: uguali per tutti.
 ICONS_DIR = REPO_ROOT / "icons"
 
@@ -22,7 +25,8 @@ ICONS_DIR = REPO_ROOT / "icons"
 class UserContext:
     data_dir: Path
     summary_dir: Path
+    plan_dir: Path
 
 
 def get_user_context() -> UserContext:
-    return UserContext(data_dir=DATA_DIR, summary_dir=SUMMARY_DIR)
+    return UserContext(data_dir=DATA_DIR, summary_dir=SUMMARY_DIR, plan_dir=PLAN_DIR)

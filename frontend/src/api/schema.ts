@@ -418,6 +418,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List training plans
+         * @description The training plans written by hand in `plan/`, the nearest race first, without their
+         *     text.
+         *
+         *     Every plan in the folder is listed, front matter or not: a plan the page cannot show is
+         *     worse than a plan without its numbers.
+         */
+        get: operations["get_plans_api_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/plans/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Training plan
+         * @description One training plan, with its Markdown text: the front matter and the title are not in
+         *     it, they come back as fields.
+         *
+         *     `slug` is the file name without `.md`, and it is looked up among the plans found, never
+         *     joined onto a path: a slug cannot walk out of `plan/`.
+         */
+        get: operations["get_plan_api_plans__slug__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/refresh": {
         parameters: {
             query?: never;
@@ -1010,6 +1058,143 @@ export interface components {
             start: number;
             /** End */
             end: number;
+        };
+        /**
+         * Plan
+         * @description One training plan, with its text.
+         */
+        Plan: {
+            /**
+             * Slug
+             * @description The file name without `.md`: the plan's id in the URL.
+             */
+            slug: string;
+            /**
+             * File
+             * @description The file name in `plan/`.
+             */
+            file: string;
+            /**
+             * Title
+             * @description The first heading of the text, or the slug when it has none.
+             */
+            title: string;
+            /**
+             * Race
+             * @description Race day.
+             */
+            race: string | null;
+            /** Race Name */
+            race_name: string | null;
+            /** Distance Km */
+            distance_km: number | null;
+            /**
+             * Target Time
+             * @description Target finishing time, as written ("2:20:00").
+             */
+            target_time: string | null;
+            /**
+             * Target Pace
+             * @description Target pace per kilometre, as written ("6:38").
+             */
+            target_pace: string | null;
+            /** Target Speed Kmh */
+            target_speed_kmh: number | null;
+            /**
+             * Block Start
+             * @description First day of the block.
+             */
+            block_start: string | null;
+            /**
+             * Weeks
+             * @description How many weeks the block lasts.
+             */
+            weeks: number | null;
+            /**
+             * Peak Weekly Km
+             * @description The heaviest week of the block.
+             */
+            peak_weekly_km: number | null;
+            /**
+             * Written At
+             * @description When the file was last written.
+             */
+            written_at: string | null;
+            /**
+             * Body
+             * @description Markdown, without the front matter and without the title.
+             */
+            body: string;
+        };
+        /**
+         * PlanList
+         * @description The plans in `plan/`, the nearest race first.
+         */
+        PlanList: {
+            /** Plans */
+            plans: components["schemas"]["PlanSummary"][];
+        };
+        /**
+         * PlanSummary
+         * @description One training plan, without its text: what the picker needs.
+         */
+        PlanSummary: {
+            /**
+             * Slug
+             * @description The file name without `.md`: the plan's id in the URL.
+             */
+            slug: string;
+            /**
+             * File
+             * @description The file name in `plan/`.
+             */
+            file: string;
+            /**
+             * Title
+             * @description The first heading of the text, or the slug when it has none.
+             */
+            title: string;
+            /**
+             * Race
+             * @description Race day.
+             */
+            race: string | null;
+            /** Race Name */
+            race_name: string | null;
+            /** Distance Km */
+            distance_km: number | null;
+            /**
+             * Target Time
+             * @description Target finishing time, as written ("2:20:00").
+             */
+            target_time: string | null;
+            /**
+             * Target Pace
+             * @description Target pace per kilometre, as written ("6:38").
+             */
+            target_pace: string | null;
+            /** Target Speed Kmh */
+            target_speed_kmh: number | null;
+            /**
+             * Block Start
+             * @description First day of the block.
+             */
+            block_start: string | null;
+            /**
+             * Weeks
+             * @description How many weeks the block lasts.
+             */
+            weeks: number | null;
+            /**
+             * Peak Weekly Km
+             * @description The heaviest week of the block.
+             */
+            peak_weekly_km: number | null;
+            /**
+             * Written At
+             * @description When the file was last written.
+             */
+            written_at: string | null;
         };
         /** Range */
         Range: {
@@ -2248,6 +2433,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RefreshStatus"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plans_api_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlanList"];
+                };
+            };
+        };
+    };
+    get_plan_api_plans__slug__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
                 };
             };
             /** @description Validation Error */

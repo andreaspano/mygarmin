@@ -13,6 +13,9 @@ export type RefreshStatus = Schemas["RefreshStatus"];
 export type SectionRefresh = Schemas["SectionRefresh"];
 export type Report = Schemas["Report"];
 export type ReportSection = Schemas["ReportSection"];
+export type Plan = Schemas["Plan"];
+export type PlanSummary = Schemas["PlanSummary"];
+export type PlanList = Schemas["PlanList"];
 export type Route = Schemas["Route"];
 export type Sport = Schemas["Sport"];
 export type SportList = Schemas["SportList"];
@@ -184,6 +187,14 @@ export const api = {
 
   startWeeklySectionRefresh: (monday: string, section: string) =>
     postJson<RefreshStatus>(`/api/reports/weekly/${monday}/refresh/${section}`),
+
+  // I piani di `plan/`, la gara piu' vicina per prima, senza il testo.
+  plans: (signal?: AbortSignal) => getJson<PlanList>("/api/plans", signal),
+
+  // Un piano col suo testo. `null` quando lo slug non e' fra i file: capita
+  // con un link vecchio, o con un piano rinominato.
+  plan: (slug: string, signal?: AbortSignal) =>
+    getOrNull<Plan>(`/api/plans/${encodeURIComponent(slug)}`, signal),
 
   // Lo stato del lavoro in corso, di qualunque tipo: `kind` dice se e' il
   // report di un giorno o di una settimana, e le chiavi delle sezioni

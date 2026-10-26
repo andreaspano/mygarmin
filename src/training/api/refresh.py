@@ -73,6 +73,10 @@ MESSAGE_LINES = 5
 # con il flag risponde la parola del file, senza no.
 STYLE_FILE = ".claude/agents/_style.md"
 
+# I piani settimanali scritti a mano (todo 14): un file per settimana, col
+# nome del lunedi'. Li legge solo Next.
+PLAN_FOLDER = "05.plan"
+
 _lock = threading.Lock()
 
 # Il guardiano "un lavoro alla volta" di `_state` vale dentro **un processo
@@ -267,11 +271,12 @@ def _run(
             else:
                 folder = Path(summary_dir) / kind.folder / subject.isoformat()
                 folder.mkdir(parents=True, exist_ok=True)
+                plan = _week_plan(Path(summary_dir), _next_subject(kind, subject, moment))
                 for section in sections:
                     began = datetime.now()
                     _set(section.key, status="running", started=began, finished=None, message=None)
                     good, problem = _write_section(
-                        kind, section, subject, moment, repo_root, facts, folder, began
+                        kind, section, subject, moment, repo_root, facts, folder, began, plan
                     )
                     _set(
                         section.key,
@@ -355,10 +360,62 @@ def _prepare(
     return True, None, download
 
 
+def _next_subject(kind: Report, subject: date, moment: str) -> date:
+    """Il periodo per cui Next prescrive, **che non e' quello del report**.
+
+    Il Next della sera parla di domani, e quello della settimana della
+    settimana che comincia il giorno dopo: sta nella chiusura della domenica
+    (`WEEK_MOMENT_SECTIONS`), non nell'apertura. Il piano da leggere e' quello
+    di quel giorno — la domenica sera la riga che serve e' nel file della
+    settimana dopo, non in quello del report."""
+    if kind is WEEKLY:
+        return subject + timedelta(days=7)
+    return subject if moment == "morning" else subject + timedelta(days=1)
+
+
+def _week_plan(summary_dir: Path, day: date) -> Path | None:
+    """Il file del piano della settimana di `day`, se c'e'.
+
+    I piani settimanali stanno in `summary/05.plan/`, col nome del lunedi'
+    (todo 14). Next e' l'unica sezione che li legge: e' quella che prescrive
+    una seduta, e prescriverne una diversa da quella prevista senza saperlo
+    e' il modo di avere un piano che nessuno segue. Niente file, nessuna
+    frase nel prompt: un piano che non c'e' non deve diventare un'istruzione
+    da inventare."""
+    monday = day - timedelta(days=day.weekday())
+    path = summary_dir / PLAN_FOLDER / f"{monday.isoformat()}.md"
+    return path if path.exists() else None
+
+
 def _prompt(
-    kind: Report, section: Section, subject: date, moment: str, facts: Path, folder: Path
+    kind: Report,
+    section: Section,
+    subject: date,
+    moment: str,
+    facts: Path,
+    folder: Path,
+    plan: Path | None = None,
 ) -> str:
     where = f"Write the body of the section (no `## ` heading) to {folder / f'{section.key}.md'}."
+    # Il piano va solo a Next: le altre sezioni raccontano com'e' andata, e
+    # quello che era previsto non cambia i loro numeri.
+    # Al giorno interessa la seduta di quella data, alla settimana la forma
+    # dei sette giorni: la stessa frase per entrambi direbbe una cosa falsa a
+    # uno dei due. La data e' quella per cui Next prescrive, non quella del
+    # report: la sera e' domani.
+    for_day = _next_subject(kind, subject, moment)
+    asks = (
+        f"the session it lists for {for_day.isoformat()}"
+        if kind is DAILY
+        else "the shape of the week it lays out"
+    )
+    planned = (
+        f"The plan for the week you are prescribing for is in {plan}: read it, and take "
+        f"{asks} as the default — depart from it only if the sections give you a reason, "
+        f"and say so when you do. "
+        if plan is not None and section.key == "next"
+        else ""
+    )
     when = kind.moment_lines[moment]
     period = kind.period(subject)
     if section.key == "summary_start":
@@ -378,7 +435,7 @@ def _prompt(
             f"Write the {section.title} part of the {kind.what} for {period}. "
             f"{when} "
             f"The other sections are already written in {folder}: read them, they are your "
-            f"input. The facts, if you need them, are in {facts}. {where}"
+            f"input. {planned}The facts, if you need them, are in {facts}. {where}"
         )
     return (
         f"Write the {section.title} section of the {kind.what} for {period}. "
@@ -396,6 +453,7 @@ def _write_section(
     facts: Path,
     folder: Path,
     began: datetime,
+    plan: Path | None = None,
 ) -> tuple[bool, str | None]:
     claude = shutil.which("claude")
     if claude is None:
@@ -404,7 +462,7 @@ def _write_section(
         claude, "-p", "--agent", section.agent,
         "--append-system-prompt-file", str(repo_root / STYLE_FILE),
         "--allowedTools", *_allowed_tools(kind),
-        "--", _prompt(kind, section, subject, moment, facts, folder),
+        "--", _prompt(kind, section, subject, moment, facts, folder, plan),
     ]
     try:
         result = subprocess.run(

@@ -23,6 +23,7 @@ from training.api import refresh
 from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.daily import daily_payload
+from training.api.plans import load_plans
 from training.api.sections import DAILY, SECTIONS, WEEKLY
 from training.api.sections import Report as Report_
 from training.api.weekly import weekly_payload
@@ -34,6 +35,9 @@ from training.api.models import (
     DailyData,
     EffectSeconds,
     Pause,
+    Plan,
+    PlanList,
+    PlanSummary,
     RefreshStatus,
     Report,
     ReportSection,
@@ -526,6 +530,35 @@ def _check_week(monday: date) -> None:
         raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
     if monday > date.today():
         raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
+
+
+@app.get("/api/plans", response_model=PlanList, summary="List training plans")
+def get_plans(ctx: Context) -> PlanList:
+    """The training plans written by hand in `plan/`, the nearest race first, without their
+    text.
+
+    Every plan in the folder is listed, front matter or not: a plan the page cannot show is
+    worse than a plan without its numbers."""
+    found = load_plans(ctx.plan_dir)
+    return PlanList(
+        plans=[
+            PlanSummary(**{name: plan[name] for name in PlanSummary.model_fields})
+            for plan in found
+        ]
+    )
+
+
+@app.get("/api/plans/{slug}", response_model=Plan, summary="Training plan")
+def get_plan(slug: str, ctx: Context) -> Plan:
+    """One training plan, with its Markdown text: the front matter and the title are not in
+    it, they come back as fields.
+
+    `slug` is the file name without `.md`, and it is looked up among the plans found, never
+    joined onto a path: a slug cannot walk out of `plan/`."""
+    for plan in load_plans(ctx.plan_dir):
+        if plan["slug"] == slug:
+            return Plan(**{name: plan[name] for name in Plan.model_fields})
+    raise HTTPException(status_code=404, detail=f"No plan named {slug!r}.")
 
 
 @app.get("/api/refresh", response_model=RefreshStatus, summary="Refresh job status")

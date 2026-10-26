@@ -1083,3 +1083,105 @@ h2 {
     padding: 16px;
   }
 }
+
+/* --- La pagina Plan: i piani di `plan/` --- */
+
+/* Le pillole del selettore: gli stessi bottoni della striscia delle
+   settimane, piu' larghi perche' dentro ci stanno tre righe (il bersaglio,
+   il ritmo, la gara). */
+.strip-plan {
+  flex: 0 0 auto;
+  width: 108px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.strip-plan:hover {
+  background: var(--track);
+}
+.strip-plan.selected {
+  border: 1.5px solid var(--text);
+  background: var(--surface);
+}
+.strip-plan.selected .strip-dates {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Il testo di un piano e' lungo, non e' il paragrafo di una card: qui la
+   prosa si legge grande come il resto della pagina, con una misura di riga
+   che non attraversa lo schermo. */
+.plan-prose {
+  font-size: 1rem;
+  max-width: 76ch;
+  margin-top: 18px;
+}
+.plan-prose h2,
+.plan-prose h3,
+.plan-prose h4 {
+  margin: 26px 0 6px;
+  line-height: 1.25;
+}
+.plan-prose h2 {
+  font-size: 1.25rem;
+}
+.plan-prose h3 {
+  font-size: 1.05rem;
+}
+.plan-prose h4 {
+  font-size: 0.95rem;
+  color: var(--muted);
+}
+/* Le tabelle di un piano sono larghe: scorre la tabella, non la pagina. */
+.plan-prose .table-scroll,
+.prose .table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 10px 0;
+}
+.prose table {
+  border-collapse: collapse;
+  font-size: 0.92em;
+}
+.prose th,
+.prose td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 12px 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.prose th {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+/* La prima colonna e' la chiave della riga — il giorno, la settimana, il
+   nome del ritmo — e si legge come un'etichetta. */
+.prose tbody td:first-child {
+  white-space: nowrap;
+}
+.plan-prose ul,
+.plan-prose ol {
+  margin: 8px 0 0;
+  padding-left: 22px;
+}
+.plan-prose li {
+  margin: 4px 0;
+}
+/* Il file da cui viene il piano: serve a chi lo vuole cambiare, e per quello
+   basta che sia leggibile, non che si veda. */
+.plan-file {
+  margin-top: 22px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}

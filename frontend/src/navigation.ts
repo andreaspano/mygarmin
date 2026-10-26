@@ -12,7 +12,13 @@
 // `?page=week` e' la forma vecchia e continua a valere: i link scritti prima
 // del todo 55 aprono la Week col suo Report. Senza niente si apre
 // Day/Report, cosi' anche `?day=2026-10-07` funziona come prima.
-export type Page = "day" | "week";
+//
+// La **Plan** sta sullo stesso asse, `?period=plan`, ma non e' un periodo: i
+// piani di `plan/` guardano avanti e durano quanto dura un blocco, non un
+// giorno o una settimana. Per questo nella barra sta a destra, accanto ad
+// Activities, e non fra Day e Week; il piano aperto e' `?plan=<slug>`, cioe'
+// il nome del suo file senza `.md`.
+export type Page = "day" | "week" | "plan";
 export type View = "report" | "trend";
 
 /** L'ampiezza della finestra del Trend: gli stessi estremi che l'API
@@ -30,7 +36,9 @@ export function pageFromUrl(): Page {
   const params = search();
   // `page` e' la forma vecchia: si guarda solo se `period` non c'e'.
   const value = params.get("period") ?? params.get("page");
-  return value === "week" ? "week" : "day";
+  if (value === "week") return "week";
+  if (value === "plan") return "plan";
+  return "day";
 }
 
 export function viewFromUrl(): View {

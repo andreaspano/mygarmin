@@ -47,6 +47,11 @@ export function addDays(day: string, days: number): string {
   return fromUtc(utc(day) + days * DAY_MS);
 }
 
+/** Quanti giorni da `from` a `to`: negativo se `to` viene prima. */
+export function dayDiff(from: string, to: string): number {
+  return Math.round((utc(to) - utc(from)) / DAY_MS);
+}
+
 /** I giorni da `end` a `start`, compresi, dal piu' recente. */
 export function daysBetween(start: string, end: string): string[] {
   const days: string[] = [];

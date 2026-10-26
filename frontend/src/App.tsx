@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 
 import { DayPage } from "./components/DayPage";
+import { PlanPage } from "./components/PlanPage";
 import { WeekPage } from "./components/WeekPage";
 import { pageFromUrl, viewFromUrl, type Page, type View } from "./navigation";
 
@@ -20,6 +21,9 @@ export function App() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // Il Trend per ora e' solo della Day: sulla Week `view` si ignora.
-  return page === "week" ? <WeekPage /> : <DayPage view={view} />;
+  // Il Trend per ora e' solo della Day: sulla Week e sulla Plan `view` si
+  // ignora.
+  if (page === "week") return <WeekPage />;
+  if (page === "plan") return <PlanPage />;
+  return <DayPage view={view} />;
 }
