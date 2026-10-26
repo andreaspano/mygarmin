@@ -313,6 +313,20 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
   sintetico va mandato **sulla cella**, non sull'`<svg>`: Vega risolve il
   segno dal `target`, e sulla radice non trova niente.
 
+- **Le fasce del carico allineate alla card.** Il pannello Load le aveva
+  statistiche (media a 28 giorni) mentre la card Load mostra il **bersaglio
+  di Garmin**: stesso disegno, significato opposto. Un carico aerobico basso
+  a 938 appariva "sotto la norma" nel Trend ed era molto sopra il bersaglio
+  di 634 nella card. Adesso le tre intensita' prendono `_load_targets`,
+  l'ACWR resta senza fascia come nella card, e acuto e cronico tengono
+  `_band` perche' un bersaglio non ce l'hanno. Il bersaglio ha **un livello
+  solo**, quindi il rettangolo largo si salta invece di disegnarlo due
+  volte, e il grafico scrive "Garmin target" sotto il nome: senza, nello
+  stesso pannello la stessa barra avrebbe significato due cose senza che si
+  vedesse. Trovato da Andrea notando che la card ha quattro valori e il
+  Trend sei — acuto e cronico in piu', che ho tenuto perche' sono quelli che
+  spiegano **perche'** il rapporto si muove.
+
 Una nota qui sopra invecchia: la prova del tema scuro cita
 `rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo
 pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo

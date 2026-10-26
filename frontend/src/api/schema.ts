@@ -1396,6 +1396,11 @@ export interface components {
             points: components["schemas"]["TrendPoint"][];
             /** @description Null under MIN_BAND_DAYS measured days, and for the Training panel. */
             band: components["schemas"]["Band"] | null;
+            /**
+             * Band Label
+             * @description What the band is, when it is not the usual range: Garmin's load target.
+             */
+            band_label: string | null;
         };
         /** ValidationError */
         ValidationError: {

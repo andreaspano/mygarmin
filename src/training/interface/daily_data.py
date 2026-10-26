@@ -656,6 +656,22 @@ TREND_LIMITS: dict[str, tuple[float, float]] = {
         "hill_score",
     )
 }
+# Le tre intensita' del carico non hanno una fascia **nostra**: hanno il
+# bersaglio di Garmin, che e' quello che mostra anche la card Load del
+# Report (`LoadCard.tsx`). Allinearle vuol dire che la stessa barra, nelle
+# due viste, dice la stessa cosa: prima nel Trend erano la media a 28 giorni
+# e nella card il bersaglio, e un carico aerobico basso a 938 appariva
+# "sotto la norma" di qua e molto sopra il bersaglio di la'.
+#
+# Il rapporto acuto/cronico, come nella card, di fascia non ne ha nessuna.
+# Acuto e cronico invece tengono quella di `_band`: un bersaglio Garmin non
+# gliene da'.
+TREND_TARGET_COLUMNS = tuple(LOAD_TARGET_FIELDS)
+TREND_NO_BAND = ("acwr",)
+# Scritto sotto il nome della misura dove la fascia e' il bersaglio, cosi'
+# chi guarda sa che non e' una media sua.
+TREND_TARGET_LABEL = "Garmin target"
+
 # Tutte le altre hanno comunque un pavimento a zero: nessuna di queste misure
 # puo' essere negativa, e due scarti tipo sotto la media di un carico che per
 # meta' finestra sta a zero portavano la fascia a -200, allungando l'asse su
@@ -706,6 +722,7 @@ def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[st
                 "digits": digits,
                 "points": _trend_points(daily[column], digits),
                 "band": None,
+                "band_label": None,
             }
             for column, label, unit, digits in TREND_TRAINING
         ],
@@ -737,6 +754,27 @@ def trend_data(
         health = load_health_db(data_dir)
 
     span = (end - start).days + 1
+    # Il bersaglio di Garmin dell'ultimo giorno della finestra che ha un
+    # carico: lo stesso che la card legge (`_load_targets` sull'`as_of` di
+    # `_load`), perche' i file di oggi arrivano col giro delle 22.
+    load_now = _load(health, end)
+    targets = _load_targets(load_now["as_of"], data_dir) if load_now else None
+
+    def _trend_band(column: str, window: pd.Series, digits: int) -> dict[str, Any] | None:
+        if column in TREND_NO_BAND:
+            return None
+        target = (targets or {}).get(column)
+        if target is not None:
+            # Un livello solo: `outer` coincide con gli estremi, come nella
+            # card, dove per questo la barra non ha la tinta piu' chiara.
+            return {
+                "low": target["min"],
+                "high": target["max"],
+                "outer_low": target["min"],
+                "outer_high": target["max"],
+            }
+        return _band(window, TREND_LIMITS.get(column, TREND_FLOOR), digits)
+
     panels = []
     for key, (title, series) in TREND_PANELS.items():
         panels.append(
@@ -756,10 +794,13 @@ def trend_data(
                         "points": _trend_points(
                             _window(health, column, end + timedelta(days=1), span), digits
                         ),
-                        "band": _band(
-                            _window(health, column, end + timedelta(days=1), span),
-                            TREND_LIMITS.get(column, TREND_FLOOR),
-                            digits,
+                        "band": _trend_band(
+                            column, _window(health, column, end + timedelta(days=1), span), digits
+                        ),
+                        "band_label": (
+                            TREND_TARGET_LABEL
+                            if column in TREND_TARGET_COLUMNS and targets
+                            else None
                         ),
                     }
                     for column, label, unit, digits in series

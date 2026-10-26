@@ -117,6 +117,14 @@ alla finestra. Sotto `MIN_BAND_DAYS` giorni misurati la fascia non c'e', e
 la pagina lo dice; i giorni senza misura spezzano la linea invece di farle
 attraversare il buco.
 
+**Le tre intensita' del carico fanno eccezione**: la loro fascia e' il
+**bersaglio di Garmin**, lo stesso che mostra la card Load, e non una media
+nostra. Senza, la stessa barra avrebbe detto due cose diverse nelle due
+viste — un carico aerobico basso a 938 sta sotto la media a 28 giorni e
+molto sopra il bersaglio di 634. Dove la fascia e' il bersaglio il grafico
+lo scrive ("Garmin target") e ha **un livello solo**, come la barra della
+card; il rapporto acuto/cronico, sempre come la card, di fascia non ne ha.
+
 **Il mouse sul grafico accende una barra verticale grigia** sul giorno piu'
 vicino, alta quanto il riquadro, e il tooltip dice quel giorno e il suo
 valore. Il giorno lo sceglie una tassellatura sulla x (`nearest` nella

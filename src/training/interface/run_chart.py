@@ -794,10 +794,23 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
         # Due rettangoli senza `x`: presi per tutta la larghezza, come le
         # fasce delle barre della Day. Il piu' largo (due scarti tipo) sotto
         # e piu' chiaro, quello stretto sopra.
-        for low, high, tinta, opacity in (
-            ("outer_low", "outer_high", colors["wide"], TREND_WIDE_OPACITY.get(theme, 0.16)),
-            ("low", "high", colors["band"], TREND_BAND_OPACITY.get(theme, 0.38)),
-        ):
+        # Il bersaglio di Garmin ha **un livello solo** (`outer` coincide con
+        # gli estremi): disegnarlo due volte lo scurirebbe e basta, quindi il
+        # rettangolo largo si salta. E' lo stesso motivo per cui nella card
+        # quelle barre non hanno la tinta piu' chiara.
+        un_livello = (
+            banda.get("outer_low") == banda.get("low")
+            and banda.get("outer_high") == banda.get("high")
+        )
+        livelli = (
+            (("low", "high", colors["band"], TREND_BAND_OPACITY.get(theme, 0.38)),)
+            if un_livello
+            else (
+                ("outer_low", "outer_high", colors["wide"], TREND_WIDE_OPACITY.get(theme, 0.16)),
+                ("low", "high", colors["band"], TREND_BAND_OPACITY.get(theme, 0.38)),
+            )
+        )
+        for low, high, tinta, opacity in livelli:
             if banda.get(low) is None or banda.get(high) is None:
                 continue
             strati.append(
@@ -873,7 +886,17 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
         height=TREND_HEIGHT,
         width="container",
         title=alt.TitleParams(
-            series["label"], anchor="start", fontSize=11, offset=6, dy=-2
+            series["label"],
+            # Dove la fascia non e' la solita media, lo dice qui sotto:
+            # senza, la stessa barra significherebbe due cose nello stesso
+            # pannello senza che si veda.
+            subtitle=series.get("band_label") or "",
+            subtitleColor=palette_muted(theme),
+            subtitleFontSize=10,
+            anchor="start",
+            fontSize=11,
+            offset=6,
+            dy=-2,
         ),
     )
 

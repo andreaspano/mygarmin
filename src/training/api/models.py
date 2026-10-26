@@ -565,6 +565,9 @@ class TrendSeries(BaseModel):
     band: Band | None = Field(
         description="Null under MIN_BAND_DAYS measured days, and for the Training panel."
     )
+    band_label: str | None = Field(
+        description="What the band is, when it is not the usual range: Garmin's load target."
+    )
 
 
 class TrendPanel(BaseModel):
