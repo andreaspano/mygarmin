@@ -304,6 +304,15 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
   la barra sta indicando e non quello prima. Verificato su tre posizioni
   (celle 2, 14, 27): barra e clic dicono lo stesso giorno.
 
+  Provandola e' sembrata rotta per un giro intero, e non lo era: **Vega
+  scrive l'opacita' nell'attributo `opacity`, non in `stroke-opacity`**, e
+  il controllo cercava il secondo. Chi domani verifica una barra, una linea
+  o un punto dal DOM guardi `opacity`. Nota di contorno: le celle del
+  voronoi non stanno nel DOM da sinistra a destra, quindi per colpire il
+  giorno N vanno ordinate per posizione, non per indice. E un evento
+  sintetico va mandato **sulla cella**, non sull'`<svg>`: Vega risolve il
+  segno dal `target`, e sulla radice non trova niente.
+
 Una nota qui sopra invecchia: la prova del tema scuro cita
 `rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo
 pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo
