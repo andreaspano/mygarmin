@@ -327,6 +327,15 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
   Trend sei — acuto e cronico in piu', che ho tenuto perche' sono quelli che
   spiegano **perche'** il rapporto si muove.
 
+  Una banda orizzontale su una finestra lunga regge perche' **i bersagli di
+  Garmin sono quasi fermi**: dal 7 al 26 ottobre non si muovono di un punto
+  (233-634, 501-901, 133-400), con un solo scalino rispetto al 1\u00b0 ottobre.
+  Il limite pero' c'e', ed e' voluto: si disegna il bersaglio **dell'ultimo
+  giorno della finestra** (quello che legge anche la card, via `_load` e il
+  suo `as_of`), quindi una finestra che attraversa un cambio di bersaglio
+  mostra solo quello finale. A 365 giorni e' una semplificazione; a 28,
+  l'ampiezza di partenza, non si vede.
+
 Una nota qui sopra invecchia: la prova del tema scuro cita
 `rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo
 pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo
