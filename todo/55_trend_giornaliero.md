@@ -294,6 +294,15 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
   l'altezza della colonna di quel giorno a qualunque ampiezza. Un clic fuori
   dall'area disegnata — sui numeri dell'asse, nel margine — non fa niente.
   Sta nel commit a parte del clic, non in `5006f8d`.
+- **La barra grigia al passaggio del mouse**, aggiunta dopo: un `rule` alto
+  quanto il riquadro sul giorno piu' vicino, con l'opacita' legata a un
+  `selection_point` `nearest` sulla x. Due conseguenze volute. Il **tooltip
+  si e' spostato sulla barra** — sulla linea sarebbe stato doppio, e sulla
+  barra si legge dovunque nella colonna invece che solo centrando il punto.
+  E il **clic ha smesso di troncare**: prima prendeva il giorno in cui
+  cadeva, adesso arrotonda al piu' vicino, perche' deve aprire il giorno che
+  la barra sta indicando e non quello prima. Verificato su tre posizioni
+  (celle 2, 14, 27): barra e clic dicono lo stesso giorno.
 
 Una nota qui sopra invecchia: la prova del tema scuro cita
 `rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo

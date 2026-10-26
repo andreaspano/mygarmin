@@ -806,6 +806,34 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
                 .encode(y=alt.Y("low:Q", title=unit), y2=alt.Y2("high:Q"))
             )
 
+    # La barra verticale che segue il mouse. `nearest` costruisce una
+    # tassellatura sulla x: il giorno lo sceglie la vicinanza, quindi si
+    # prende tutta l'altezza della colonna e funziona anche a 365 giorni,
+    # dove i pallini non ci sono. La stessa barra porta il tooltip: cosi' il
+    # numero si legge dovunque nella colonna, non solo centrando il punto.
+    vicino = alt.selection_point(
+        name="hover",
+        nearest=True,
+        on="pointerover",
+        clear="pointerout",
+        encodings=["x"],
+        empty=False,
+    )
+    barra = (
+        alt.Chart(data)
+        .mark_rule(color=palette_muted(theme), strokeWidth=1)
+        .encode(
+            x=alt.X("day:T", title=None),
+            opacity=alt.condition(vicino, alt.value(0.8), alt.value(0)),
+            tooltip=[
+                alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
+                alt.Tooltip("testo:N", title=series["label"]),
+            ],
+        )
+        .add_params(vicino)
+    )
+    strati.append(barra)
+
     linea = (
         alt.Chart(data)
         .mark_line(
@@ -838,10 +866,6 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
                     titleColor=palette_muted(theme),
                 ),
             ),
-            tooltip=[
-                alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
-                alt.Tooltip("testo:N", title=series["label"]),
-            ],
         )
     )
     strati.append(linea)

@@ -117,11 +117,17 @@ alla finestra. Sotto `MIN_BAND_DAYS` giorni misurati la fascia non c'e', e
 la pagina lo dice; i giorni senza misura spezzano la linea invece di farle
 attraversare il buco.
 
-**Un clic in un grafico apre il Report di quel giorno.** Non conta il segno
-che si colpisce: si prende la x del clic e si chiede alla scala che giorno
-sia, cosi' vale tutta la colonna del giorno anche a 365 giorni, dove la
-linea e' spessa due pixel e i pallini non ci sono. Il tasto indietro torna
-al Trend, con la finestra di prima.
+**Il mouse sul grafico accende una barra verticale grigia** sul giorno piu'
+vicino, alta quanto il riquadro, e il tooltip dice quel giorno e il suo
+valore. Il giorno lo sceglie una tassellatura sulla x (`nearest` nella
+specifica), quindi si prende tutta la colonna: a 365 giorni, dove la linea
+e' spessa due pixel e i pallini non ci sono, centrare il punto sarebbe un
+gioco di mira.
+
+**Un clic apre il Report di quel giorno** — lo stesso che la barra sta
+indicando: il clic non guarda il segno colpito ma chiede alla scala che
+giorno sia la sua x, **arrotondando al piu' vicino** come fa la barra. Il
+tasto indietro torna al Trend, con la finestra di prima.
 
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
