@@ -22,6 +22,8 @@ import { themeConfig } from "./RunChart";
 // trascinandolo partirebbe una richiesta per ogni valore attraversato.
 const SETTLE_MS = 250;
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const PANELS = ["health", "recovery", "load", "fitness", "training"] as const;
 
 /** Il primo giorno della finestra: `to` meno l'ampiezza, estremi compresi. */
@@ -59,7 +61,12 @@ function dayAt(view: Result["view"], box: HTMLElement, event: MouseEvent): strin
   if (!(value instanceof Date) || Number.isNaN(value.getTime())) return null;
   // Il giorno locale, non quello UTC: `toISOString` su una mezzanotte
   // italiana d'estate tornerebbe il giorno prima.
-  const giorno = new Date(value.getTime() - value.getTimezoneOffset() * 60000);
+  //
+  // E il **piu' vicino**, non quello in cui si e' caduti: la barra grigia
+  // sceglie per vicinanza (`nearest` nella specifica), e un clic deve
+  // aprire il giorno che la barra sta indicando, non quello prima.
+  const ms = value.getTime() - value.getTimezoneOffset() * 60000;
+  const giorno = new Date(Math.round(ms / DAY_MS) * DAY_MS);
   return giorno.toISOString().slice(0, 10);
 }
 
