@@ -117,13 +117,11 @@ alla finestra. Sotto `MIN_BAND_DAYS` giorni misurati la fascia non c'e', e
 la pagina lo dice; i giorni senza misura spezzano la linea invece di farle
 attraversare il buco.
 
-**Le tre intensita' del carico fanno eccezione**: la loro fascia e' il
-**bersaglio di Garmin**, lo stesso che mostra la card Load, e non una media
-nostra. Senza, la stessa barra avrebbe detto due cose diverse nelle due
-viste — un carico aerobico basso a 938 sta sotto la media a 28 giorni e
-molto sopra il bersaglio di 634. Dove la fascia e' il bersaglio il grafico
-lo scrive ("Garmin target") e ha **un livello solo**, come la barra della
-card; il rapporto acuto/cronico, sempre come la card, di fascia non ne ha.
+**Anche le tre intensita' del carico hanno la fascia di `_band`**, la stessa
+che mostra la card Load: dove quel carico sta di solito, non il bersaglio di
+Garmin. La domanda e' la stessa in tutta la pagina — questa misura e' nella
+sua norma? — e il bersaglio rispondeva a un'altra, dove Garmin vorrebbe che
+fosse. Il rapporto acuto/cronico, sempre come la card, di fascia non ne ha.
 
 **Il mouse sul grafico accende una barra verticale grigia** sul giorno piu'
 vicino, alta quanto il riquadro, e il tooltip dice quel giorno e il suo
@@ -182,7 +180,8 @@ caldo a cui sei acclimatato. La fascia pero' non vuol dire la stessa cosa
 dappertutto: in Health e Recovery e' la media dei 28 giorni prima piu' e meno
 uno scarto tipo (in tinta chiara piu' e meno due), e uscirne e' un segnale; in
 Fitness e' la stessa media ma **sopra vuol dire che stai migliorando**; in
-Load e' il **bersaglio di Garmin**, non una media tua, e ha un livello solo.
+Load e' di nuovo la stessa media, e dice quanto di quel tipo di lavoro stai
+portando rispetto al solito.
 Ogni card ha il testo della sua sezione del report giornaliero, l'ora in cui
 e' stato scritto e un tasto che la rifa' da sola (todo 44 e 47); i passi della
 seduta vengono dalla sezione Next.

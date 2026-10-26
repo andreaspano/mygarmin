@@ -317,17 +317,13 @@ class LoadNow(BaseModel):
     load_balance_phrase: str | None
 
 
-class TargetRange(BaseModel):
-    min: float
-    max: float
+class LoadBands(BaseModel):
+    """Where the monthly load of each effect has sat over the last 28 days. Not Garmin's
+    target: the same mean-and-standard-deviation band as every other bar on the page."""
 
-
-class LoadTargets(BaseModel):
-    """Garmin's target ranges for the monthly load of each effect."""
-
-    load_aerobic_low: TargetRange
-    load_aerobic_high: TargetRange
-    load_anaerobic: TargetRange
+    load_aerobic_low: Band | None
+    load_aerobic_high: Band | None
+    load_anaerobic: Band | None
 
 
 class Vo2maxChange(BaseModel):
@@ -338,7 +334,10 @@ class Vo2maxChange(BaseModel):
 
 class Load(BaseModel):
     now: LoadNow | None
-    targets: LoadTargets | None = Field(description="Null when the health files have no targets.")
+    bands: LoadBands | None = Field(
+        description="Null when there is no load at all. A single band is null with too few "
+        "measured days."
+    )
     week_ago: LoadNow | None
     vo2max_change: Vo2maxChange | None = Field(description="Only when VO2max moved by 0.5 or more in 28 days.")
 
@@ -563,10 +562,8 @@ class TrendSeries(BaseModel):
     digits: int = Field(description="Decimals the measure is worth.")
     points: list[TrendPoint]
     band: Band | None = Field(
-        description="Null under MIN_BAND_DAYS measured days, and for the Training panel."
-    )
-    band_label: str | None = Field(
-        description="What the band is, when it is not the usual range: Garmin's load target."
+        description="Null under MIN_BAND_DAYS measured days, for the load ratio and for the "
+        "Training panel."
     )
 
 

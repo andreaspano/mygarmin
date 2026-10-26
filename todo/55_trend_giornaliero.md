@@ -341,6 +341,18 @@ Una nota qui sopra invecchia: la prova del tema scuro cita
 pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo
 stesso modo.
 
+**Anche la nota sulle fasce del carico e' superata**, e dal verso opposto.
+Allineare il Trend alla card era giusto, ma il pareggio e' stato fatto sul
+bersaglio di Garmin, e il bersaglio risponde a un'altra domanda: dove Garmin
+vorrebbe che il carico fosse, non dove il carico sta di solito. Su richiesta
+di Andrea adesso **tutte e due le viste usano `_band`**: la card legge
+`_load_bands` (media dei 28 giorni prima dell'`as_of` del carico, piu' e meno
+uno scarto tipo, fondo a zero), il Trend la calcola sulla finestra come fa
+per ogni altra serie. Via `_load_targets`, `TREND_TARGET_COLUMNS`,
+`band_label` e la scritta "Garmin target" sotto il titolo; le tre barre
+tornano a due livelli come le altre. Resta vero che l'ACWR di fascia non ne
+ha, e che acuto e cronico ce l'hanno.
+
 ## Revert
 
 ```bash

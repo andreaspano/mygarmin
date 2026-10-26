@@ -1,8 +1,10 @@
 // "Load" (todo 34, rifatta sullo stampo di Health): il carico di Garmin. Le
-// tre parti del carico mensile, ognuna con la barra della **fascia obiettivo
-// di Garmin** e il valore di oggi come tacca, e il rapporto fra carico
-// recente e abituale, che una fascia non ce l'ha. Sotto, il testo della
-// sezione Load del report. Il VO2max e' passato alla card Fitness (todo 37).
+// tre parti del carico mensile, ognuna con la barra della **sua fascia
+// storica** - media dei 28 giorni prima piu' e meno uno scarto tipo, come in
+// Health e Recovery - e il valore di oggi come tacca, e il rapporto fra
+// carico recente e abituale, che una fascia non ce l'ha. Sotto, il testo
+// della sezione Load del report. Il VO2max e' passato alla card Fitness
+// (todo 37).
 //
 // Niente titolo sopra i numeri e niente parole accanto: lo stato del carico
 // secondo Garmin ("In a healthy range") diceva a mezze parole quello che la
@@ -20,17 +22,17 @@ const ROWS: { key: Key; label: string; help: string }[] = [
   {
     key: "load_aerobic_low",
     label: "Low aerobic",
-    help: "Garmin's monthly load from easy aerobic work, against the range Garmin wants you in.",
+    help: "Garmin's monthly load from easy aerobic work, against where it has sat over the last 28 days.",
   },
   {
     key: "load_aerobic_high",
     label: "High aerobic",
-    help: "Garmin's monthly load from harder aerobic work, against the range Garmin wants you in.",
+    help: "Garmin's monthly load from harder aerobic work, against where it has sat over the last 28 days.",
   },
   {
     key: "load_anaerobic",
     label: "Anaerobic",
-    help: "Garmin's monthly load from efforts above threshold, against the range Garmin wants you in.",
+    help: "Garmin's monthly load from efforts above threshold, against where it has sat over the last 28 days.",
   },
 ];
 
@@ -50,17 +52,17 @@ export function LoadCard({
   refresh?: ReactNode;
 }) {
   const now = data.load.now;
-  const targets = data.load.targets;
+  const bands = data.load.bands;
   return (
     <section className="card load-card" aria-label="Load">
       <CardHead icon={icon} title="Load" refresh={refresh} />
-      {/* La fascia e' il bersaglio di Garmin, non una media nostra: ha un
-          livello solo, quindi `outer` coincide con gli estremi e la barra
-          non ha la tinta piu' chiara delle altre card. */}
+      {/* La fascia e' quella di `_band`, come in Health, Recovery e Fitness:
+          dove il carico sta di solito, non dove Garmin vorrebbe che stesse.
+          Quindi due livelli, come le altre card. */}
       <div className="stats two">
         {ROWS.map(({ key, label, help }) => {
           const value = now?.[key] ?? null;
-          const target = targets?.[key];
+          const band = bands?.[key];
           return (
             <Stat
               key={key}
@@ -68,17 +70,8 @@ export function LoadCard({
               help={help}
               value={num(value)}
               sub={
-                target ? (
-                  <RangeBar
-                    value={value}
-                    band={{
-                      low: target.min,
-                      high: target.max,
-                      outer_low: target.min,
-                      outer_high: target.max,
-                    }}
-                    tick={(v) => v.toFixed(0)}
-                  />
+                band ? (
+                  <RangeBar value={value} band={band} tick={(v) => v.toFixed(0)} />
                 ) : (
                   <EmptyBar />
                 )

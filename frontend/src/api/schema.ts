@@ -887,11 +887,21 @@ export interface components {
         /** Load */
         Load: {
             now: components["schemas"]["LoadNow"] | null;
-            /** @description Null when the health files have no targets. */
-            targets: components["schemas"]["LoadTargets"] | null;
+            /** @description Null when there is no load at all. A single band is null with too few measured days. */
+            bands: components["schemas"]["LoadBands"] | null;
             week_ago: components["schemas"]["LoadNow"] | null;
             /** @description Only when VO2max moved by 0.5 or more in 28 days. */
             vo2max_change: components["schemas"]["Vo2maxChange"] | null;
+        };
+        /**
+         * LoadBands
+         * @description Where the monthly load of each effect has sat over the last 28 days. Not Garmin's
+         *     target: the same mean-and-standard-deviation band as every other bar on the page.
+         */
+        LoadBands: {
+            load_aerobic_low: components["schemas"]["Band"] | null;
+            load_aerobic_high: components["schemas"]["Band"] | null;
+            load_anaerobic: components["schemas"]["Band"] | null;
         };
         /**
          * LoadNow
@@ -932,15 +942,6 @@ export interface components {
             load_anaerobic: number | null;
             /** Load Balance Phrase */
             load_balance_phrase: string | null;
-        };
-        /**
-         * LoadTargets
-         * @description Garmin's target ranges for the monthly load of each effect.
-         */
-        LoadTargets: {
-            load_aerobic_low: components["schemas"]["TargetRange"];
-            load_aerobic_high: components["schemas"]["TargetRange"];
-            load_anaerobic: components["schemas"]["TargetRange"];
         };
         /**
          * Mean
@@ -1274,13 +1275,6 @@ export interface components {
              */
             rest_icon: string;
         };
-        /** TargetRange */
-        TargetRange: {
-            /** Min */
-            min: number;
-            /** Max */
-            max: number;
-        };
         /**
          * TerrainUpdate
          * @description The terrain chosen by the user for one activity.
@@ -1394,13 +1388,8 @@ export interface components {
             digits: number;
             /** Points */
             points: components["schemas"]["TrendPoint"][];
-            /** @description Null under MIN_BAND_DAYS measured days, and for the Training panel. */
+            /** @description Null under MIN_BAND_DAYS measured days, for the load ratio and for the Training panel. */
             band: components["schemas"]["Band"] | null;
-            /**
-             * Band Label
-             * @description What the band is, when it is not the usual range: Garmin's load target.
-             */
-            band_label: string | null;
         };
         /** ValidationError */
         ValidationError: {

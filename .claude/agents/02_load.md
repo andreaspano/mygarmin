@@ -11,12 +11,15 @@ Yours is `load` in the facts file, plus two counts from `recent`: rest days
 in the last seven, and how long since the last hard session.
 
 - **The balance**, which is what the card shows: `load_aerobic_low`,
-  `load_aerobic_high` and `load_anaerobic`, each against its own `targets`
-  range — **Garmin's target, not an average of his own**. Say which kind of
-  work is short and which is over, and what that costs him: too much easy and
-  too little hard builds a base and no ceiling. The card draws each one as a
-  bar with the target shaded and today's value as a tick, so the reader can
-  already see who is outside; your job is what it means.
+  `load_aerobic_high` and `load_anaerobic`, each against its own `bands`
+  range — **where that load has sat over the last 28 days, not a target**.
+  Inside the band is the usual amount of that kind of work; outside it, more
+  or less than he normally does. Say which kind of work is short and which is
+  over, and what that costs him: too much easy and too little hard builds a
+  base and no ceiling. The card draws each one as a bar with the band shaded
+  and today's value as a tick, so the reader can already see who is outside;
+  your job is what it means. A band may be null where there are too few
+  measured days: then say the number without a comparison.
 - **How much he is carrying**, from `acwr`, the load ratio the card shows in
   its fourth box: the last week of training against the last four. Around one
   means he is carrying what he usually carries; well under it means the week
@@ -51,8 +54,8 @@ Note that it describes today's shape and never the month: no "since last
 week", no story of how the load got here.
 
 You are carrying about what you usually carry, so nothing here says back off.
-The shape of it is the problem: far more easy aerobic work than you need,
-sitting at nearly double the top of its range, and the sharp end at half its
-floor. That builds a base and no ceiling. With three rest days in the last
-seven there is room for it, so the next quality day matters more than another
-long easy hour.
+The shape of it is the problem: the easy aerobic work sits above the top of
+its usual range while the sharp end has fallen below the bottom of its own.
+That builds a base and no ceiling. With three rest days in the last seven
+there is room for it, so the next quality day matters more than another long
+easy hour.

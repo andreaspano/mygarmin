@@ -28,7 +28,7 @@ import pandas as pd
 from training.garmin.config import DATA_DIR
 from training.interface.activity_report import NUMBERS_WITHOUT_DISTANCE, activity_numbers
 from training.interface.db import list_activities, load_activity_records
-from training.interface.health import _day_paths, _dig, _primary_entry, _read_json
+from training.interface.health import _day_paths, _dig, _read_json
 from training.interface.health_db import load_health_db
 from training.interface.report_text import section_icon
 from training.interface.grade import EQUIV_SPEED_SPORTS
@@ -264,33 +264,33 @@ def _alerts(health: pd.DataFrame, day: date, morning: dict[str, Any], sleep: dic
     return alerts
 
 
-# Le fasce obiettivo del carico mensile per zona, come le chiama Garmin nel
-# JSON del training status. `health_daily` non le tiene: si leggono dal file
-# del giorno, come la fascia dell'HRV.
-LOAD_TARGET_FIELDS = {
-    "load_aerobic_low": "monthlyLoadAerobicLow",
-    "load_aerobic_high": "monthlyLoadAerobicHigh",
-    "load_anaerobic": "monthlyLoadAnaerobic",
-}
+# Le tre intensita' del carico mensile di Garmin: le colonne di
+# `health_daily` da cui prendono la barra la card Load e il pannello Load del
+# Trend.
+LOAD_ZONES = ("load_aerobic_low", "load_aerobic_high", "load_anaerobic")
 
 
-def _load_targets(as_of: str, data_dir: Path = DATA_DIR) -> dict[str, Any] | None:
-    """Le fasce obiettivo (`min`, `max`) del carico per zona nel giorno
-    `as_of`, quello del carico di `_load`. `None` se il file non c'e', non
-    e' di quel giorno o non ha le fasce."""
-    path = _day_paths(Path(data_dir) / "health", as_of)["training_status"]
-    entry = _primary_entry(
-        _dig(_read_json(path), "mostRecentTrainingLoadBalance", "metricsTrainingLoadBalanceDTOMap")
-    )
-    if entry is None or entry.get("calendarDate") != as_of:
-        return None
-    targets = {
-        name: {"min": entry.get(f"{field}TargetMin"), "max": entry.get(f"{field}TargetMax")}
-        for name, field in LOAD_TARGET_FIELDS.items()
+def _load_bands(health: pd.DataFrame, as_of: str) -> dict[str, Any]:
+    """Dove e' stata ognuna delle tre intensita' nei 28 giorni prima di
+    `as_of`, il giorno del carico di `_load`: la fascia di `_band`, la stessa
+    che hanno le misure di Health, Recovery e Fitness.
+
+    **Non e' il bersaglio di Garmin.** Quello diceva dove Garmin vorrebbe che
+    il carico stesse; questa dice dove il carico sta di solito, che e' la
+    domanda che fanno tutte le altre barre della pagina. La finestra esclude
+    il giorno del valore, come in `_morning`: la tacca si confronta con i
+    giorni prima, non con se stessa.
+
+    Il fondo si ferma a zero: un carico non e' mai negativo, e due scarti tipo
+    sotto la media di un'anaerobica quasi sempre bassa portavano la barra su
+    numeri che non esistono (lo stesso rimedio del body battery, todo 46). Il
+    carico per zona e' un intero, quindi la fascia non ha decimali. `None` per
+    la zona senza abbastanza giorni misurati."""
+    source = date.fromisoformat(as_of)
+    return {
+        column: _band(_window(health, column, source, BASELINE_LONG), (0, math.inf), 0)
+        for column in LOAD_ZONES
     }
-    if any(t["min"] is None or t["max"] is None for t in targets.values()):
-        return None
-    return targets
 
 
 def _vo2max_change(health: pd.DataFrame, day: date) -> dict[str, Any] | None:
@@ -656,21 +656,15 @@ TREND_LIMITS: dict[str, tuple[float, float]] = {
         "hill_score",
     )
 }
-# Le tre intensita' del carico non hanno una fascia **nostra**: hanno il
-# bersaglio di Garmin, che e' quello che mostra anche la card Load del
-# Report (`LoadCard.tsx`). Allinearle vuol dire che la stessa barra, nelle
-# due viste, dice la stessa cosa: prima nel Trend erano la media a 28 giorni
-# e nella card il bersaglio, e un carico aerobico basso a 938 appariva
-# "sotto la norma" di qua e molto sopra il bersaglio di la'.
+# Il rapporto acuto/cronico, come nella card, di fascia non ne ha nessuna:
+# e' gia' un confronto fra due finestre, e dire dove sta di solito un numero
+# che vale uno quando tutto e' normale non aggiunge niente.
 #
-# Il rapporto acuto/cronico, come nella card, di fascia non ne ha nessuna.
-# Acuto e cronico invece tengono quella di `_band`: un bersaglio Garmin non
-# gliene da'.
-TREND_TARGET_COLUMNS = tuple(LOAD_TARGET_FIELDS)
+# Tutto il resto del pannello Load, le tre intensita' comprese, ha la fascia
+# di `_band`: la media dei giorni della finestra piu' e meno uno scarto tipo,
+# come gli altri pannelli e come le barre della card Load (`_load_bands`).
+# Il bersaglio di Garmin non si disegna piu' da nessuna delle due parti.
 TREND_NO_BAND = ("acwr",)
-# Scritto sotto il nome della misura dove la fascia e' il bersaglio, cosi'
-# chi guarda sa che non e' una media sua.
-TREND_TARGET_LABEL = "Garmin target"
 
 # Tutte le altre hanno comunque un pavimento a zero: nessuna di queste misure
 # puo' essere negativa, e due scarti tipo sotto la media di un carico che per
@@ -722,7 +716,6 @@ def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[st
                 "digits": digits,
                 "points": _trend_points(daily[column], digits),
                 "band": None,
-                "band_label": None,
             }
             for column, label, unit, digits in TREND_TRAINING
         ],
@@ -754,25 +747,10 @@ def trend_data(
         health = load_health_db(data_dir)
 
     span = (end - start).days + 1
-    # Il bersaglio di Garmin dell'ultimo giorno della finestra che ha un
-    # carico: lo stesso che la card legge (`_load_targets` sull'`as_of` di
-    # `_load`), perche' i file di oggi arrivano col giro delle 22.
-    load_now = _load(health, end)
-    targets = _load_targets(load_now["as_of"], data_dir) if load_now else None
 
     def _trend_band(column: str, window: pd.Series, digits: int) -> dict[str, Any] | None:
         if column in TREND_NO_BAND:
             return None
-        target = (targets or {}).get(column)
-        if target is not None:
-            # Un livello solo: `outer` coincide con gli estremi, come nella
-            # card, dove per questo la barra non ha la tinta piu' chiara.
-            return {
-                "low": target["min"],
-                "high": target["max"],
-                "outer_low": target["min"],
-                "outer_high": target["max"],
-            }
         return _band(window, TREND_LIMITS.get(column, TREND_FLOOR), digits)
 
     panels = []
@@ -796,11 +774,6 @@ def trend_data(
                         ),
                         "band": _trend_band(
                             column, _window(health, column, end + timedelta(days=1), span), digits
-                        ),
-                        "band_label": (
-                            TREND_TARGET_LABEL
-                            if column in TREND_TARGET_COLUMNS and targets
-                            else None
                         ),
                     }
                     for column, label, unit, digits in series
@@ -973,7 +946,7 @@ def build_daily_data(
         "alerts": _alerts(health, day, morning, sleep),
         "load": {
             "now": load_now,
-            "targets": _load_targets(load_now["as_of"], data_dir) if load_now else None,
+            "bands": _load_bands(health, load_now["as_of"]) if load_now else None,
             "week_ago": load_week_ago,
             "vo2max_change": _vo2max_change(health, day),
         },
