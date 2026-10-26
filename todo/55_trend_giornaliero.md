@@ -329,7 +329,7 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
 
   Una banda orizzontale su una finestra lunga regge perche' **i bersagli di
   Garmin sono quasi fermi**: dal 7 al 26 ottobre non si muovono di un punto
-  (233-634, 501-901, 133-400), con un solo scalino rispetto al 1\u00b0 ottobre.
+  (233-634, 501-901, 133-400), con un solo scalino rispetto al 1 ottobre.
   Il limite pero' c'e', ed e' voluto: si disegna il bersaglio **dell'ultimo
   giorno della finestra** (quello che legge anche la card, via `_load` e il
   suo `as_of`), quindi una finestra che attraversa un cambio di bersaglio
