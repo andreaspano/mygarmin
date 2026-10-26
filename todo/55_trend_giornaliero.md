@@ -287,6 +287,14 @@ Quattro cose chieste guardando la pagina vera, tutte nel commit `5006f8d`
   (`up`), lo stesso che ha nel grafico della seduta. Due righe: la serie in
   `TREND_TRAINING` e il colore in `TREND_TRAINING_COLORS`.
 
+- **Un clic apre il Report di quel giorno.** Non si guarda su quale segno
+  si e' cliccato: a 365 giorni la linea e' spessa due pixel e i pallini non
+  ci sono, e colpirli sarebbe un gioco di mira. Si prende la x del clic e si
+  chiede alla scala che giorno sia (`scale.invert`), cosi' vale tutta
+  l'altezza della colonna di quel giorno a qualunque ampiezza. Un clic fuori
+  dall'area disegnata — sui numeri dell'asse, nel margine — non fa niente.
+  Sta nel commit a parte del clic, non in `5006f8d`.
+
 Una nota qui sopra invecchia: la prova del tema scuro cita
 `rgb(74,58,167)` e `rgb(144,133,233)`, che adesso sono i colori del solo
 pannello Health. Gli altri quattro hanno i loro, e cambiano col tema allo

@@ -228,6 +228,11 @@ h2 {
   margin: 0;
   min-width: 0;
 }
+/* Un clic nel grafico apre il Report di quel giorno: il cursore lo dice,
+   che un grafico di suo non sembra una cosa su cui si clicca. */
+.trend-chart .chart-box {
+  cursor: pointer;
+}
 
 /* Intestazione del giorno */
 .day-header {

@@ -117,6 +117,12 @@ alla finestra. Sotto `MIN_BAND_DAYS` giorni misurati la fascia non c'e', e
 la pagina lo dice; i giorni senza misura spezzano la linea invece di farle
 attraversare il buco.
 
+**Un clic in un grafico apre il Report di quel giorno.** Non conta il segno
+che si colpisce: si prende la x del clic e si chiede alla scala che giorno
+sia, cosi' vale tutta la colonna del giorno anche a 365 giorni, dove la
+linea e' spessa due pixel e i pallini non ci sono. Il tasto indietro torna
+al Trend, con la finestra di prima.
+
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
 ISO per le settimane a cavallo — un selettore di otto settimane (numero,
