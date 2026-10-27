@@ -73,7 +73,7 @@ export function WeekPlanCard({
     );
   }
   return (
-    <section className="card plan-card" aria-label="Weekly plan">
+    <section className="card plan-card week-plan-card" aria-label="Weekly plan">
       <CardHead icon={PLAN_ICON} title={plan.title} />
       <WeekPlanStats plan={plan} />
       <div className="prose plan-prose">{markdown(plan.body)}</div>
