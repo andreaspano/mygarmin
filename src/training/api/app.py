@@ -23,7 +23,7 @@ from training.api import refresh
 from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.daily import daily_payload
-from training.api.plans import load_plans
+from training.api.plans import load_plans, load_week_plan
 from training.api.sections import DAILY, SECTIONS, WEEKLY
 from training.api.sections import Report as Report_
 from training.api.weekly import weekly_payload
@@ -48,6 +48,7 @@ from training.api.models import (
     TerrainUpdate,
     TrendData,
     WeeklyData,
+    WeekPlan,
     ZoneBand,
 )
 from training.interface.daily_data import (
@@ -345,6 +346,23 @@ def get_weekly(monday: date, ctx: Context) -> WeeklyData:
         raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
     data = weekly_payload(monday, ctx.data_dir)
     return WeeklyData(**{name: data[name] for name in WeeklyData.model_fields})
+
+
+@app.get("/api/weekly/{monday}/plan", response_model=WeekPlan, summary="Weekly plan")
+def get_week_plan(monday: date, ctx: Context) -> WeekPlan:
+    """The plan of one week, from `summary/05.plan/<monday>.md` (todo 60): the sessions of
+    the seven days, with the front matter numbers as fields and the rest as Markdown.
+
+    A week with no file is a 404 and not an error: the weeks before the block started do
+    not have one. Unlike the other weekly endpoints a Monday in the future is allowed —
+    the plan of a week that has not begun is the normal case, and the whole block is
+    written in advance."""
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    plan = load_week_plan(ctx.summary_dir, monday)
+    if plan is None:
+        raise HTTPException(status_code=404, detail=f"No plan for the week of {monday}.")
+    return WeekPlan(**{name: plan[name] for name in WeekPlan.model_fields})
 
 
 @app.get("/api/weekly/{monday}/chart/vega", summary="Weekly chart, Vega-Lite")

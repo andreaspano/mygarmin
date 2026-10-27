@@ -263,6 +263,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weekly/{monday}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly plan
+         * @description The plan of one week, from `summary/05.plan/<monday>.md` (todo 60): the sessions of
+         *     the seven days, with the front matter numbers as fields and the rest as Markdown.
+         *
+         *     A week with no file is a 404 and not an error: the weeks before the block started do
+         *     not have one. Unlike the other weekly endpoints a Monday in the future is allowed —
+         *     the plan of a week that has not begun is the normal case, and the whole block is
+         *     written in advance.
+         */
+        get: operations["get_week_plan_api_weekly__monday__plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/weekly/{monday}/chart/vega": {
         parameters: {
             query?: never;
@@ -1721,6 +1747,68 @@ export interface components {
             weeks: number;
         };
         /**
+         * WeekPlan
+         * @description The plan of one week, from `summary/05.plan/<monday>.md`.
+         */
+        WeekPlan: {
+            /**
+             * Week
+             * Format: date
+             * @description The Monday of the week, which is also the file name.
+             */
+            week: string;
+            /**
+             * File
+             * @description The file name in `summary/05.plan/`.
+             */
+            file: string;
+            /**
+             * Title
+             * @description The first heading of the text, or the file stem.
+             */
+            title: string;
+            /**
+             * Plan
+             * @description Slug of the block in `plan/` this week comes from.
+             */
+            plan: string | null;
+            /**
+             * Block Week
+             * @description Which week of the block this is.
+             */
+            block_week: number | null;
+            /**
+             * Block Weeks
+             * @description How many weeks the block lasts.
+             */
+            block_weeks: number | null;
+            /**
+             * Phase
+             * @description base, build, specific, taper or race.
+             */
+            phase: string | null;
+            /**
+             * Race
+             * @description Race day of the block.
+             */
+            race: string | null;
+            /**
+             * Target Time
+             * @description Target finishing time, as written ("2:20:00").
+             */
+            target_time: string | null;
+            /**
+             * Written At
+             * @description When the file was last written.
+             */
+            written_at: string | null;
+            /**
+             * Body
+             * @description Markdown, without the front matter and without the title.
+             */
+            body: string;
+        };
+        /**
          * WeekZone
          * @description Minutes spent in one of Garmin's three effort bands, over the week (todo 54).
          */
@@ -2210,6 +2298,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WeeklyData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_week_plan_api_weekly__monday__plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                monday: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekPlan"];
                 };
             };
             /** @description Validation Error */

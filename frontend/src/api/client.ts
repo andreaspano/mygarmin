@@ -24,6 +24,7 @@ export type TrendData = Schemas["TrendData"];
 export type TrendPanel = Schemas["TrendPanel"];
 export type TrendSeries = Schemas["TrendSeries"];
 export type WeekMeasure = Schemas["WeekMeasure"];
+export type WeekPlan = Schemas["WeekPlan"];
 export type Terrain = NonNullable<Activity["terrain"]>;
 export type RunType = NonNullable<Activity["run_type"]>;
 
@@ -187,6 +188,12 @@ export const api = {
 
   startWeeklySectionRefresh: (monday: string, section: string) =>
     postJson<RefreshStatus>(`/api/reports/weekly/${monday}/refresh/${section}`),
+
+  // Il piano della settimana (todo 60), da `summary/05.plan/`. `null` quando
+  // quella settimana non ne ha uno: le settimane prima dell'inizio del blocco
+  // non ce l'hanno, e non e' un errore da annunciare.
+  weekPlan: (monday: string, signal?: AbortSignal) =>
+    getOrNull<WeekPlan>(`/api/weekly/${monday}/plan`, signal),
 
   // I piani di `plan/`, la gara piu' vicina per prima, senza il testo.
   plans: (signal?: AbortSignal) => getJson<PlanList>("/api/plans", signal),

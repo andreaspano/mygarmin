@@ -21,7 +21,7 @@ import {
   type Plan,
   type PlanSummary,
 } from "../api/client";
-import { dayDiff, shortDayLabel, today } from "../format";
+import { dayDiff, raceLabel, shortDayLabel, targetLabel, today } from "../format";
 import { markdown } from "../markdown";
 import { paramFromUrl, pushUrl } from "../navigation";
 import { CardHead, Stat, WrittenAt, num } from "./Stat";
@@ -31,17 +31,6 @@ const API_DOWN = "Cannot reach the API. Is it running (make api)?";
 // L'icona di Next: il riquadro che dice cosa fare dopo. Un piano e' la stessa
 // domanda, solo su quattro mesi invece che su domani.
 const PLAN_ICON = "next.png";
-
-/** "28 Feb 2027". L'anno c'e' sempre: una gara sta spesso nell'anno dopo. */
-function raceLabel(day: string): string {
-  return `${shortDayLabel(day)} ${day.slice(0, 4)}`;
-}
-
-/** Il bersaglio come lo si dice a voce: "2:20:00" diventa "2:20", perche' i
- * secondi tondi non sono un bersaglio, sono zeri. */
-function targetLabel(time: string | null): string {
-  return time ? time.replace(/:00$/, "") : "–";
-}
 
 /** Il piano scelto: quello dell'URL se c'e' ancora fra i file, se no il
  * primo, cioe' quello della gara piu' vicina. */

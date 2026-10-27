@@ -16,7 +16,7 @@ testo (`# ...`), togliendolo dal corpo perche' la pagina lo mette nella sua
 intestazione. Senza titolo resta il nome del file."""
 
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -119,3 +119,59 @@ def load_plans(folder: Path) -> list[dict[str, Any]]:
             p["slug"],
         ),
     )
+
+
+# I piani settimanali di `summary/05.plan/` (todo 14 e 60): un file per
+# settimana, col nome del suo lunedi'. Stanno in `summary/` e non in `plan/`
+# perche' non li scrive una persona — si generano da un blocco di `plan/` — e
+# il nome della cartella e' qui, che e' il modulo che sa come sono fatti i
+# file di un piano: lo leggono sia l'orchestratore, per il prompt di Next, sia
+# la vista Plan della Week.
+WEEK_PLAN_FOLDER = "05.plan"
+
+
+def week_plan_path(summary_dir: Path, day: date) -> Path | None:
+    """Il file del piano della settimana in cui cade `day`, se c'e'.
+
+    Un giorno qualunque va bene e viene riportato al suo lunedi', che e' il
+    nome del file: chi chiama ha in mano una data, non sempre un lunedi'.
+    Niente file non e' un errore — le settimane prima dell'inizio del blocco
+    non ne hanno, e il piano di una settimana non deve diventare un'istruzione
+    da inventare."""
+    monday = day - timedelta(days=day.weekday())
+    path = summary_dir / WEEK_PLAN_FOLDER / f"{monday.isoformat()}.md"
+    return path if path.is_file() else None
+
+
+def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
+    """Il piano della settimana di `day`, o `None` se quella settimana non ne
+    ha uno.
+
+    Stesso trattamento dei piani di `plan/`: il front matter da' i numeri, il
+    primo `# ...` il titolo, e il resto e' il testo che si legge. Le chiavi
+    sono quelle delle sette sedute invece di quelle di una gara, e
+    `summary/05.plan/README.md` le elenca.
+
+    **`sessions` non si legge qui.** E' la parte che una macchina deve leggere
+    — il confronto fra previsto e fatto del todo 14 — e finche' nessuno fa
+    quel confronto resterebbe un campo che l'API manda e nessuno guarda. La
+    pagina mostra la tabella del testo, che dice le stesse sedute con dentro
+    anche il perche'."""
+    path = week_plan_path(summary_dir, day)
+    if path is None:
+        return None
+    meta, body = _front_matter(path.read_text(encoding="utf-8"))
+    title, text = _title(body)
+    return {
+        "week": _as_date(meta.get("week")) or day - timedelta(days=day.weekday()),
+        "file": path.name,
+        "title": title or path.stem,
+        "plan": _as_text(meta.get("plan")),
+        "block_week": int(n) if (n := _as_number(meta.get("block_week"))) else None,
+        "block_weeks": int(n) if (n := _as_number(meta.get("block_weeks"))) else None,
+        "phase": _as_text(meta.get("phase")),
+        "race": _as_date(meta.get("race")),
+        "target_time": _as_text(meta.get("target_time")),
+        "written_at": datetime.fromtimestamp(path.stat().st_mtime),
+        "body": text,
+    }
