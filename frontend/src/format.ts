@@ -142,6 +142,17 @@ export function shortDayLabel(day: string): string {
   return `${d} ${MONTHS[m - 1]}`;
 }
 
+/** "28 Feb 2027". L'anno c'e' sempre: una gara sta spesso nell'anno dopo. */
+export function raceLabel(day: string): string {
+  return `${shortDayLabel(day)} ${day.slice(0, 4)}`;
+}
+
+/** Il bersaglio come lo si dice a voce: "2:20:00" diventa "2:20", perche' i
+ * secondi tondi non sono un bersaglio, sono zeri. */
+export function targetLabel(time: string | null | undefined): string {
+  return time ? time.replace(/:00$/, "") : "–";
+}
+
 /** Una durata in minuti: "46 min" sotto l'ora, "2h52" sopra. */
 export function durationLabel(minutes: number | null | undefined): string {
   if (minutes == null || Number.isNaN(minutes)) return "-";

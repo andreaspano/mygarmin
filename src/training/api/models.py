@@ -656,3 +656,24 @@ class PlanList(BaseModel):
     """The plans in `plan/`, the nearest race first."""
 
     plans: list[PlanSummary]
+
+
+# Il piano di una settimana, da `summary/05.plan/<lunedi>.md` (todo 60). Non
+# e' il blocco di `plan/`: quello dura quattro mesi e parla di una gara,
+# questo dura sette giorni e dice le sedute. Le sette sedute del front matter
+# (`sessions`) non sono qui — le dice la tabella del testo, e la lettura a
+# macchina serve al confronto previsto/fatto del todo 14, che non c'e' ancora.
+class WeekPlan(BaseModel):
+    """The plan of one week, from `summary/05.plan/<monday>.md`."""
+
+    week: date = Field(description="The Monday of the week, which is also the file name.")
+    file: str = Field(description="The file name in `summary/05.plan/`.")
+    title: str = Field(description="The first heading of the text, or the file stem.")
+    plan: str | None = Field(description="Slug of the block in `plan/` this week comes from.")
+    block_week: int | None = Field(description="Which week of the block this is.")
+    block_weeks: int | None = Field(description="How many weeks the block lasts.")
+    phase: str | None = Field(description="base, build, specific, taper or race.")
+    race: date | None = Field(description="Race day of the block.")
+    target_time: str | None = Field(description='Target finishing time, as written ("2:20:00").')
+    written_at: datetime | None = Field(description="When the file was last written.")
+    body: str = Field(description="Markdown, without the front matter and without the title.")

@@ -158,12 +158,20 @@ l'ora e il tasto per rifarla, come nella Day.
 
 Tutto questo e' lo **Snap** (todo 59): la settimana com'e' andata. Si chiama
 cosi' e non Report perche' non e' solo il report — sono i numeri, le sedute e
-il grafico, e il testo sta dentro le card. Le altre due viste della Week sono
-**vuote**, caselle prenotate: il **Trend** per la fila delle settimane, un
-punto per settimana invece di uno per giorno, e il **Plan** per i file
-`summary/05.plan/<lunedi>.md`, che oggi legge solo l'agente Next. Comune a
-tutte e tre e' l'intestazione — titolo, frecce, calendario, il tasto che
-riscrive la settimana — e il selettore: cambiando settimana la vista resta.
+il grafico, e il testo sta dentro le card.
+
+Il **Plan** e' la stessa settimana dall'altra parte: **come doveva andare**
+(todo 60). E' il file `summary/05.plan/<lunedi>.md`, che prima leggeva solo
+l'agente Next — le sette sedute con dentro il perche', i totali, i ritmi e i
+segnali per scaricare — con in cima da che blocco viene, a che settimana del
+blocco siamo, la gara e il bersaglio. Una settimana senza file non e' un
+errore, e la vista lo dice: le settimane prima dell'inizio di un blocco non ne
+hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
+fila delle settimane, un punto per settimana invece di uno per giorno.
+
+Comune a tutte e tre e' l'intestazione — titolo, frecce, calendario, il tasto
+che riscrive la settimana — e il selettore: cambiando settimana la vista
+resta, e Snap e Plan parlano degli stessi sette giorni.
 
 Le fasce della Week **non sono quelle della Day**: qui il valore della
 settimana si confronta con le **12 settimane precedenti** (todo 52), e ne
@@ -319,10 +327,18 @@ da sole dentro il loro riquadro: scorre la tabella, non la pagina.
 I piani di `plan/` sono il blocco; le sedute giorno per giorno stanno in
 `summary/05.plan/`, un file per settimana col nome del lunedi', col front
 matter del todo 14 e la tabella dei sette giorni. Il formato e' documentato in
-`summary/05.plan/README.md`.
+`summary/05.plan/README.md`, e li legge `api/plans.py` con gli stessi pezzi
+dei piani di `plan/`: `WEEK_PLAN_FOLDER` e `week_plan_path` sono li', una
+definizione sola per l'orchestratore e per l'API.
+
+Dal todo 60 **si vedono anche**, nella vista Plan della Week
+(`GET /api/weekly/<lunedi>/plan`, 404 quella settimana non ne ha). Le sette
+sedute del front matter (`sessions`) l'API non le manda: la tabella del testo
+dice le stesse cose col perche' dentro, e la lettura a macchina serve al
+confronto previsto/fatto del todo 14, che non c'e' ancora.
 
 **Next li legge.** Quando esiste il file della settimana per cui sta
-prescrivendo, l'orchestratore (`_week_plan` in `api/refresh.py`) lo nomina nel
+prescrivendo, l'orchestratore (`week_plan_path` in `api/plans.py`) lo nomina nel
 prompt, e per l'agente la seduta prevista e' il punto di partenza: la
 prescrive com'e' se le sezioni sono d'accordo, la cambia se non lo sono — e
 allora **deve dire cosa ha cambiato e perche'**. Una settimana che si discosta
@@ -333,7 +349,8 @@ domani**, e quello della settimana della settimana che comincia il giorno dopo
 (`_next_subject`). La domenica sera la riga da leggere sta quindi nel file
 della settimana successiva, non in quello del report. Le altre sezioni il
 piano non lo vedono: raccontano com'e' andata, e quello che era previsto non
-cambia i loro numeri.
+cambia i loro numeri — e' la vista Plan della Week che lo mette accanto, senza
+mescolarlo al testo di nessuno.
 
 Nessun file, nessuna frase nel prompt: i giorni fuori da un blocco si
 scrivono come prima, dalle sole sezioni.

@@ -50,6 +50,7 @@ from pathlib import Path
 from typing import Any
 
 from training.api.cache import invalidate
+from training.api.plans import week_plan_path
 from training.api.sections import (
     DAILY,
     WEEKLY,
@@ -72,10 +73,6 @@ MESSAGE_LINES = 5
 # le attacca al prompt dell'agente. Provato il 2026-10-20 su un agente finto:
 # con il flag risponde la parola del file, senza no.
 STYLE_FILE = ".claude/agents/_style.md"
-
-# I piani settimanali scritti a mano (todo 14): un file per settimana, col
-# nome del lunedi'. Li legge solo Next.
-PLAN_FOLDER = "05.plan"
 
 _lock = threading.Lock()
 
@@ -271,7 +268,13 @@ def _run(
             else:
                 folder = Path(summary_dir) / kind.folder / subject.isoformat()
                 folder.mkdir(parents=True, exist_ok=True)
-                plan = _week_plan(Path(summary_dir), _next_subject(kind, subject, moment))
+                # Il piano della settimana (todo 14), che fra le sezioni
+                # **lo legge solo Next**: e' quella che prescrive una seduta,
+                # e prescriverne una diversa da quella prevista senza saperlo
+                # e' il modo di avere un piano che nessuno segue. Niente file,
+                # nessuna frase nel prompt: un piano che non c'e' non deve
+                # diventare un'istruzione da inventare.
+                plan = week_plan_path(Path(summary_dir), _next_subject(kind, subject, moment))
                 for section in sections:
                     began = datetime.now()
                     _set(section.key, status="running", started=began, finished=None, message=None)
@@ -371,20 +374,6 @@ def _next_subject(kind: Report, subject: date, moment: str) -> date:
     if kind is WEEKLY:
         return subject + timedelta(days=7)
     return subject if moment == "morning" else subject + timedelta(days=1)
-
-
-def _week_plan(summary_dir: Path, day: date) -> Path | None:
-    """Il file del piano della settimana di `day`, se c'e'.
-
-    I piani settimanali stanno in `summary/05.plan/`, col nome del lunedi'
-    (todo 14). Next e' l'unica sezione che li legge: e' quella che prescrive
-    una seduta, e prescriverne una diversa da quella prevista senza saperlo
-    e' il modo di avere un piano che nessuno segue. Niente file, nessuna
-    frase nel prompt: un piano che non c'e' non deve diventare un'istruzione
-    da inventare."""
-    monday = day - timedelta(days=day.weekday())
-    path = summary_dir / PLAN_FOLDER / f"{monday.isoformat()}.md"
-    return path if path.exists() else None
 
 
 def _prompt(

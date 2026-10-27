@@ -10,10 +10,10 @@
 //
 // Dal todo 59 la pagina ha tre viste, che il menu scambia con `?view=`: lo
 // **Snap**, cioe' la settimana com'e' andata — le card e le sedute, quello
-// che la pagina ha sempre mostrato — e il **Trend** e il **Plan**, che per
-// ora sono vuoti. L'intestazione e la scelta della settimana sono le stesse
-// per tutte e tre, che la settimana serve a tutte; sotto, per adesso, le
-// altre due non hanno niente.
+// che la pagina ha sempre mostrato — il **Plan**, cioe' come doveva andare
+// (todo 60), e il **Trend**, che per ora e' vuoto. L'intestazione e la scelta
+// della settimana sono le stesse per tutte e tre, che la settimana serve a
+// tutte: cambiandola, Snap e Plan parlano degli stessi sette giorni.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
@@ -27,6 +27,7 @@ import {
   type SportList,
   type WeeklyData,
   type WeekMeasure,
+  type WeekPlan,
 } from "../api/client";
 import {
   addDays,
@@ -51,6 +52,7 @@ import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
 import { WeekPicker } from "./WeekPicker";
+import { WeekPlanCard } from "./WeekPlanCard";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const API_DOWN = "Cannot reach the API. Is it running (make api)?";
@@ -193,6 +195,8 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [data, setData] = useState<WeeklyData | null>(null);
   const [report, setReport] = useState<Report | null>(null);
+  const [plan, setPlan] = useState<WeekPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(false);
   const [refresh, setRefresh] = useState<RefreshStatus | null>(null);
   // Vero da quando si e' premuto un tasto: prima di allora un lavoro
   // fallito e' roba di qualcun altro, e non si annuncia.
@@ -266,6 +270,29 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
       .catch((e) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
   }, [monday, reloads, view]);
+
+  // Il piano della settimana (todo 60), solo sulla vista che lo mostra. Una
+  // settimana senza file rende `null`, che qui vuol dire "non ce n'e' uno" e
+  // non "non si e' potuto chiedere": `planLoading` tiene separate le due
+  // cose, cosi' la card non annuncia un piano mancante mentre lo cerca.
+  useEffect(() => {
+    if (view !== "plan") return;
+    const controller = new AbortController();
+    setPlan(null);
+    setPlanLoading(true);
+    api
+      .weekPlan(monday, controller.signal)
+      .then((found) => {
+        setPlan(found);
+        setPlanLoading(false);
+      })
+      .catch((e) => {
+        if (isAbort(e)) return;
+        setPlanLoading(false);
+        setError(API_DOWN);
+      });
+    return () => controller.abort();
+  }, [monday, view]);
 
   // Lo stato del lavoro, solo se e' di questo tipo: giorno e settimana
   // condividono un lavoro alla volta, e le chiavi delle sezioni sono
@@ -456,9 +483,12 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             The week of {refresh.day} was not rewritten: {refresh.message}
           </p>
         )}
-        {/* Dalle card alle sedute: e' lo Snap. Il Trend e il Plan della
-            settimana per ora non hanno niente sotto l'intestazione
-            (todo 59). */}
+        {/* Come doveva andare la settimana: il Plan (todo 60). Il Trend,
+            per ora, sotto l'intestazione non ha niente (todo 59). */}
+        {view === "plan" && (
+          <WeekPlanCard plan={plan} monday={monday} loading={planLoading} />
+        )}
+        {/* Dalle card alle sedute: e' lo Snap. */}
         {view === "snap" && (
         <>
         <div className="head-row">
