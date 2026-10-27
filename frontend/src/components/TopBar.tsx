@@ -1,28 +1,34 @@
 // La barra in alto (todo 34), su due righe dal todo 55.
 //
-// Prima riga il **periodo** (Day, Week), seconda riga **cosa se ne guarda**
-// (Report, Trend): due assi veri, mentre prima Day, Week e Activities
-// stavano in fila come se fossero la stessa cosa. Activities non e' un
-// periodo e sta a destra, staccata, ancora disattivata.
+// Prima riga il **periodo** (Day, Week), seconda riga **cosa se ne guarda**:
+// due assi veri, mentre prima Day, Week e Activities stavano in fila come se
+// fossero la stessa cosa. Activities non e' un periodo e sta a destra,
+// staccata, ancora disattivata.
 //
-// A destra sta anche **Plan**, per lo stesso motivo: un piano non e' un
-// periodo. Non guarda indietro a un giorno o a una settimana, guarda avanti
-// a una gara, e dura quanto dura il blocco.
+// Le viste sono di ogni periodo e stanno in `VIEWS` (todo 59): Report e
+// Trend sotto Day, Snap, Trend e Plan sotto Week. Qui ci sono solo i nomi
+// con cui si scrivono, che la barra e' il posto dove si leggono.
+//
+// A destra sta anche **Plan**, per lo stesso motivo di Activities: un piano
+// non e' un periodo. Non guarda indietro a un giorno o a una settimana,
+// guarda avanti a una gara, e dura quanto dura il blocco. Di viste non ne
+// ha, quindi apre la barra con una riga sola.
 //
 // Niente voci grigie nei due menu: Month e Year si aggiungono quando
 // esistono, non prima. Resta disattivata solo Activities, che la forma della
 // barra ce l'ha gia'.
-import { hrefFor, type Page, type View } from "../navigation";
+import { VIEWS, defaultView, hrefFor, type Page, type View } from "../navigation";
 
 const PERIODI: { page: Page; label: string }[] = [
   { page: "day", label: "Day" },
   { page: "week", label: "Week" },
 ];
-// Il Trend per ora c'e' solo sotto Day: la Week ha il suo Report e basta.
-const VISTE: { view: View; label: string; only?: Page }[] = [
-  { view: "report", label: "Report" },
-  { view: "trend", label: "Trend", only: "day" },
-];
+const ETICHETTE: Record<View, string> = {
+  report: "Report",
+  snap: "Snap",
+  trend: "Trend",
+  plan: "Plan",
+};
 
 export function TopBar({
   current = "day",
@@ -31,12 +37,12 @@ export function TopBar({
   current?: Page;
   view?: View;
 }) {
-  const viste = VISTE.filter((v) => !v.only || v.only === current);
-  // La vista si porta dietro solo dove esiste: andando sulla Week, che il
-  // Trend non ce l'ha, il collegamento torna al Report invece di lasciare
-  // nell'URL una vista che quella pagina ignora.
+  const viste = VIEWS[current];
+  // La vista si porta dietro solo dove esiste: andando sulla Day, che lo
+  // Snap non ce l'ha, il collegamento torna alla prima vista di quel
+  // periodo invece di lasciare nell'URL una vista che quella pagina ignora.
   const vistaSu = (page: Page): View =>
-    VISTE.some((v) => v.view === view && (!v.only || v.only === page)) ? view : "report";
+    VIEWS[page].includes(view) ? view : defaultView(page);
   return (
     <header className="topbar">
       <div className="topbar-inner">
@@ -57,12 +63,12 @@ export function TopBar({
             <nav aria-label="Views" className="topbar-views">
               {viste.map((v) => (
                 <a
-                  key={v.view}
-                  className={v.view === view ? "tab sub active" : "tab sub"}
-                  href={hrefFor(current, v.view)}
-                  aria-current={v.view === view ? "page" : undefined}
+                  key={v}
+                  className={v === view ? "tab sub active" : "tab sub"}
+                  href={hrefFor(current, v)}
+                  aria-current={v === view ? "page" : undefined}
                 >
-                  {v.label}
+                  {ETICHETTE[v]}
                 </a>
               ))}
             </nav>

@@ -8,22 +8,25 @@ import { PlanPage } from "./components/PlanPage";
 import { WeekPage } from "./components/WeekPage";
 import { pageFromUrl, viewFromUrl, type Page, type View } from "./navigation";
 
+// I due assi si leggono insieme, perche' le viste sono di ogni periodo
+// (todo 59): quale sia quella giusta lo si sa solo dopo aver visto che
+// pagina e'.
+function here(): { page: Page; view: View } {
+  const page = pageFromUrl();
+  return { page, view: viewFromUrl(page) };
+}
+
 export function App() {
-  const [page, setPage] = useState<Page>(() => pageFromUrl());
-  const [view, setView] = useState<View>(() => viewFromUrl());
+  const [{ page, view }, setHere] = useState(here);
 
   useEffect(() => {
-    const onPop = () => {
-      setPage(pageFromUrl());
-      setView(viewFromUrl());
-    };
+    const onPop = () => setHere(here());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // Il Trend per ora e' solo della Day: sulla Week e sulla Plan `view` si
-  // ignora.
-  if (page === "week") return <WeekPage />;
+  // La Plan di viste non ne ha: `view` si ignora.
+  if (page === "week") return <WeekPage view={view} />;
   if (page === "plan") return <PlanPage />;
   return <DayPage view={view} />;
 }
