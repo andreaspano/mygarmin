@@ -7,19 +7,42 @@
 // di sviluppo e in quello dell'API, e non vale il prezzo.
 //
 // Due assi, come il menu a due righe: `?period=` dice il periodo (day o
-// week), `?view=` che cosa se ne guarda (report o trend).
+// week), `?view=` che cosa se ne guarda. Le viste sono **di ogni periodo**
+// (todo 59): `report|trend` sotto Day, `snap|trend|plan` sotto Week. Sono
+// elencate in `VIEWS`, nell'ordine in cui stanno nel menu, e la prima e'
+// quella che si apre senza `?view=`.
 //
 // `?page=week` e' la forma vecchia e continua a valere: i link scritti prima
-// del todo 55 aprono la Week col suo Report. Senza niente si apre
-// Day/Report, cosi' anche `?day=2026-10-07` funziona come prima.
+// del todo 55 aprono la Week col suo Snap. Senza niente si apre Day/Report,
+// cosi' anche `?day=2026-10-07` funziona come prima.
 //
 // La **Plan** sta sullo stesso asse, `?period=plan`, ma non e' un periodo: i
 // piani di `plan/` guardano avanti e durano quanto dura un blocco, non un
 // giorno o una settimana. Per questo nella barra sta a destra, accanto ad
 // Activities, e non fra Day e Week; il piano aperto e' `?plan=<slug>`, cioe'
-// il nome del suo file senza `.md`.
+// il nome del suo file senza `.md`. Viste non ne ha.
 export type Page = "day" | "week" | "plan";
-export type View = "report" | "trend";
+export type View = "report" | "snap" | "trend" | "plan";
+
+/** Le viste di ogni periodo, nell'ordine del menu (todo 59).
+ *
+ * La **prima e' quella di partenza**: `hrefFor` le toglie il parametro e
+ * `viewFromUrl` ci ricade: cosi' `?period=week` da solo apre lo Snap, che e'
+ * quello che quel link apriva prima che le viste esistessero.
+ *
+ * Il Trend sta in tutte e due le liste perche' e' la stessa domanda — come
+ * si muove nel tempo — e cambiando periodo la vista si porta dietro. Quello
+ * della Week e' ancora vuoto, come il suo Plan. */
+export const VIEWS: Record<Page, View[]> = {
+  day: ["report", "trend"],
+  week: ["snap", "trend", "plan"],
+  plan: [],
+};
+
+/** La vista che un periodo apre quando l'URL non ne chiede nessuna. */
+export function defaultView(page: Page): View {
+  return VIEWS[page][0] ?? "report";
+}
 
 /** L'ampiezza della finestra del Trend: gli stessi estremi che l'API
  * accetta (`TREND_MIN_DAYS` e `TREND_MAX_DAYS` in `daily_data.py`), cosi' il
@@ -41,8 +64,13 @@ export function pageFromUrl(): Page {
   return "day";
 }
 
-export function viewFromUrl(): View {
-  return search().get("view") === "trend" ? "trend" : "report";
+/** La vista chiesta dall'URL, se quel periodo ce l'ha; se no la sua prima.
+ *
+ * La validazione serve anche a raddrizzare i link storti: `view=report` sulla
+ * Week, che il Report non ce l'ha, apre lo Snap invece di una pagina muta. */
+export function viewFromUrl(page: Page): View {
+  const value = search().get("view") as View | null;
+  return value && VIEWS[page].includes(value) ? value : defaultView(page);
 }
 
 /** I giorni del Trend, riportati fra gli estremi; `DEFAULT_DAYS` se manca o
@@ -84,14 +112,19 @@ export function pushUrl(changes: Record<string, string | null>): void {
  * Tiene il giorno, il lunedi' e l'ampiezza del Trend: passando da Report a
  * Trend si resta sul giorno che si stava guardando, che e' il motivo per cui
  * il menu e' annidato. E toglie sempre `page`, la forma vecchia, cosi' i due
- * modi di dire il periodo non finiscono insieme nello stesso URL. */
-export function hrefFor(page: Page, view: View = "report"): string {
+ * modi di dire il periodo non finiscono insieme nello stesso URL.
+ *
+ * `view` lo si puo' non dire, e allora e' quella di partenza di quel
+ * periodo; e il parametro si scrive solo quando serve, cioe' quando non e'
+ * la prima della lista. */
+export function hrefFor(page: Page, view?: View): string {
   const params = search();
   params.delete("page");
   if (page === "day") params.delete("period");
   else params.set("period", page);
-  if (view === "report") params.delete("view");
-  else params.set("view", view);
+  const wanted = view ?? defaultView(page);
+  if (wanted === defaultView(page)) params.delete("view");
+  else params.set("view", wanted);
   const text = params.toString();
   return text ? `?${text}` : "?";
 }

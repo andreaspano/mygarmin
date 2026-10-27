@@ -95,19 +95,30 @@ report giornaliero non legge nessuna delle tre.
 
 `frontend/` e' l'interfaccia (React, TypeScript, Vite), l'unica dal todo 40.
 La barra in alto ha **due menu su due righe** (todo 55): sopra il periodo —
-la **Day** e la **Week** — sotto che cosa se ne guarda, **Report** o
-**Trend**. Sono due assi, non una fila sola: Activities non e' un periodo e
-sta a destra, staccata e ancora grigia. Accanto a lei, a destra per lo stesso
-motivo, c'e' **Plan**: un piano guarda avanti a una gara, non indietro a un
-giorno. Month e Year si aggiungeranno quando esisteranno, non prima.
+la **Day** e la **Week** — sotto che cosa se ne guarda. Sono due assi, non
+una fila sola: Activities non e' un periodo e sta a destra, staccata e ancora
+grigia. Accanto a lei, a destra per lo stesso motivo, c'e' **Plan**: un piano
+guarda avanti a una gara, non indietro a un giorno. Month e Year si
+aggiungeranno quando esisteranno, non prima.
+
+**Le viste sono di ogni periodo** (todo 59): **Report** e **Trend** sotto
+Day, **Snap**, **Trend** e **Plan** sotto Week; la Plan, che un periodo non
+e', non ne ha e apre la barra con una riga sola. Stanno in `VIEWS`
+(`src/navigation.ts`) nell'ordine in cui si leggono, e **la prima e' quella
+che il periodo apre da solo** — Report per la Day, Snap per la Week.
 
 L'URL dice i due assi: `?period=` e `?view=`, piu' i parametri della pagina
 (`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90`
-per l'ampiezza del Trend). Cambiando vista **il periodo resta**: da
-Day/Report si clicca Trend e si resta sul giorno che si stava guardando. La
-forma vecchia `?page=week` continua a valere, e senza niente si apre
-Day/Report. Niente router di libreria: `URLSearchParams` e
-`history.pushState` (`src/navigation.ts`).
+per l'ampiezza del Trend). `?view=` si scrive solo quando non e' la vista di
+partenza, quindi `?period=week` da solo apre lo Snap: i link di prima
+continuano ad aprire quello che aprivano. Cambiando vista **il periodo
+resta**: da Day/Report si clicca Trend e si resta sul giorno che si stava
+guardando. E **la vista si porta dietro dove esiste**: da Day/Trend si clicca
+Week e si arriva sul Trend della Week, mentre da Week/Snap si torna a
+Day/Report, che lo Snap la Day non ce l'ha. La forma vecchia `?page=week`
+continua a valere, e senza niente si apre Day/Report. Niente router di
+libreria: `URLSearchParams` e `history.pushState`
+(`src/navigation.ts`).
 
 Il **Trend** della Day (todo 55) disegna quello che il Report racconta: le
 misure giorno per giorno nei cinque pannelli delle card, in una finestra che
@@ -144,6 +155,15 @@ lunedi e domenica), le quattro card, e le sedute con il grafico del lavoro
 per sport. Un clic su una seduta apre la Day di quel giorno, e **ogni card
 porta il testo della sua sezione del report settimanale** (todo 53), con
 l'ora e il tasto per rifarla, come nella Day.
+
+Tutto questo e' lo **Snap** (todo 59): la settimana com'e' andata. Si chiama
+cosi' e non Report perche' non e' solo il report — sono i numeri, le sedute e
+il grafico, e il testo sta dentro le card. Le altre due viste della Week sono
+**vuote**, caselle prenotate: il **Trend** per la fila delle settimane, un
+punto per settimana invece di uno per giorno, e il **Plan** per i file
+`summary/05.plan/<lunedi>.md`, che oggi legge solo l'agente Next. Comune a
+tutte e tre e' l'intestazione — titolo, frecce, calendario, il tasto che
+riscrive la settimana — e il selettore: cambiando settimana la vista resta.
 
 Le fasce della Week **non sono quelle della Day**: qui il valore della
 settimana si confronta con le **12 settimane precedenti** (todo 52), e ne

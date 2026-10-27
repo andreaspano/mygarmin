@@ -7,6 +7,13 @@
 // Il lunedi sta nell'URL (`?page=week&monday=2026-10-19`), come il giorno
 // nella Day: una settimana si apre da un link e il tasto indietro torna a
 // quella prima.
+//
+// Dal todo 59 la pagina ha tre viste, che il menu scambia con `?view=`: lo
+// **Snap**, cioe' la settimana com'e' andata — le card e le sedute, quello
+// che la pagina ha sempre mostrato — e il **Trend** e il **Plan**, che per
+// ora sono vuoti. L'intestazione e la scelta della settimana sono le stesse
+// per tutte e tre, che la settimana serve a tutte; sotto, per adesso, le
+// altre due non hanno niente.
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
@@ -34,7 +41,7 @@ import {
   weekdayShort,
 } from "../format";
 import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
-import { paramFromUrl, pushUrl } from "../navigation";
+import { paramFromUrl, pushUrl, type View } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { WeekCalendar } from "./WeekCalendar";
 import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
@@ -177,7 +184,7 @@ const ZONE_ROWS: {
   { key: "anaerobic", label: "Anaerobic" },
 ];
 
-export function WeekPage() {
+export function WeekPage({ view = "snap" }: { view?: View }) {
   const theme = useColorScheme();
   const now = today();
   const currentMonday = mondayOf(now);
@@ -207,19 +214,25 @@ export function WeekPage() {
   }, []);
 
   useEffect(() => {
-    document.title = `Training · ${weekLabel(monday)}`;
-  }, [monday]);
+    const coda = view === "snap" ? "" : ` · ${view === "trend" ? "Trend" : "Plan"}`;
+    document.title = `Training · ${weekLabel(monday)}${coda}`;
+  }, [monday, view]);
 
+  // Le tre chiamate dello Snap non partono sulle altre viste, che di card e
+  // di sedute non ne hanno (todo 59). Quella dei numeri della settimana si',
+  // sempre: il cerotto "N of 7 days" sta nel titolo, che e' di tutte e tre.
   useEffect(() => {
+    if (view !== "snap") return;
     const controller = new AbortController();
     api
       .sports(controller.signal)
       .then(setSportList)
       .catch((e) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, []);
+  }, [view]);
 
   useEffect(() => {
+    if (view !== "snap") return;
     const controller = new AbortController();
     api
       .activities(monday, sunday, [], controller.signal)
@@ -229,7 +242,7 @@ export function WeekPage() {
       })
       .catch((e) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, [monday, sunday]);
+  }, [monday, sunday, view]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -244,6 +257,7 @@ export function WeekPage() {
   // Il testo della settimana. `reloads` lo rilegge quando un lavoro
   // finisce, senza ricaricare la pagina.
   useEffect(() => {
+    if (view !== "snap") return;
     const controller = new AbortController();
     setReport(null);
     api
@@ -251,7 +265,7 @@ export function WeekPage() {
       .then(setReport)
       .catch((e) => !isAbort(e) && setError(API_DOWN));
     return () => controller.abort();
-  }, [monday, reloads]);
+  }, [monday, reloads, view]);
 
   // Lo stato del lavoro, solo se e' di questo tipo: giorno e settimana
   // condividono un lavoro alla volta, e le chiavi delle sezioni sono
@@ -335,7 +349,7 @@ export function WeekPage() {
 
   return (
     <>
-      <TopBar current="week" />
+      <TopBar current="week" view={view} />
       <main className="page">
         <div className="day-header">
           <div className="day-title">
@@ -442,6 +456,11 @@ export function WeekPage() {
             The week of {refresh.day} was not rewritten: {refresh.message}
           </p>
         )}
+        {/* Dalle card alle sedute: e' lo Snap. Il Trend e il Plan della
+            settimana per ora non hanno niente sotto l'intestazione
+            (todo 59). */}
+        {view === "snap" && (
+        <>
         <div className="head-row">
           <NextCard
             body={text("Next")}
@@ -653,6 +672,8 @@ export function WeekPage() {
             </>
           )}
         </section>
+        </>
+        )}
       </main>
     </>
   );
