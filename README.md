@@ -141,26 +141,35 @@ grigia. Accanto a lei, a destra per lo stesso motivo, c'e' **Plan**: un piano
 guarda avanti a una gara, non indietro a un giorno. Month e Year si
 aggiungeranno quando esisteranno, non prima.
 
-**Le viste sono di ogni periodo** (todo 59): **Report**, **Training** e
+**Le viste sono di ogni periodo** (todo 59): **Snap**, **Training** e
 **Trend** sotto Day, **Snap**, **Trend** e **Plan** sotto Week; la Plan, che
 un periodo non e', non ne ha e apre la barra con una riga sola. Stanno in `VIEWS`
 (`src/navigation.ts`) nell'ordine in cui si leggono, e **la prima e' quella
-che il periodo apre da solo** — Report per la Day, Snap per la Week.
+che il periodo apre da solo** — lo Snap, per tutti e due.
+
+Lo Snap della Day si chiamava **Report** fino al todo 67. Il nome e' passato
+a quello della Week per lo stesso motivo che lo aveva scelto li': quella
+vista non e' un documento, e' **l'istantanea** — i numeri con le loro fasce,
+e il testo dentro le card. E siccome e' la stessa chiave, cambiando periodo
+si resta sull'istantanea: da Day/Snap si clicca Week e si arriva su
+Week/Snap.
 
 L'URL dice i due assi: `?period=` e `?view=`, piu' i parametri della pagina
 (`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90`
 per l'ampiezza del Trend). `?view=` si scrive solo quando non e' la vista di
 partenza, quindi `?period=week` da solo apre lo Snap: i link di prima
 continuano ad aprire quello che aprivano. Cambiando vista **il periodo
-resta**: da Day/Report si clicca Trend e si resta sul giorno che si stava
+resta**: da Day/Snap si clicca Trend e si resta sul giorno che si stava
 guardando. E **la vista si porta dietro dove esiste**: da Day/Trend si clicca
-Week e si arriva sul Trend della Week, mentre da Week/Snap si torna a
-Day/Report, che lo Snap la Day non ce l'ha. La forma vecchia `?page=week`
-continua a valere, e senza niente si apre Day/Report. Niente router di
+Week e si arriva sul Trend della Week, mentre da Week/Plan si torna a
+Day/Snap, che il Plan la Day non ce l'ha. La forma vecchia `?page=week`
+continua a valere, e senza niente si apre Day/Snap; anche `?view=report`,
+che non e' piu' una chiave, ricade sulla vista di partenza — la stessa
+pagina con un altro nome. Niente router di
 libreria: `URLSearchParams` e `history.pushState`
 (`src/navigation.ts`).
 
-Il **Trend** della Day (todo 55) disegna quello che il Report racconta: le
+Il **Trend** della Day (todo 55) disegna quello che lo Snap racconta: le
 misure giorno per giorno nei cinque pannelli delle card, in una finestra che
 si sceglie col cursore fra 5 e 365 giorni (28 di partenza, la stessa di
 `BASELINE_LONG`). Un grafico **per misura** e non per pannello — dentro un
@@ -183,7 +192,7 @@ specifica), quindi si prende tutta la colonna: a 365 giorni, dove la linea
 e' spessa due pixel e i pallini non ci sono, centrare il punto sarebbe un
 gioco di mira.
 
-**Un clic apre il Report di quel giorno** — lo stesso che la barra sta
+**Un clic apre lo Snap di quel giorno** — lo stesso che la barra sta
 indicando: il clic non guarda il segno colpito ma chiede alla scala che
 giorno sia la sua x, **arrotondando al piu' vicino** come fa la barra. Il
 tasto indietro torna al Trend, con la finestra di prima.
@@ -242,7 +251,7 @@ nella Day, dove il mese e' il contesto giusto per un giorno.
 La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
 la seduta suggerita e il verdetto del giorno, e una griglia 2x2 con Health e
 Load sopra, Recovery e Fitness sotto (todo 37). Dal todo 62 l'allenamento non
-sta piu' in fondo a questa colonna: ha una vista sua, **Training**, fra Report
+sta piu' in fondo a questa colonna: ha una vista sua, **Training**, fra Snap
 e Trend — la stessa card di prima, spostata di posto e non rifatta. Dal todo 63
 sopra di lei c'e' la card **Plan**, la seduta che quel giorno prevedeva: prima
 quello che era previsto, poi quello che si e' fatto. **La card c'e' sempre**, e
@@ -439,7 +448,7 @@ Dal todo 47 il report si scrive da solo due volte al giorno, e dal todo 66
 
 | | ore | sezioni | scrive |
 |---|---|---|---|
-| mattina | 08:00 | health, recovery, load, fitness, summary | Day:Report |
+| mattina | 08:00 | health, recovery, load, fitness, summary | Day:Snap |
 | sera | 21:00 | training | Day:Training |
 
 Ogni sezione gira **una volta al giorno**. Prima i due giri si
@@ -448,7 +457,7 @@ verdetto con mezzo pezzo per giro.
 
 Il prezzo del taglio, che va saputo: **Load e Fitness raccontano lo stato
 prima della seduta di oggi**. Scritti alle otto includono la seduta di ieri e
-non quella di oggi, quindi il Report dice come stai stamattina e il carico di
+non quella di oggi, quindi lo Snap dice come stai stamattina e il carico di
 oggi si legge domani.
 
 **Next non c'e' piu'** (todo 66). Era l'unica cosa che prendeva i numeri di

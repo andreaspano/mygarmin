@@ -5,8 +5,11 @@
 // fossero la stessa cosa. Activities non e' un periodo e sta a destra,
 // staccata, ancora disattivata.
 //
-// Le viste sono di ogni periodo e stanno in `VIEWS` (todo 59): Report,
-// Training e Trend sotto Day, Snap, Trend e Plan sotto Week. I nomi con cui
+// Le viste sono di ogni periodo e stanno in `VIEWS` (todo 59): Snap,
+// Training e Trend sotto Day, Snap, Trend e Plan sotto Week. Lo Snap e' la
+// prima di tutti e due, e **la stessa chiave**: cambiando periodo si resta
+// sull'istantanea del nuovo (todo 67, che il Report del giorno l'ha
+// rinominato cosi'). I nomi con cui
 // si scrivono stanno li' accanto (`ETICHETTE`), che servono anche al titolo
 // della pagina.
 //
@@ -27,7 +30,7 @@ const PERIODI: { page: Page; label: string }[] = [
 
 export function TopBar({
   current = "day",
-  view = "report",
+  view = "snap",
 }: {
   current?: Page;
   view?: View;

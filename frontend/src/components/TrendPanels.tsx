@@ -4,7 +4,7 @@
 // Un grafico **per misura** e non per pannello: dentro un pannello le unita'
 // non sono le stesse (il VO2max sta a 42, il punteggio di resistenza a
 // 5000), e su un asse solo la linea bassa verrebbe piatta. I pannelli sono
-// nell'ordine delle card del Report: le stesse cose nello stesso ordine,
+// nell'ordine delle card dello Snap: le stesse cose nello stesso ordine,
 // disegnate invece che raccontate.
 //
 // Niente conti qui dentro: le serie, le fasce e le specifiche Vega-Lite
@@ -91,7 +91,7 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
           view.finalize();
           return;
         }
-        // Un clic nel grafico apre il Report di quel giorno. `pushUrl`
+        // Un clic nel grafico apre lo Snap di quel giorno. `pushUrl`
         // avvisa chi segue l'URL, quindi la pagina si scambia da sola
         // senza ricaricare, e il tasto indietro torna al Trend.
         view.view.addEventListener("click", (event) => {

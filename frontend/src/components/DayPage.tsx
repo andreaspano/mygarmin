@@ -2,12 +2,13 @@
 // giorno alla volta, con l'intestazione e la striscia della settimana in
 // comune fra le viste.
 //
-// **Dal todo 66 le viste hanno un soggetto ciascuna.** Il Report e' il
+// **Dal todo 66 le viste hanno un soggetto ciascuna.** Lo **Snap** e' il
 // corpo: il Summary in cima e la griglia 2x2 (todo 37) con Health e Load
 // sopra, Recovery e Fitness sotto. La Training e' la seduta: il piano, i
 // dati, il giudizio. Il Trend sono i grafici della finestra scelta col
-// cursore (todo 55). Prima il Report teneva anche il riquadro "Next" e un
-// verdetto in due pezzi, e la seduta aveva il commento dentro.
+// cursore (todo 55). Prima lo Snap si chiamava Report e teneva anche il
+// riquadro "Next" e un verdetto in due pezzi, e la seduta aveva il commento
+// dentro.
 //
 // I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi dalle
 // sezioni del report giornaliero. Il tasto Refresh (todo 41) aggiorna i dati e
@@ -65,7 +66,7 @@ const API_DOWN = "Cannot reach the API. Is it running (make api)?";
 // Ogni quanto si chiede lo stato del Refresh mentre gira.
 const REFRESH_POLL_MS = 3000;
 
-export function DayPage({ view = "report" }: { view?: View }) {
+export function DayPage({ view = "snap" }: { view?: View }) {
   const theme = useColorScheme();
   const now = today();
   const [day, setDay] = useState(() => dayFromUrl(now));
@@ -187,7 +188,7 @@ export function DayPage({ view = "report" }: { view?: View }) {
     return () => controller.abort();
   }, [stripStart, stripEnd, reloads]);
 
-  // I dati del giorno e il report servono al Report e al Training, che la
+  // I dati del giorno e il report servono allo Snap e al Training, che la
   // card della seduta ha dentro il testo della sua sezione; il Trend no, che
   // ha i suoi pannelli e la sua finestra.
   useEffect(() => {
@@ -229,12 +230,12 @@ export function DayPage({ view = "report" }: { view?: View }) {
     return () => controller.abort();
   }, [day, view]);
 
-  // Il Report e' la vista di partenza e non si nomina, come non si nomina
+  // Lo Snap e' la vista di partenza e non si nomina, come non si nomina
   // nell'URL; le altre prendono la loro etichetta dal menu, cosi' il nome e'
   // scritto in un posto solo.
   useEffect(() => {
     document.title =
-      view === "report" ? `Training · ${day}` : `Training · ${day} · ${ETICHETTE[view]}`;
+      view === "snap" ? `Training · ${day}` : `Training · ${day} · ${ETICHETTE[view]}`;
   }, [day, view]);
 
   const dayActivities = useMemo(
@@ -326,10 +327,10 @@ export function DayPage({ view = "report" }: { view?: View }) {
             />
           </>
         )}
-        {view === "report" && (
+        {view === "snap" && (
         <>
         {/* Il verdetto a tutta larghezza sopra la griglia. La riga a due
-            colonne (`.head-row`) non c'e' piu': dal todo 66 il Report ha un
+            colonne (`.head-row`) non c'e' piu': dal todo 66 lo Snap ha un
             riquadro solo in cima, che Next e' uscito dal giorno. */}
         <SummaryCard
           day={day}
