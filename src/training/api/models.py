@@ -677,3 +677,24 @@ class WeekPlan(BaseModel):
     target_time: str | None = Field(description='Target finishing time, as written ("2:20:00").')
     written_at: datetime | None = Field(description="When the file was last written.")
     body: str = Field(description="Markdown, without the front matter and without the title.")
+
+
+# La seduta prevista per un giorno, dallo stesso file di `WeekPlan` (todo 63).
+# Qui le sette sedute del front matter si leggono, al contrario del piano
+# settimanale: la vista Training di un giorno ne vuole una sola, e la tabella
+# del testo non la da' separata nei suoi campi. Il testo di quella riga viene
+# comunque, accanto ai campi, che e' dov'e' scritto il perche'.
+class DayPlan(BaseModel):
+    """The session planned for one day, from `summary/05.plan/<monday>.md`."""
+
+    day: date = Field(description="The day the session is planned for.")
+    week: date = Field(description="The Monday of the week this comes from.")
+    file: str = Field(description="The file name in `summary/05.plan/`.")
+    sport: str | None = Field(description="A sport of `activities.sport`, or `rest`.")
+    kind: str | None = Field(description="easy, quality, long or race.")
+    distance_label: str | None = Field(description='Planned distance, as read ("10-11 km").')
+    optional: str | None = Field(description="On a rest day, the sport that may be done anyway.")
+    text: str | None = Field(
+        description="The day's row of the plan's table, Markdown; null when it has none."
+    )
+    written_at: datetime | None = Field(description="When the file was last written.")

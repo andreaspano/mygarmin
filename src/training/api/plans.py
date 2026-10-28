@@ -143,6 +143,101 @@ def week_plan_path(summary_dir: Path, day: date) -> Path | None:
     return path if path.is_file() else None
 
 
+# I mesi come li scrivono i file del piano, nella prima cella della tabella
+# (`**Wed 28 Oct**`). Scritti qui e non con `strftime("%b")`, che segue la
+# lingua del processo: `make api` con LANG italiano direbbe "ott" e la riga
+# non si troverebbe piu'.
+_MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+
+
+def _distance_label(value: Any) -> str | None:
+    """La distanza di una seduta come la legge una persona: `"7 km"`, o
+    `"10-11 km"` quando il piano da' un intervallo.
+
+    L'etichetta la fa l'API e non la pagina, come fanno gia' `Sport.label` e
+    `section_icon`: i conti e la forma dei numeri stanno da questa parte
+    (todo 52)."""
+    def one(number: Any) -> str | None:
+        km = _as_number(number)
+        if km is None:
+            return None
+        return f"{km:g}"
+
+    if isinstance(value, (list, tuple)):
+        ends = [text for number in value if (text := one(number)) is not None]
+        if len(ends) == 2:
+            return f"{ends[0]}-{ends[1]} km"
+        return f"{ends[0]} km" if ends else None
+    single = one(value)
+    return f"{single} km" if single is not None else None
+
+
+def _day_row(body: str, day: date) -> str | None:
+    """La riga di `day` nella tabella `Day | Session` del piano.
+
+    Si guarda **solo la prima cella**, che la seconda e' la prosa e puo'
+    nominare altre date; e si cerca la data nella forma dei file (`28 Oct`),
+    con i delimitatori di parola, se no `1 Nov` si troverebbe dentro
+    `21 Nov`. Nessuna riga trovata non e' un errore: il testo e' un extra, i
+    campi della seduta vengono dal front matter."""
+    needle = re.compile(rf"\b{day.day} {_MONTHS[day.month - 1]}\b")
+    for line in body.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if len(cells) < 2 or not needle.search(cells[0]):
+            continue
+        return cells[1].strip() or None
+    return None
+
+
+def load_day_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
+    """La seduta prevista per `day`, dal piano della sua settimana, o `None`
+    se per quel giorno un piano non c'e'.
+
+    `None` copre tutti i modi in cui non c'e' — file assente, front matter
+    assente o illeggibile, `sessions` assente, nessuna voce con quella data —
+    perche' per chi guarda sono la stessa cosa: quel giorno non e' previsto
+    niente. Il file di settembre 2026, scritto prima che il formato avesse il
+    front matter, cade qui: la sua tabella c'e' ma le sedute a macchina no, e
+    inventarle dal testo e' la strada fragile che il todo 14 aveva scartato.
+
+    La voce si cerca **per data e non per posizione**: quel file dimostra che
+    ne' l'ordine ne' il numero delle righe sono garantiti (la sua tabella
+    parte dalla domenica e ha otto righe).
+
+    Qui `sessions` si legge, al contrario di `load_week_plan`: una card del
+    giorno vuole la seduta di un giorno, e la tabella del testo da sola non la
+    da' separata nei suoi campi. Il testo di quella riga arriva comunque,
+    accanto ai campi, perche' e' dov'e' scritto il perche'."""
+    path = week_plan_path(summary_dir, day)
+    if path is None:
+        return None
+    meta, body = _front_matter(path.read_text(encoding="utf-8"))
+    sessions = meta.get("sessions")
+    if not isinstance(sessions, list):
+        return None
+    entry = next(
+        (s for s in sessions if isinstance(s, dict) and _as_date(s.get("date")) == day),
+        None,
+    )
+    if entry is None:
+        return None
+    _, text = _title(body)
+    return {
+        "day": day,
+        "week": _as_date(meta.get("week")) or day - timedelta(days=day.weekday()),
+        "file": path.name,
+        "sport": _as_text(entry.get("sport")),
+        "kind": _as_text(entry.get("kind")),
+        "distance_label": _distance_label(entry.get("distance_km")),
+        "optional": _as_text(entry.get("optional")),
+        "text": _day_row(text, day),
+        "written_at": datetime.fromtimestamp(path.stat().st_mtime),
+    }
+
+
 def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
     """Il piano della settimana di `day`, o `None` se quella settimana non ne
     ha uno.

@@ -25,6 +25,7 @@ export type TrendPanel = Schemas["TrendPanel"];
 export type TrendSeries = Schemas["TrendSeries"];
 export type WeekMeasure = Schemas["WeekMeasure"];
 export type WeekPlan = Schemas["WeekPlan"];
+export type DayPlan = Schemas["DayPlan"];
 export type Terrain = NonNullable<Activity["terrain"]>;
 export type RunType = NonNullable<Activity["run_type"]>;
 
@@ -194,6 +195,12 @@ export const api = {
   // non ce l'hanno, e non e' un errore da annunciare.
   weekPlan: (monday: string, signal?: AbortSignal) =>
     getOrNull<WeekPlan>(`/api/weekly/${monday}/plan`, signal),
+
+  // La seduta prevista per un giorno (todo 63), dallo stesso file. `null`
+  // quando per quel giorno un piano non c'e': i giorni fuori da un blocco, e
+  // le settimane il cui file e' piu' vecchio del front matter.
+  dayPlan: (day: string, signal?: AbortSignal) =>
+    getOrNull<DayPlan>(`/api/daily/${day}/plan`, signal),
 
   // I piani di `plan/`, la gara piu' vicina per prima, senza il testo.
   plans: (signal?: AbortSignal) => getJson<PlanList>("/api/plans", signal),

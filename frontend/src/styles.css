@@ -1186,6 +1186,20 @@ h2 {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* --- Il piano di un giorno: la riga della seduta (todo 63) --- */
+
+/* L'icona dello sport e la seduta in fila, l'icona alla stessa altezza del
+   testo. Stessa forma di `.training-head`, un filo piu' grande: nella card
+   Plan questa riga e' il titolo del contenuto, non una didascalia. */
+.plan-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
 /* --- Il piano della settimana: la tabella dei sette giorni (todo 61) --- */
 
 /* Vestita solo qui, sotto `.week-plan-card`: nel blocco di `plan/` le tabelle
