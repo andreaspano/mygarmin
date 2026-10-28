@@ -38,6 +38,12 @@ type Sport = {
 /** La seduta in una riga: l'icona dello sport, poi il tipo e la distanza
  * separati da un punto mediano, come nelle schede delle attivita'.
  *
+ * Cornice e carattere sono quelli della card Training — `training-head` e un
+ * `h2` — e non una regola di qui: le due card stanno una sopra l'altra nella
+ * stessa vista, e due titoli di corpo diverso si leggono come due cose di
+ * peso diverso. Prendendo le stesse classi restano uguali anche dopo, senza
+ * che nessuno si ricordi di cambiarle in due posti.
+ *
  * Il riposo ha l'icona sua (`restIcon`, da `/api/sports`) e non sta fra gli
  * sport: e' lo stesso trattamento che gli da' `TrainingCard`. Un riposo con
  * uno sport ammesso comunque lo dice — "Rest · or cycling" — perche' un
@@ -63,9 +69,9 @@ function PlanLine({
     rest && plan.optional ? `or ${sport.label(plan.optional)}` : null,
   ].filter((part): part is string => Boolean(part));
   return (
-    <div className="plan-line">
-      {icon && <img src={iconUrl(icon)} alt="" width={28} height={28} />}
-      <span>{parts.join(" · ") || "Nothing planned"}</span>
+    <div className="training-head">
+      {icon && <img src={iconUrl(icon)} alt="" width={44} height={44} />}
+      <h2>{parts.join(" · ") || "Nothing planned"}</h2>
     </div>
   );
 }
@@ -96,7 +102,9 @@ export function DayPlanCard({
         <>
           <PlanLine plan={plan} sport={sport} restIcon={restIcon} />
           {plan.text && <div className="prose">{inline(plan.text)}</div>}
-          <p className="caption plan-file">summary/05.plan/{plan.file}</p>
+          {/* Senza `plan-file`, che e' monospaziato: nella card Training
+              c'e' un carattere solo, e questa gli sta accanto. */}
+          <p className="caption plan-path">summary/05.plan/{plan.file}</p>
           <WrittenAt when={plan.written_at} day={day} />
         </>
       )}
