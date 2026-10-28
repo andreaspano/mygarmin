@@ -46,7 +46,6 @@ import { paramFromUrl, pushUrl, type View } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { WeekCalendar } from "./WeekCalendar";
 import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
-import { NextCard } from "./NextCard";
 import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
@@ -561,17 +560,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               )}
               <WrittenAt when={when("Training")} day={monday} />
             </section>
-            {/* La strategia dei sette giorni che vengono. Il Next del giorno
-                non c'e' piu' (todo 66); questo resta, che e' un'altra
-                domanda: la forma del lavoro, non la seduta di domani. */}
-            <NextCard
-              body={text("Next")}
-              writtenAt={when("Next")}
-              day={monday}
-              tomorrow
-              week
-              refresh={sectionButton("next")}
-            />
           </>
         )}
         {/* Lo Snap e' il corpo, come quello del giorno (todo 68): il

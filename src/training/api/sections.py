@@ -58,10 +58,11 @@ SECTIONS: tuple[Section, ...] = (
 # non all'inizio. Il prezzo e' che dal lunedi al sabato la settimana non ha
 # nessun testo, ed e' scritto nel todo 68.
 #
-# **Il Next invece resta**, al contrario di quello del giorno (todo 66): e' la
-# strategia dei sette giorni che vengono — quante sedute, di che tipo, dove
-# l'intensita' — non il consiglio per domani, e nessun piano scritto la da'
-# gia' adattata alla settimana appena finita.
+# **Anche il Next e' andato** (todo 69), dopo quello del giorno (todo 66).
+# Era la strategia dei sette giorni che vengono, e l'unica cosa che
+# adattava la forma del blocco a com'era andata la settimana appena finita.
+# Adesso quella forma la dice il piano scritto e nessun agente la rivede: le
+# sei sezioni raccontano, nessuna prescrive.
 WEEK_SECTIONS: tuple[Section, ...] = (
     Section("summary", "Summary", "w7_summary", True),
     Section("training", "Training", "w5_training", False),
@@ -69,7 +70,6 @@ WEEK_SECTIONS: tuple[Section, ...] = (
     Section("health", "Health", "w1_health", False),
     Section("load", "Load", "w2_load", False),
     Section("fitness", "Fitness", "w4_fitness", False),
-    Section("next", "Next", "w6_next", True),
 )
 
 BY_KEY = {section.key: section for section in SECTIONS}
@@ -93,9 +93,6 @@ _WEEK_RUN_KEYS = (
     "recovery",
     "fitness",
     "training",
-    # Il Next prima del Summary: la chiusura legge `next.md`, e quando girano
-    # insieme lo deve trovare scritto.
-    "next",
     "summary",
 )
 
@@ -141,10 +138,8 @@ MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
 # uno, allora il verdetto e' quello della fine. **Un momento che scrive una
 # sezione sola non e' un momento.**
 #
-# Il Next sta qui perche' la strategia e' per la settimana che comincia il
-# giorno dopo, e la si scrive sapendo com'e' andata questa.
 WEEK_MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
-    "end": ("health", "recovery", "load", "fitness", "training", "next", "summary"),
+    "end": ("health", "recovery", "load", "fitness", "training", "summary"),
 }
 
 MOMENTS = tuple(MOMENT_SECTIONS)
@@ -187,7 +182,7 @@ _DAY_BACKFILL = (
 # della settimana **precedente** aveva bisogno — da cui il ciclo dalla piu'
 # vecchia alla piu' recente, che resta giusto comunque.
 _WEEK_BACKFILL = (
-    ("end", ("health", "recovery", "load", "fitness", "training", "next", "summary")),
+    ("end", ("health", "recovery", "load", "fitness", "training", "summary")),
 )
 
 

@@ -502,12 +502,11 @@ h2 {
   font-weight: 600;
 }
 
-/* I due riquadri in testa, Next e Summary: affiancati, uguali di larghezza
-   come le card sotto, uno sotto l'altro quando la pagina si stringe. */
-/* Next e Summary pari in altezza: la piu' alta decide, l'altra si allunga.
-   Due riquadri affiancati di altezza diversa si leggono come se uno fosse
-   finito a meta'. */
-/* Riquadro Next */
+/* Il riquadro scuro del verdetto. Si chiama `.next-card` perche' nato per
+   Next, il riquadro che diceva cosa fare dopo: quello e' sparito dal giorno
+   col todo 66 e dalla settimana col 69, e di suo ha lasciato la cornice al
+   Summary, che e' l'unico a vestirsi cosi'. Il nome resta per non rinominare
+   sei regole e due componenti per un riquadro solo. */
 .next-card {
   background: var(--next-bg);
   color: var(--next-text);
@@ -543,10 +542,6 @@ h2 {
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-.next-card h2 {
-  font-size: 1.5rem;
-  margin: 4px 0 6px;
-}
 .next-reason,
 .next-reason p {
   color: var(--next-muted);
@@ -555,9 +550,6 @@ h2 {
 }
 .next-reason p + p {
   margin-top: 6px;
-}
-.next-session {
-  max-width: 380px;
 }
 /* I due pezzi del verdetto, uno sotto l'altro nello stesso riquadro (todo
    49): una riga sottile a separarli, e la luna in un viola piu' spento del
@@ -571,9 +563,9 @@ h2 {
   background: var(--summary-moon);
 }
 
-/* Summary: stesso riquadro di Next, accento suo. Ma in colonna, non in
-   riga: `.next-card` e' fatto per Next, che mette i chip a destra, e i due
-   pezzi del verdetto vanno uno sopra l'altro. */
+/* Il Summary: la cornice sopra, con il suo accento, e in colonna invece che
+   in riga — la riga serviva a Next, che metteva i chip della seduta a
+   destra. */
 .summary-card {
   flex-direction: column;
   gap: 0;
@@ -583,25 +575,6 @@ h2 {
 }
 .summary-card .eyebrow {
   color: var(--summary-accent);
-}
-.next-session-label {
-  font-size: 0.78rem;
-  color: var(--next-muted);
-  margin-bottom: 8px;
-}
-.chips {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.chips li {
-  border: 1px solid var(--next-chip);
-  border-radius: 999px;
-  padding: 4px 12px;
-  font-size: 0.82rem;
 }
 
 /* Il grafico della settimana (todo 52): senza la cornice del riquadro, che

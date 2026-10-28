@@ -206,15 +206,15 @@ l'ora e il tasto per rifarla, come nella Day.
 Dal todo 68 la Week ha le **stesse quattro viste della Day, nello stesso
 ordine**. Lo **Snap** e' il corpo: il verdetto a tutta larghezza e le quattro
 card. La **Training** e' il lavoro: le sedute col grafico per sport (un clic
-su una seduta apre la Day di quel giorno), il commento sulla forma della
-settimana, e il **Next**, la strategia dei sette giorni che vengono. Prima
-stavano tutte nello Snap, sette riquadri in fila.
+su una seduta apre la Day di quel giorno) e il commento sulla forma della
+settimana. Prima stavano tutte nello Snap, sette riquadri in fila, insieme a
+un **Next** che dal todo 69 non c'e' piu'.
 
 Il **Plan** e' la stessa settimana dall'altra parte: **come doveva andare**
-(todo 60). E' il file `summary/05.plan/<lunedi>.md`, che prima leggeva solo
-l'agente Next — le sette sedute con dentro il perche', i totali, i ritmi e i
-segnali per scaricare — con in cima da che blocco viene, a che settimana del
-blocco siamo, la gara e il bersaglio. Una settimana senza file non e' un
+(todo 60). E' il file `summary/05.plan/<lunedi>.md` — le sette sedute con
+dentro il perche', i totali, i ritmi e i segnali per scaricare — con in cima
+da che blocco viene, a che settimana del blocco siamo, la gara e il
+bersaglio. Una settimana senza file non e' un
 errore, e la vista lo dice: le settimane prima dell'inizio di un blocco non ne
 hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
 fila delle settimane, un punto per settimana invece di uno per giorno.
@@ -304,12 +304,13 @@ dell'API, con l'API accesa, `make frontend_types` rigenera
 Il tasto **Refresh** nell'intestazione (todo 41) aggiorna i dati e rifa' il
 report del giorno mostrato. Dal todo 44 il report non lo scrive un agente
 solo: ogni sezione ha il suo (`01_health`, `02_load`, `03_recovery`,
-`04_fitness`, `05_training`, e poi `06_next` e `07_summary`, che leggono
-quello che hanno concluso gli altri), e ognuno scrive il suo file in
-`summary/01.daily/<giorno>/`. L'API li lancia **uno alla volta** con
-`claude -p` (il comando `claude` deve essere nel `PATH` di `make api`), dopo
-aver scaricato i dati e preparato i fatti una volta sola: circa due minuti in
-tutto. Le regole che gli agenti condividono stanno in
+`04_fitness`, `05_training`, e per ultimo `07_summary`, che legge quello che
+hanno concluso gli altri), e ognuno scrive il suo file in
+`summary/01.daily/<giorno>/`. Il numero sei manca: era `06_next`, cancellato
+col todo 66, e gli altri tengono il loro numero perche' sono anche il nome
+del file. L'API li lancia **uno alla volta** con `claude -p` (il comando
+`claude` deve essere nel `PATH` di `make api`), dopo aver scaricato i dati e
+preparato i fatti una volta sola: un minuto e mezzo in tutto. Le regole che gli agenti condividono stanno in
 `.claude/agents/_style.md`.
 
 Ogni card ha anche **un tasto suo**, che rifa' solo quella sezione: una
@@ -405,31 +406,21 @@ front matter: per chi guarda e' la stessa cosa, quel giorno non e' previsto
 niente. La settimana intera resta senza `sessions`: marcare il giorno di oggi
 nella tabella della Week e' ancora aperto (todo 61).
 
-**Due sezioni lo leggono, e per due date diverse** (`_planned` in
-`api/refresh.py`), quando il file della settimana esiste.
+**Lo legge una sezione sola** (`_planned` in `api/refresh.py`), quando il
+file della settimana esiste: **il Training del giorno** (todo 64), che
+giudica. La seduta prevista per quella data e' il suo primo metro — distanza,
+fascia di ritmo, tetto del battito, a cosa serviva il giorno — e il confronto
+con le sedute passate **non viene sostituito, ci si somma**: cosa era
+chiesto, cosa si e' fatto, e come sta rispetto al solito. Prima del todo 64
+vedeva solo le sedute passate, e di "previsto" conosceva il solo allenamento
+caricato sull'orologio: su un giorno con un piano scriveva «nothing was
+planned» (vero di quel file) e lodava nove chilometri dove ne erano previsti
+cinque.
 
-**Il Next della settimana**, che prescrive la strategia dei sette giorni che
-vengono: la forma prevista e' il punto di partenza — la prescrive com'e' se
-le sezioni sono d'accordo, la cambia se non lo sono, e allora **deve dire
-cosa ha cambiato e perche'**. Una settimana che si discosta dal piano in
-silenzio e' un piano che nessuno segue. (Il Next **del giorno** leggeva il
-piano allo stesso modo; dal todo 66 non c'e' piu'.)
-
-**Il Training del giorno** (todo 64), che giudica: la seduta prevista per
-quella data e' il suo primo metro — distanza, fascia di ritmo, tetto del
-battito, a cosa serviva il giorno — e il confronto con le sedute passate
-**non viene sostituito, ci si somma**: cosa era chiesto, cosa si e' fatto, e
-come sta rispetto al solito. Prima del todo 64 vedeva solo le sedute passate,
-e di "previsto" conosceva il solo allenamento caricato sull'orologio: su un
-giorno con un piano scriveva «nothing was planned» (vero di quel file) e
-lodava nove chilometri dove ne erano previsti cinque.
-
-La data che conta non e' quella del report: **il Next della sera parla di
-domani**, e quello della settimana della settimana che comincia il giorno dopo
-(`_next_subject`). La domenica sera la riga da leggere sta quindi nel file
-della settimana successiva, non in quello del report — e quella sera Training
-e Next leggono **due file diversi**, che il Training giudica la domenica e il
-Next prescrive per il lunedi'.
+Erano due: anche Next lo leggeva, come punto di partenza di quello che
+prescriveva. **Nessuno prescrive piu'** — il Next del giorno e' andato col
+todo 66, quello della settimana col 69 — e il piano si segue come e'
+scritto.
 
 Health, Recovery, Load e Fitness il piano non lo vedono: raccontano dei
 numeri, e quello che era previsto non li cambia. Nemmeno il Training della
@@ -461,12 +452,13 @@ prima della seduta di oggi**. Scritti alle otto includono la seduta di ieri e
 non quella di oggi, quindi lo Snap dice come stai stamattina e il carico di
 oggi si legge domani.
 
-**Next non c'e' piu'** (todo 66). Era l'unica cosa che prendeva i numeri di
-stamattina e diceva cosa fare oggi: le regole di deroga scritte nel piano
-(«readiness under 40: run it easy and move the session to Friday») adesso non
-le applica nessuno, e sui giorni fuori da un blocco di suggerimenti non ce ne
-sono. E' una scelta, non una dimenticanza. Il Next della **settimana** resta:
-e' la strategia dei sette giorni, un'altra cosa.
+**Next non c'e' piu'** (todo 66 per il giorno, 69 per la settimana). Era
+l'unica cosa che prendeva i numeri di stamattina e diceva cosa fare oggi, e
+nella settimana l'unica che adattava la forma del blocco a com'era andata la
+settimana prima. Le regole di deroga scritte nel piano («readiness under 40:
+run it easy and move the session to Friday») adesso non le applica nessuno, e
+sui giorni fuori da un blocco di suggerimenti non ce ne sono. **Le sezioni
+raccontano, nessuna prescrive**: la prescrizione e' il piano, scritto a mano.
 
 **Il verdetto del giorno e' uno** — era in due pezzi, il sole del mattino e
 la luna della sera (todo 49), quando i giri erano due. Adesso e' del mattino
@@ -484,9 +476,10 @@ testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
 
 ### Il report della settimana
 
-Dal todo 53 anche la settimana ha il suo report, sette sezioni — le sei del
-giorno piu' il Next — in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
-`w7_summary` — che sono **altri** da quelli del giorno: i prompt del giorno
+Dal todo 53 anche la settimana ha il suo report, **le stesse sei sezioni del
+giorno**, in `summary/02.weekly/<lunedi>/`. Le scrivono sei agenti —
+`w1_health` ... `w5_training` e `w7_summary` — che sono **altri** da quelli
+del giorno: i prompt del giorno
 parlano di stamattina e della seduta di ieri, e non si riusano. Il ciclo che
 li lancia invece e' lo stesso, parametrato su `sections.Report`
 (`api/sections.py`).
@@ -496,7 +489,7 @@ giorno:
 
 | | quando | sezioni |
 |---|---|---|
-| chiusura | domenica, 21:00 | health, recovery, load, fitness, training, next, summary |
+| chiusura | domenica, 21:00 | health, recovery, load, fitness, training, summary |
 
 Erano due: il lunedi' scriveva l'apertura, un verdetto che guardava la
 settimana prima, e la domenica tutto il resto. Il ragionamento era che una
@@ -504,12 +497,6 @@ settimana al primo giorno non ha numeri da commentare, e vale ancora — ma se
 il verdetto e' uno, quello e' il verdetto della fine, non dell'inizio. Il
 prezzo e' che **dal lunedi' al sabato la settimana non ha nessun testo**: le
 card mostrano i numeri e basta. E' una scelta, scritta nel todo 68.
-
-**Next e' solo la strategia** dei sette giorni che vengono — quante sedute,
-di che tipo, dove l'intensita' e dove il lungo — e si scrive la domenica
-sera, per la settimana che comincia il giorno dopo. Al contrario di quello
-del giorno (todo 66) e' rimasto: nessun piano scritto da' la forma della
-settimana gia' adattata a com'e' andata quella appena finita.
 
 Il settimanale **non scarica mai**: gira in coda al giro del giorno, che ha
 appena chiamato Garmin.
