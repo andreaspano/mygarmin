@@ -582,20 +582,56 @@ h2 {
    Niente tabella: sono sette righe corte, e una tabella a due colonne qui
    aggiungerebbe bordi e allineamenti per nulla. */
 /* Il previsto e il fatto, affiancati (todo 73): a sinistra cosa chiedeva la
-   settimana, a destra cosa e' successo.
-   **Le due card si pareggiano in altezza** (todo 76), come fa la griglia
-   delle card: la piu' alta decide — di solito il piano, che ha sempre sette
-   righe — e l'altra si allunga. Due riquadri affiancati che finiscono a
-   quote diverse si leggono come una riga sfaldata, e il bianco in fondo alle
-   sedute e' meno fastidioso del gradino. */
+   settimana, a destra cosa e' successo. Le due card si pareggiano in altezza
+   (todo 76): due riquadri che finiscono a quote diverse si leggono come una
+   riga sfaldata.
+   **E si allineano per giorno** (todo 77): le righe non sono di ogni card, sono
+   della pagina — una per il titolo, sette per i sette giorni, una per il
+   piede — e le due card se le prendono con `subgrid`. Cosi' la seduta di
+   martedi sta sulla riga del martedi del piano, e una riga che da una parte
+   e' alta il doppio (due sedute in un giorno) alza anche quella di fronte.
+   Due griglie separate non ci arrivano: ognuna conosce solo le proprie
+   altezze. */
 .week-work {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
+  grid-template-rows: auto repeat(7, auto) auto;
+  column-gap: 16px;
+  row-gap: 0;
 }
+.week-days {
+  grid-row: 1 / -1;
+  display: grid;
+  grid-template-rows: subgrid;
+}
+/* Il piede in fondo, qualunque riga sia: senza, il "written at" del piano
+   finirebbe sulla riga del lunedi'. */
+.week-days-foot {
+  grid-row: -2 / -1;
+  align-self: end;
+}
+/* Sul telefono le due card tornano una sotto l'altra, e con loro **la
+   griglia condivisa si scioglie**: in una colonna sola le due card
+   starebbero sulle stesse righe, cioe' una sopra l'altra. Le righe tornano
+   blocchi normali, e l'allineamento per giorno non serve piu' — le due liste
+   non sono piu' affiancate. */
 @media (max-width: 900px) {
   .week-work {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .week-days {
+    grid-row: auto;
+    display: block;
+  }
+  .week-days-foot {
+    grid-row: auto;
+  }
+  /* Sciolta la griglia, una riga vuota e' alta zero e resta solo il suo
+     filo di separazione: cinque fili uno sull'altro in fondo alle sedute.
+     Affiancate servivano a tenere il posto, qui no. */
+  .week-day-row:empty {
+    display: none;
   }
 }
 
@@ -607,26 +643,34 @@ h2 {
   row-gap: 14px;
 }
 
-.plan-days {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-}
 /* Lo stesso passo delle sedute nella colonna accanto, perche' le righe si
-   corrispondano (todo 75): stessa altezza — l'icona e' uguale e il riempimento
-   anche — e stessa riga di separazione fra una e l'altra. Le due liste si
-   leggono come una tabella a due colonne. */
-.plan-days li {
+   corrispondano (todo 75): stessa icona, stesso riempimento, stessa riga di
+   separazione. Le due liste si leggono come una tabella a due colonne. */
+.plan-day-row,
+.week-day-row {
+  border-top: 1px solid var(--border);
+}
+.plan-day-row:first-of-type,
+.week-day-row:first-of-type {
+  border-top: none;
+}
+.plan-day-row {
   display: grid;
   grid-template-columns: 5.5rem 26px 1fr;
   align-items: center;
+  /* In cima alla riga, non in mezzo: quando la riga si alza perche' di
+     fronte c'e' una seduta da due righe, il giorno deve restare sulla stessa
+     linea del nome della seduta, non scendere a meta'. */
+  align-content: start;
   gap: 12px;
   padding: 10px 8px;
-  border-top: 1px solid var(--border);
   font-size: 0.92rem;
 }
-.plan-days li:first-child {
-  border-top: none;
+/* La riga di un giorno senza sedute non e' vuota per sbaglio: tiene il posto
+   perche' quella del piano di fronte si veda alla sua altezza. */
+.week-day-row {
+  display: grid;
+  align-content: start;
 }
 /* Il giorno in tono minore: e' la chiave della riga, non il contenuto. */
 .plan-day {
@@ -635,10 +679,10 @@ h2 {
 }
 /* I riposi in secondo piano, cosi' l'occhio trova le sedute senza contarle.
    Non e' meno informazione: e' la stessa riga, detta piu' piano. */
-.plan-days li.rest {
+.plan-day-row.rest {
   color: var(--muted);
 }
-.plan-days li.rest img {
+.plan-day-row.rest img {
   opacity: 0.55;
 }
 /* Un giorno di riposo senza icona lascia la colonna vuota e il testo
@@ -646,11 +690,6 @@ h2 {
 
 /* Le sedute della settimana (todo 51): una riga per seduta, e un clic porta
    alla Day di quel giorno. */
-.week-sessions {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-}
 .week-session {
   display: flex;
   align-items: center;
@@ -667,10 +706,6 @@ h2 {
 }
 .week-session:hover {
   background: var(--track);
-}
-.week-sessions li + li .week-session {
-  border-top: 1px solid var(--border);
-  border-radius: 0 0 10px 10px;
 }
 .week-session-name {
   flex: 1 1 auto;

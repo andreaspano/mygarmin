@@ -13,7 +13,7 @@
 // Una settimana senza file non e' un errore — prima dell'inizio del blocco
 // non ce n'e' nessuno — e la vista lo dice invece di restare muta.
 import { iconUrl, type WeekPlan } from "../api/client";
-import { raceLabel, shortDayLabel, targetLabel, weekdayShort } from "../format";
+import { addDays, raceLabel, shortDayLabel, targetLabel, weekdayShort } from "../format";
 import { markdown } from "../markdown";
 import { sessionIcon, sessionLabel, type Sport } from "./PlanSession";
 import { CardHead, Stat, WrittenAt } from "./Stat";
@@ -121,34 +121,39 @@ export function WeekPlanBrief({
   sport: Sport;
   restIcon: string | null;
 }) {
+  // Lunedi' -> domenica. `daysBetween` li rende al contrario, dal piu'
+  // recente, e qui l'ordine e' quello della settimana.
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
+  const byDay = new Map((plan?.sessions ?? []).map((s) => [s.day, s]));
   return (
-    <section className="card plan-card" aria-label="Plan">
+    <section className="card plan-card week-days" aria-label="Plan">
       <CardHead icon={PLAN_ICON} title="Plan" />
-      {plan === null ? (
-        loading ? <p className="caption">Loading…</p> : null
-      ) : (
-        <>
-          {plan.sessions && (
-            <ul className="plan-days">
-              {plan.sessions.map((session) => {
-                const icon = sessionIcon(session, sport, restIcon);
-                return (
-                  <li key={session.day} className={session.sport === "rest" ? "rest" : undefined}>
-                    {/* Il giorno della settimana davanti alla data, come
-                        nell'elenco delle sedute: in sette righe "Mon" si
-                        legge prima del numero. */}
-                    <span className="plan-day">
-                      {weekdayShort(session.day)} {shortDayLabel(session.day)}
-                    </span>
-                    {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
-                    <span>{sessionLabel(session, sport)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+      {plan === null
+        ? loading && <p className="caption">Loading…</p>
+        : plan.sessions &&
+          days.map((day) => {
+            const session = byDay.get(day);
+            const icon = session ? sessionIcon(session, sport, restIcon) : null;
+            return (
+              <div
+                key={day}
+                className={`plan-day-row${session && session.sport !== "rest" ? "" : " rest"}`}
+              >
+                {/* Il giorno della settimana davanti alla data, come
+                    nell'elenco delle sedute: in sette righe "Mon" si legge
+                    prima del numero. */}
+                <span className="plan-day">
+                  {weekdayShort(day)} {shortDayLabel(day)}
+                </span>
+                {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
+                <span>{session ? sessionLabel(session, sport) : ""}</span>
+              </div>
+            );
+          })}
+      {plan && (
+        <div className="week-days-foot">
           <WrittenAt when={plan.written_at} day={monday} />
-        </>
+        </div>
       )}
     </section>
   );

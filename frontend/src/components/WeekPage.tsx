@@ -37,9 +37,9 @@ import {
   longDayLabel,
   mondayOf,
   timeOf,
+  weekdayShort,
   today,
   weekLabel,
-  weekdayShort,
 } from "../format";
 import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
 import { paramFromUrl, pushUrl, type View } from "../navigation";
@@ -364,11 +364,22 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
     sportList?.sports.find((s) => s.sport === key)?.label ?? key ?? "?";
 
   // Dalla piu' vecchia alla piu' recente: una settimana si legge in avanti.
+  // I sette giorni della settimana, e le sedute di ognuno: la vista li mette
+  // in fila uno per riga, accanto alle righe del piano (todo 77).
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   const ordered = useMemo(
     () =>
       [...activities].sort((a, b) => a.start_time.localeCompare(b.start_time)),
     [activities],
   );
+  const byDay = useMemo(() => {
+    const map = new Map<string, Activity[]>();
+    for (const a of ordered) {
+      const day = a.start_time.slice(0, 10);
+      map.set(day, [...(map.get(day) ?? []), a]);
+    }
+    return map;
+  }, [ordered]);
   // Un giorno della striscia, o una seduta, aprono la Day di quel giorno:
   // `pushUrl` cambia l'URL e avvisa `App`, che scambia la pagina senza
   // ricaricare niente.
@@ -523,46 +534,53 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               sport={{ label: sportLabel, icon: (key) => sportIcons.get(key ?? "") ?? null }}
               restIcon={sportList?.rest_icon ?? null}
             />
-            <section className="card" aria-label="Sessions">
+            <section className="card week-days" aria-label="Sessions">
               <CardHead icon={sectionIconFile("training")} title="Sessions" />
-              {ordered.length === 0 ? (
-                <p className="caption">No sessions this week.</p>
-              ) : (
-                <ul className="week-sessions">
-                  {ordered.map((a) => {
+              {/* Una riga per giorno, come il piano accanto: le sedute
+                  stanno sulla riga del loro giorno, e i giorni senza niente
+                  lasciano la riga vuota. Cosi' previsto e fatto si leggono
+                  sulla stessa riga invece che in due elenchi da far
+                  combaciare a occhio. */}
+              {weekDays.map((day) => (
+                <div key={day} className="week-day-row">
+                  {(byDay.get(day) ?? []).map((a) => {
                     const icon = sportIcons.get(a.sport ?? "") ?? null;
-                    const day = a.start_time.slice(0, 10);
                     return (
-                      <li key={a.activity_id}>
-                        <button
-                          type="button"
-                          className="week-session"
-                          onClick={() => openDay(day)}
-                        >
-                          {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
-                          <span className="week-session-name">
-                            {a.activity_name ?? sportLabel(a.sport)}
-                            {/* Il giorno della settimana davanti alla data:
-                                in una pagina che parla di sette giorni,
-                                "Mon" si legge prima del numero. */}
-                            <span className="muted">
-                              {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
-                              {timeOf(a.start_time)}
-                            </span>
+                      <button
+                        type="button"
+                        key={a.activity_id}
+                        className="week-session"
+                        onClick={() => openDay(day)}
+                      >
+                        {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
+                        <span className="week-session-name">
+                          {a.activity_name ?? sportLabel(a.sport)}
+                          <span className="muted">
+                            {/* Il giorno resta scritto anche se la riga lo
+                              dice gia': senza piano la colonna di sinistra
+                              non c'e', e una seduta senza giorno in una
+                              pagina di sette giorni non si colloca. La data
+                              intera invece e' andata, che la settimana sta
+                              nel titolo. */}
+                          {sportLabel(a.sport)} · {weekdayShort(day)} ·{" "}
+                          {timeOf(a.start_time)}
                           </span>
-                          <span className="week-session-size">
-                            {a.total_distance_km != null
-                              ? fixed(a.total_distance_km, 1, " km")
-                              : "–"}
-                            <span className="muted">
-                              {durationLabel(a.total_time_min)}
-                            </span>
+                        </span>
+                        <span className="week-session-size">
+                          {a.total_distance_km != null
+                            ? fixed(a.total_distance_km, 1, " km")
+                            : "–"}
+                          <span className="muted">
+                            {durationLabel(a.total_time_min)}
                           </span>
-                        </button>
-                      </li>
+                        </span>
+                      </button>
                     );
                   })}
-                </ul>
+                </div>
+              ))}
+              {ordered.length === 0 && (
+                <p className="caption week-days-foot">No sessions this week.</p>
               )}
             </section>
             </div>
