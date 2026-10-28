@@ -206,8 +206,9 @@ sta piu' in fondo a questa colonna: ha una vista sua, **Training**, fra Report
 e Trend — la stessa card di prima, spostata di posto e non rifatta. Dal todo 63
 sopra di lei c'e' la card **Plan**, la seduta che quel giorno prevedeva: prima
 quello che era previsto, poi quello che si e' fatto. **La card c'e' sempre**, e
-un giorno senza piano lo dice dentro la cornice invece di far sparire la
-cornice.
+un giorno senza piano la lascia **vuota**: la cornice resta — due riquadri a
+qualunque data, che uno che va e viene si legge come un errore — e dentro non
+ci va niente, perche' la cornice vuota lo dice gia'.
 **Tutte e quattro le card hanno la stessa forma**: le misure, ognuna
 con la barra della sua fascia e il valore di oggi come tacca, e niente testo
 accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e allora e'
