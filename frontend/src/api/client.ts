@@ -26,6 +26,7 @@ export type TrendSeries = Schemas["TrendSeries"];
 export type WeekMeasure = Schemas["WeekMeasure"];
 export type WeekPlan = Schemas["WeekPlan"];
 export type DayPlan = Schemas["DayPlan"];
+export type PlannedSession = Schemas["PlannedSession"];
 export type Terrain = NonNullable<Activity["terrain"]>;
 export type RunType = NonNullable<Activity["run_type"]>;
 

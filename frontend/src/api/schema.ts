@@ -865,7 +865,7 @@ export interface components {
         };
         /**
          * DayPlan
-         * @description The session planned for one day, from `summary/05.plan/<monday>.md`.
+         * @description The session planned for one day, with the plan it comes from.
          */
         DayPlan: {
             /**
@@ -874,17 +874,6 @@ export interface components {
              * @description The day the session is planned for.
              */
             day: string;
-            /**
-             * Week
-             * Format: date
-             * @description The Monday of the week this comes from.
-             */
-            week: string;
-            /**
-             * File
-             * @description The file name in `summary/05.plan/`.
-             */
-            file: string;
             /**
              * Sport
              * @description A sport of `activities.sport`, or `rest`.
@@ -910,6 +899,17 @@ export interface components {
              * @description The day's row of the plan's table, Markdown; null when it has none.
              */
             text: string | null;
+            /**
+             * Week
+             * Format: date
+             * @description The Monday of the week this comes from.
+             */
+            week: string;
+            /**
+             * File
+             * @description The file name in `summary/05.plan/`.
+             */
+            file: string;
             /**
              * Written At
              * @description When the file was last written.
@@ -1302,35 +1302,41 @@ export interface components {
             written_at: string | null;
         };
         /**
-         * PlannedWeek
-         * @description The totals the week's plan asks for.
+         * PlannedSession
+         * @description One day's session, as the week's plan asks for it.
          */
-        PlannedWeek: {
+        PlannedSession: {
             /**
-             * Sessions
-             * @description Planned sessions, rest days excluded.
+             * Day
+             * Format: date
+             * @description The day the session is planned for.
              */
-            sessions: number;
+            day: string;
             /**
-             * Rest Days
-             * @description Days the plan leaves without training.
+             * Sport
+             * @description A sport of `activities.sport`, or `rest`.
              */
-            rest_days: number;
+            sport: string | null;
             /**
-             * Quality
-             * @description Of the sessions, how many are `quality`.
+             * Kind
+             * @description easy, quality, long or race.
              */
-            quality: number;
+            kind: string | null;
             /**
              * Distance Label
-             * @description Planned distance over the week, as read ("26 km", "24-27 km"). Null when no session names one.
+             * @description Planned distance, as read ("10-11 km").
              */
             distance_label: string | null;
             /**
-             * Longest Label
-             * @description The longest single planned session, same form. Null likewise.
+             * Optional
+             * @description On a rest day, the sport that may be done anyway.
              */
-            longest_label: string | null;
+            optional: string | null;
+            /**
+             * Text
+             * @description The day's row of the plan's table, Markdown; null when it has none.
+             */
+            text: string | null;
         };
         /** Range */
         Range: {
@@ -1907,8 +1913,11 @@ export interface components {
              * @description Target finishing time, as written ("2:20:00").
              */
             target_time: string | null;
-            /** @description The totals the plan asks for. Null for a file written before the front matter had the sessions. */
-            planned: components["schemas"]["PlannedWeek"] | null;
+            /**
+             * Sessions
+             * @description The planned session of each day, Monday to Sunday, in order. Null for a file written before the front matter had them.
+             */
+            sessions: components["schemas"]["PlannedSession"][] | null;
             /**
              * Written At
              * @description When the file was last written.

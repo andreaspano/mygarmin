@@ -12,9 +12,10 @@
 //
 // Una settimana senza file non e' un errore — prima dell'inizio del blocco
 // non ce n'e' nessuno — e la vista lo dice invece di restare muta.
-import { type WeekPlan } from "../api/client";
-import { raceLabel, shortDayLabel, targetLabel } from "../format";
+import { iconUrl, type WeekPlan } from "../api/client";
+import { raceLabel, shortDayLabel, targetLabel, weekdayShort } from "../format";
 import { markdown } from "../markdown";
+import { sessionIcon, sessionLabel, type Sport } from "./PlanSession";
 import { CardHead, Stat, WrittenAt } from "./Stat";
 
 // L'icona di Next, come nella pagina Plan: il riquadro che dice cosa fare
@@ -84,17 +85,19 @@ export function WeekPlanCard({
 }
 
 
-/** Cosa chiedeva la settimana: la card Plan della vista Training (todo 70).
+/** Il piano della settimana **giorno per giorno**: la card Plan della vista
+ * Training (todo 71).
  *
- * **Non e' la card della vista Plan**, ed e' il punto. Li' c'e' il
- * documento — la tabella dei sette giorni, i ritmi, i segnali per scaricare
- * — che e' da leggere; qui ci sono i numeri che chiedeva, da mettere accanto
- * alle sedute che hai fatto, due riquadri piu' sotto. Lo stesso file, due
- * domande: com'era scritto, e quanto chiedeva.
+ * **Non e' la card della vista Plan**, ed e' il punto. Li' c'e' il documento
+ * — la tabella con il perche' di ogni seduta, i ritmi, i segnali per
+ * scaricare — che si apre e si legge. Qui ci sono le sette sedute come dati,
+ * una riga per giorno, da scorrere con un'occhiata accanto alle sedute che
+ * hai fatto due riquadri piu' sotto. Lo stesso file, due domande: com'era
+ * scritto, e cosa chiedeva ogni giorno.
  *
- * I totali li conta l'API dal front matter (`planned`), non si leggono dalla
- * riga «Totals» del testo: quella e' prosa scritta a mano, e un numero che
- * si deve mettere accanto a un altro numero non si prende da una frase.
+ * Il todo 70 ci aveva messo i **totali** — quante sedute, quanti chilometri
+ * — e non era quello che si voleva: la settimana si guarda giorno per
+ * giorno, che e' come e' fatta.
  *
  * La cornice c'e' sempre, come nella Day (todo 63): una settimana senza
  * piano la lascia vuota invece di far sparire un riquadro su tre. */
@@ -102,10 +105,14 @@ export function WeekPlanBrief({
   plan,
   monday,
   loading,
+  sport,
+  restIcon,
 }: {
   plan: WeekPlan | null;
   monday: string;
   loading: boolean;
+  sport: Sport;
+  restIcon: string | null;
 }) {
   return (
     <section className="card plan-card" aria-label="Plan">
@@ -115,19 +122,24 @@ export function WeekPlanBrief({
       ) : (
         <>
           <WeekPlanStats plan={plan} />
-          {plan.planned && (
-            <div className="stats four">
-              <Stat label="Sessions" value={`${plan.planned.sessions}`} />
-              <Stat label="Distance" value={plan.planned.distance_label ?? "–"} />
-              <Stat label="Longest" value={plan.planned.longest_label ?? "–"} />
-              <Stat
-                label="Quality"
-                value={`${plan.planned.quality}`}
-                sub={
-                  <span className="muted">{plan.planned.rest_days} rest days</span>
-                }
-              />
-            </div>
+          {plan.sessions && (
+            <ul className="plan-days">
+              {plan.sessions.map((session) => {
+                const icon = sessionIcon(session, sport, restIcon);
+                return (
+                  <li key={session.day}>
+                    {/* Il giorno della settimana davanti alla data, come
+                        nell'elenco delle sedute: in sette righe "Mon" si
+                        legge prima del numero. */}
+                    <span className="plan-day">
+                      {weekdayShort(session.day)} {shortDayLabel(session.day)}
+                    </span>
+                    {icon && <img src={iconUrl(icon)} alt="" width={22} height={22} />}
+                    <span>{sessionLabel(session, sport)}</span>
+                  </li>
+                );
+              })}
+            </ul>
           )}
           <WrittenAt when={plan.written_at} day={monday} />
         </>
