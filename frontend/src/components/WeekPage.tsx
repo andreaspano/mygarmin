@@ -51,7 +51,7 @@ import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { WeekChart } from "./WeekChart";
 import { WeekPicker } from "./WeekPicker";
-import { WeekPlanCard } from "./WeekPlanCard";
+import { WeekPlanBrief, WeekPlanCard } from "./WeekPlanCard";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const API_DOWN = "Cannot reach the API. Is it running (make api)?";
@@ -274,12 +274,13 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
     return () => controller.abort();
   }, [monday, reloads, view]);
 
-  // Il piano della settimana (todo 60), solo sulla vista che lo mostra. Una
+  // Il piano della settimana (todo 60), sulle due viste che lo mostrano: il
+  // documento nel Plan, i suoi totali nella Training (todo 70). Una
   // settimana senza file rende `null`, che qui vuol dire "non ce n'e' uno" e
   // non "non si e' potuto chiedere": `planLoading` tiene separate le due
   // cose, cosi' la card non annuncia un piano mancante mentre lo cerca.
   useEffect(() => {
-    if (view !== "plan") return;
+    if (view !== "plan" && view !== "training") return;
     const controller = new AbortController();
     setPlan(null);
     setPlanLoading(true);
@@ -497,6 +498,9 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             riquadri, che sono due cose — i fatti e il giudizio. */}
         {view === "training" && (
           <>
+            {/* Cosa chiedeva la settimana, prima di quello che si e' fatto:
+                lo stesso ordine della Day (todo 63). */}
+            <WeekPlanBrief plan={plan} monday={monday} loading={planLoading} />
             <section className="card" aria-label="Sessions">
               <CardHead icon={sectionIconFile("training")} title="Sessions" />
               {ordered.length === 0 ? (

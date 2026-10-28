@@ -29,7 +29,7 @@ const PLAN_ICON = "next.png";
  * card Training): si leggono come una didascalia del titolo — fase, settimana
  * del blocco, gara, bersaglio — e su due righe la griglia a tre colonne ne
  * lasciava uno spaiato in fondo. */
-function WeekPlanStats({ plan }: { plan: WeekPlan }) {
+export function WeekPlanStats({ plan }: { plan: WeekPlan }) {
   const of =
     plan.block_week != null && plan.block_weeks != null
       ? `${plan.block_week} of ${plan.block_weeks}`
@@ -79,6 +79,59 @@ export function WeekPlanCard({
       <div className="prose plan-prose">{markdown(plan.body)}</div>
       <p className="caption plan-file">summary/05.plan/{plan.file}</p>
       <WrittenAt when={plan.written_at} day={monday} />
+    </section>
+  );
+}
+
+
+/** Cosa chiedeva la settimana: la card Plan della vista Training (todo 70).
+ *
+ * **Non e' la card della vista Plan**, ed e' il punto. Li' c'e' il
+ * documento — la tabella dei sette giorni, i ritmi, i segnali per scaricare
+ * — che e' da leggere; qui ci sono i numeri che chiedeva, da mettere accanto
+ * alle sedute che hai fatto, due riquadri piu' sotto. Lo stesso file, due
+ * domande: com'era scritto, e quanto chiedeva.
+ *
+ * I totali li conta l'API dal front matter (`planned`), non si leggono dalla
+ * riga «Totals» del testo: quella e' prosa scritta a mano, e un numero che
+ * si deve mettere accanto a un altro numero non si prende da una frase.
+ *
+ * La cornice c'e' sempre, come nella Day (todo 63): una settimana senza
+ * piano la lascia vuota invece di far sparire un riquadro su tre. */
+export function WeekPlanBrief({
+  plan,
+  monday,
+  loading,
+}: {
+  plan: WeekPlan | null;
+  monday: string;
+  loading: boolean;
+}) {
+  return (
+    <section className="card plan-card" aria-label="Plan">
+      <CardHead icon={PLAN_ICON} title="Plan" />
+      {plan === null ? (
+        loading ? <p className="caption">Loading…</p> : null
+      ) : (
+        <>
+          <WeekPlanStats plan={plan} />
+          {plan.planned && (
+            <div className="stats four">
+              <Stat label="Sessions" value={`${plan.planned.sessions}`} />
+              <Stat label="Distance" value={plan.planned.distance_label ?? "–"} />
+              <Stat label="Longest" value={plan.planned.longest_label ?? "–"} />
+              <Stat
+                label="Quality"
+                value={`${plan.planned.quality}`}
+                sub={
+                  <span className="muted">{plan.planned.rest_days} rest days</span>
+                }
+              />
+            </div>
+          )}
+          <WrittenAt when={plan.written_at} day={monday} />
+        </>
+      )}
     </section>
   );
 }
