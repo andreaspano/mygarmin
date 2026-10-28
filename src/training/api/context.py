@@ -8,16 +8,19 @@ con il login cambiera' solo lei, non gli endpoint."""
 from dataclasses import dataclass
 from pathlib import Path
 
-from training.garmin.config import DATA_DIR
+from training.garmin.config import DATA_DIR, PLAN_DIR, SUMMARY_DIR
 
-# La radice del repo e non la cartella corrente, come `config.CONFIG_PATH`:
-# l'API non deve dipendere dalla cartella da cui si lancia.
+# La radice del repo e non la cartella corrente: l'API non deve dipendere
+# dalla cartella da cui si lancia. Serve ancora per le icone e per il `cwd`
+# dei sottoprocessi, non piu' per i dati.
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SUMMARY_DIR = REPO_ROOT / "summary"
-# I piani di allenamento, scritti a mano: a differenza di `summary/`, che lo
-# riscrivono gli agenti, questi stanno nel repo.
-PLAN_DIR = REPO_ROOT / "plan"
-# Le icone sono del repo, non dell'utente: uguali per tutti.
+# I report e i piani stanno nella cartella dei dati dal todo 65, con tutto il
+# resto che riguarda l'allenamento: `config.py` li nomina, qui si importano.
+# Prima venivano dal repo, e il confine fra codice e dati passava in mezzo
+# alla stessa cartella.
+#
+# Le icone no: sono dell'applicazione, uguali per tutti, e sono l'unica cosa
+# che l'API serve da disco (`StaticFiles` in `app.py`).
 ICONS_DIR = REPO_ROOT / "icons"
 
 

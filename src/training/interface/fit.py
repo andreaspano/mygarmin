@@ -28,14 +28,14 @@ def _to_local(dt):
 
 
 def load_activity_names(data_dir: Path) -> dict:
-    return _load_json_map(Path(data_dir) / _NAMES_FILENAME)
+    return _load_json_map(Path(data_dir) / "json" / _NAMES_FILENAME)
 
 
 def load_activity_types(data_dir: Path) -> dict:
     """Il tipo attivita' secondo Garmin Connect (es. "running"), salvato da
     training.garmin.activities: serve quando il FIT non lo sa (sport
     "generic" delle attivita' registrate seguendo un percorso)."""
-    return _load_json_map(Path(data_dir) / _TYPES_FILENAME)
+    return _load_json_map(Path(data_dir) / "json" / _TYPES_FILENAME)
 
 
 def _load_json_map(path: Path) -> dict:
@@ -49,7 +49,12 @@ def save_json_map(path: Path, values: dict) -> None:
     """Scrive la mappa in `path`: un file temporaneo nella stessa cartella,
     poi `os.replace`. Chi legge vede la versione vecchia o quella nuova, mai
     un file a meta'. Il lock fra due scritture insieme lo mette chi chiama
-    (`terrain.py`, `run_type.py`), uno per file."""
+    (`terrain.py`, `run_type.py`), uno per file.
+
+    La cartella si crea se non c'e': dal todo 65 questi file stanno in
+    `json/`, e la prima correzione di una cartella dati nuova la troverebbe
+    vuota."""
+    path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.stem}.", suffix=".json")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -65,7 +70,9 @@ def _semicircles_to_degrees(value: int | None) -> float | None:
 
 
 def list_activity_files(data_dir: Path = DATA_DIR) -> list[Path]:
-    return sorted(Path(data_dir).glob("*_ACTIVITY.fit"))
+    # I FIT stanno in `fit/` dal todo 65; prima erano piatti nella radice,
+    # mischiati al database e ai JSON.
+    return sorted((Path(data_dir) / "fit").glob("*_ACTIVITY.fit"))
 
 
 def activity_id_from_path(path: Path) -> int | None:

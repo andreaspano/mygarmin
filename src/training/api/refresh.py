@@ -86,14 +86,29 @@ _lock = threading.Lock()
 LOCK_FILENAME = ".refresh.lock"
 
 
-def _allowed_tools(kind: Report) -> list[str]:
+def _allowed_tools(kind: Report, summary_dir: Path) -> list[str]:
     """Agli agenti serve leggere (i fatti e i frammenti degli altri) e
     scrivere il proprio frammento, **solo dentro la cartella del suo
     report**. I permessi sui file si controllano solo con regole
     `Edit(...)`: una regola `Write(...)` Claude Code la accetta e non la
     guarda mai. Niente Bash: i dati e i fatti li prepara questo modulo, una
-    volta per tutti."""
-    return ["Read", f"Edit(summary/{kind.folder}/**)"]
+    volta per tutti.
+
+    **Il glob e' assoluto**, e dal todo 65 non puo' piu' non esserlo. Era
+    `Edit(summary/<cartella>/**)`, relativo, e funzionava perche' gli agenti
+    girano con `cwd` nella radice del repo e `summary/` stava li' sotto.
+    Adesso i report stanno nella cartella dei dati: il prompt da' gia' un
+    percorso assoluto, e con un glob relativo nessuna scrittura lo
+    soddisferebbe piu'. Il guasto sarebbe muto — non un errore di percorso,
+    ma otto sezioni che "non hanno scritto" (vedi il controllo in fondo a
+    `_write_section`)."""
+    # Il doppio slash non e' un refuso: nelle regole di permesso un percorso
+    # che comincia con `/` si intende **relativo alla cartella del progetto**,
+    # e per dire "assoluto" se ne mette due. Senza, la regola diventa
+    # `<repo>/home/andrea/...`, che non esiste, l'agente chiede un permesso
+    # che nessuno puo' dargli (gira senza terminale) e finisce dicendo di non
+    # aver scritto. Provato: con uno slash no, con due si'.
+    return ["Read", f"Edit(/{Path(summary_dir).resolve() / kind.folder}/**)"]
 
 
 @contextlib.contextmanager
@@ -488,7 +503,7 @@ def _write_section(
     facts: Path,
     folder: Path,
     began: datetime,
-    summary_dir: Path | None = None,
+    summary_dir: Path,
 ) -> tuple[bool, str | None]:
     claude = shutil.which("claude")
     if claude is None:
@@ -496,7 +511,7 @@ def _write_section(
     command = [
         claude, "-p", "--agent", section.agent,
         "--append-system-prompt-file", str(repo_root / STYLE_FILE),
-        "--allowedTools", *_allowed_tools(kind),
+        "--allowedTools", *_allowed_tools(kind, summary_dir),
         "--", _prompt(kind, section, subject, moment, facts, folder, summary_dir),
     ]
     try:

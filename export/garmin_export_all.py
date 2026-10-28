@@ -43,12 +43,13 @@ riduci START_DATE a pochi mesi fa.
 """
 
 import json
-import os
 import sys
 import time
 import getpass
 from datetime import date, datetime, timedelta
 from pathlib import Path
+
+from training.garmin import config
 
 try:
     from garminconnect import (
@@ -68,8 +69,11 @@ except ImportError:
 # CONFIGURAZIONE — modifica questi valori secondo le tue esigenze
 # ----------------------------------------------------------------------
 
-# Cartella dove verra' salvato tutto (verra' creata se non esiste)
-OUTPUT_DIR = Path("~/adrive/data/garmin-export").expanduser()
+# Cartella dove verra' salvato tutto. Dal todo 65 la dice la configurazione
+# come a tutti gli altri: la radice e' in `data.yaml`, nel repo. Prima questo
+# script se la riscriveva a mano, e cambiare `data.yaml` lo lasciava a
+# scrivere nella cartella di prima.
+OUTPUT_DIR = config.OUTPUT_DIR
 
 # Intervallo di date per le metriche giornaliere di salute.
 # Garmin Connect esiste dal 2013-2014: se il tuo primo dispositivo Garmin
@@ -84,7 +88,7 @@ REQUEST_DELAY = 0.3
 
 # Dove salvare/riusare il token di login (evita di reinserire la password
 # ogni volta che rilanci lo script)
-TOKEN_STORE = os.path.expanduser("~/token")
+TOKEN_STORE = config.TOKEN_STORE
 
 
 # ----------------------------------------------------------------------

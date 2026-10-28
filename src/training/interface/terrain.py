@@ -69,7 +69,7 @@ def _climb_per_km(distance_km: float | None, ascent_m: float | None) -> float | 
 
 
 def _terrain_path(data_dir: Path) -> Path:
-    return Path(data_dir) / _TERRAIN_FILENAME
+    return Path(data_dir) / "json" / _TERRAIN_FILENAME
 
 
 def load_terrain_overrides(data_dir: Path) -> dict[str, str]:

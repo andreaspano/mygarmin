@@ -434,8 +434,8 @@ def get_daily_report(day: date, ctx: Context) -> Report:
     Dal todo 44 ogni sezione e' un file suo in `01.daily/<giorno>/`, scritto
     dal suo agente. I giorni di prima hanno il file unico `<giorno>.md`, e si
     continuano a leggere da li'."""
-    folder = ctx.summary_dir / "01.daily" / day.isoformat()
-    path = ctx.summary_dir / "01.daily" / f"{day.isoformat()}.md"
+    folder = ctx.summary_dir / DAILY.folder / day.isoformat()
+    path = ctx.summary_dir / DAILY.folder / f"{day.isoformat()}.md"
     if folder.is_dir():
         found = _fragment_sections(folder)
     elif path.exists():

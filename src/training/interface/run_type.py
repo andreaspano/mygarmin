@@ -72,7 +72,7 @@ def guess_run_type(
 
 
 def _run_type_path(data_dir: Path) -> Path:
-    return Path(data_dir) / _RUN_TYPE_FILENAME
+    return Path(data_dir) / "json" / _RUN_TYPE_FILENAME
 
 
 def load_run_type_overrides(data_dir: Path) -> dict[str, str]:

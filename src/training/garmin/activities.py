@@ -20,7 +20,7 @@ _TYPES_FILENAME = "activity_types.json"
 
 
 def _names_path(data_dir: Path) -> Path:
-    return Path(data_dir) / _NAMES_FILENAME
+    return Path(data_dir) / "json" / _NAMES_FILENAME
 
 
 def _load_activity_names(data_dir: Path) -> dict:
@@ -32,12 +32,14 @@ def _load_activity_names(data_dir: Path) -> dict:
 
 
 def _save_activity_names(data_dir: Path, names: dict) -> None:
-    with open(_names_path(data_dir), "w", encoding="utf-8") as f:
+    path = _names_path(data_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(names, f, ensure_ascii=False, indent=2, sort_keys=True)
 
 
 def _types_path(data_dir: Path) -> Path:
-    return Path(data_dir) / _TYPES_FILENAME
+    return Path(data_dir) / "json" / _TYPES_FILENAME
 
 
 def _load_activity_types(data_dir: Path) -> dict:
@@ -49,7 +51,9 @@ def _load_activity_types(data_dir: Path) -> dict:
 
 
 def _save_activity_types(data_dir: Path, types: dict) -> None:
-    with open(_types_path(data_dir), "w", encoding="utf-8") as f:
+    path = _types_path(data_dir)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(types, f, ensure_ascii=False, indent=2, sort_keys=True)
 
 
@@ -117,7 +121,7 @@ def export_activities(api: Garmin, out_dir: Path) -> list:
 
 def _existing_activity_ids(data_dir: Path) -> set:
     ids = set()
-    for path in data_dir.glob("*_ACTIVITY.fit"):
+    for path in (data_dir / "fit").glob("*_ACTIVITY.fit"):
         match = _ACTIVITY_ID_RE.search(path.name)
         if match:
             ids.add(int(match.group(1)))
@@ -130,7 +134,7 @@ def download_activities_between(
     """Scarica in data_dir tutte le attivita' comprese tra start_date e
     end_date (formato 'YYYY-MM-DD', estremi inclusi) non ancora presenti."""
     data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "fit").mkdir(parents=True, exist_ok=True)
     existing_ids = _existing_activity_ids(data_dir)
     names = _load_activity_names(data_dir)
     types = _load_activity_types(data_dir)
@@ -167,7 +171,7 @@ def download_activities_between(
             continue
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            zf.extractall(data_dir)
+            zf.extractall(data_dir / "fit")
 
         downloaded.append(activity_id)
         print(f"  [{i}/{len(to_download)}] estratta attivita' {activity_id}")
@@ -194,7 +198,7 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
     sonno, la sua readiness e il suo body battery. Lo storico, che costa
     tutt'altro, resta a `backfill_health`."""
     data_dir = Path(data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
+    (data_dir / "fit").mkdir(parents=True, exist_ok=True)
     existing_ids = _existing_activity_ids(data_dir)
     names = _load_activity_names(data_dir)
     types = _load_activity_types(data_dir)
@@ -245,7 +249,7 @@ def update_activity(data_dir: Path = DATA_DIR) -> list:
             continue
 
         with zipfile.ZipFile(io.BytesIO(data)) as zf:
-            zf.extractall(data_dir)
+            zf.extractall(data_dir / "fit")
 
         downloaded.append(activity_id)
         print(f"  [{i}/{len(new_ids)}] estratta attivita' {activity_id}")
