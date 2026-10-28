@@ -495,12 +495,26 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             riquadri, che sono due cose — i fatti e il giudizio. */}
         {view === "training" && (
           <>
-            {/* Il previsto e il fatto **affiancati**, nella griglia a due
-                colonne delle card (todo 73): sono due liste corte della
-                stessa settimana, e una sotto l'altra a tutta larghezza
-                lasciavano tre quarti di riquadro bianchi e costringevano a
-                scorrere per confrontarle. A sinistra cosa chiedeva, a destra
-                cosa e' successo; sotto i 900 px tornano in colonna. */}
+            <section className="card comment-card" aria-label="Comment">
+              <CardHead
+                icon={sectionIconFile("training")}
+                title="Comment"
+                refresh={sectionButton("training")}
+              />
+              {text("Training") && (
+                <div className="prose">{markdown(text("Training")!)}</div>
+              )}
+              <WrittenAt when={when("Training")} day={monday} />
+            </section>
+            {/* Il previsto e il fatto **affiancati** (todo 73): sono due
+                liste corte della stessa settimana, e una sotto l'altra a
+                tutta larghezza lasciavano tre quarti di riquadro bianchi e
+                costringevano a scorrere per confrontarle. A sinistra cosa
+                chiedeva, a destra cosa e' successo; sotto i 900 px tornano
+                in colonna.
+
+                Il commento sta sopra tutte e due (todo 74): e' il verdetto,
+                e un verdetto si legge per primo. */}
             <div className="week-work">
             <div>
             <WeekPlanBrief
@@ -560,17 +574,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
                   })}
                 </ul>
               )}
-            </section>
-            <section className="card comment-card" aria-label="Comment">
-              <CardHead
-                icon={sectionIconFile("training")}
-                title="Comment"
-                refresh={sectionButton("training")}
-              />
-              {text("Training") && (
-                <div className="prose">{markdown(text("Training")!)}</div>
-              )}
-              <WrittenAt when={when("Training")} day={monday} />
             </section>
             </div>
             </div>
