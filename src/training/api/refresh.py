@@ -427,6 +427,11 @@ def _planned(
     if summary_dir is None:
         return ""
     if section.key == "next":
+        # **Solo la settimana ha ancora un Next**: dal todo 66 il giorno non
+        # ce l'ha piu'. Il ramo resta scritto per tutti e due perche' la
+        # domanda e' la stessa, e se un giorno il consiglio del giorno
+        # tornasse non ci sarebbe niente da riscrivere.
+        #
         # La data per cui Next prescrive, non quella del report: la sera e'
         # domani.
         for_day = _next_subject(kind, subject, moment)

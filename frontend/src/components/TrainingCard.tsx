@@ -1,19 +1,22 @@
-// "Training" (todo 34): le attivita' del giorno. Con piu' attivita' una riga
+// "Session" (todo 34): le attivita' del giorno. Con piu' attivita' una riga
 // di linguette (icona e ora) sceglie quella da mostrare. La scheda: titolo,
-// metriche, la barra dei minuti per effetto, a destra il commento (la sezione
-// Training del report) e i due Training Effect; sotto il grafico a tre fasce
-// e, a richiesta, la mappa. Giorno senza attivita': "Rest day". Per le
-// attivita' a piedi il terreno (todo 35), per le corse il tipo (todo 36):
-// tutti e due stimati dall'API e correggibili.
-import { useEffect, useState, type ReactNode } from "react";
+// metriche, la barra dei minuti per effetto, a destra i due Training Effect;
+// sotto il grafico a tre fasce e, a richiesta, la mappa. Giorno senza
+// attivita': "Rest day". Per le attivita' a piedi il terreno (todo 35), per
+// le corse il tipo (todo 36): tutti e due stimati dall'API e correggibili.
+//
+// **Il commento non sta piu' qui** (todo 66): il testo della sezione
+// Training e' una card sua, sotto questa. Erano la stessa cosa perche' il
+// report era una pagina sola; adesso la vista Training ha tre riquadri — il
+// piano, la seduta, il giudizio — e questo e' quello di mezzo, i soli dati.
+import { useEffect, useState } from "react";
 
 import { api, iconUrl, isAbort, type Activity, type ActivityDetail, type DailyData, type RunType, type Terrain } from "../api/client";
 import { durationLabel, effectMinutesLabel, fixed, timeOf } from "../format";
-import { markdown } from "../markdown";
 import type { ColorScheme } from "../useColorScheme";
 import { RouteMap } from "./RouteMap";
 import { RunChart } from "./RunChart";
-import { CardHead, Stat, WrittenAt } from "./Stat";
+import { CardHead, Stat } from "./Stat";
 
 const TE_HELP = {
   aerobic:
@@ -190,18 +193,12 @@ function ActivityView({
   activity,
   data,
   first,
-  comment,
-  commentWrittenAt,
-  day,
   sport,
   theme,
 }: {
   activity: Activity;
   data: DailyData | null;
   first: boolean;
-  comment: string | null;
-  commentWrittenAt: string | null;
-  day: string;
   sport: Sport;
   theme: ColorScheme;
 }) {
@@ -294,13 +291,11 @@ function ActivityView({
           </div>
           {detail && <EffectsBar detail={detail} />}
           {/* Il grafico nella colonna di sinistra e non sotto le due: la colonna
-              di destra (commento, menu, Training Effect) e' molto piu' alta
-              dei numeri, e sotto di loro restava un buco bianco. */}
+              di destra (menu e Training Effect) e' piu' alta dei numeri, e
+              sotto di loro restava un buco bianco. */}
           <RunChart activityId={id} theme={theme} />
         </div>
         <aside className="training-side">
-          {comment && <div className="prose">{markdown(comment)}</div>}
-          <WrittenAt when={commentWrittenAt} day={day} />
           {detail?.run_type != null && (
             <OverridePicker
               activityId={id}
@@ -351,23 +346,15 @@ function ActivityView({
 export function TrainingCard({
   activities,
   data,
-  comment,
-  commentWrittenAt,
-  day,
   icon,
   restIcon,
   sport,
   theme,
-  refresh,
 }: {
   activities: Activity[];
   data: DailyData | null;
-  comment: string | null;
-  commentWrittenAt: string | null;
-  day: string;
   icon: string | null;
   restIcon: string | null;
-  refresh?: ReactNode;
   sport: Sport;
   theme: ColorScheme;
 }) {
@@ -376,8 +363,8 @@ export function TrainingCard({
   const selected = activities.find((a) => a.activity_id === selectedId) ?? activities[0] ?? null;
 
   return (
-    <section className="card training-card" aria-label="Training">
-      <CardHead icon={icon} title="Training" refresh={refresh} />
+    <section className="card training-card" aria-label="Session">
+      <CardHead icon={icon} title="Session" />
       {activities.length > 1 && (
         <div className="tabs" role="tablist" aria-label="Activities of the day">
           {activities.map((a) => {
@@ -404,9 +391,6 @@ export function TrainingCard({
           activity={selected}
           data={data}
           first={selected.activity_id === activities[0].activity_id}
-          comment={comment}
-          commentWrittenAt={commentWrittenAt}
-          day={day}
           sport={sport}
           theme={theme}
         />
@@ -416,8 +400,6 @@ export function TrainingCard({
             {restIcon && <img src={iconUrl(restIcon)} alt="" width={44} height={44} />}
             <h2>Rest day</h2>
           </div>
-          {comment && <div className="prose">{markdown(comment)}</div>}
-          <WrittenAt when={commentWrittenAt} day={day} />
         </div>
       )}
     </section>

@@ -1399,7 +1399,7 @@ export interface components {
             download?: components["schemas"]["Download"] | null;
             /**
              * Sections
-             * @description One entry per section of the report being written, by key: health, load, recovery, fitness, training, next, and the two summaries — summary_morning and summary_evening for a day, summary_start and summary_end for a week.
+             * @description One entry per section of the report being written, by key. A day has health, load, recovery, fitness, training and summary; a week has those plus next, and its summary is in two halves, summary_start and summary_end.
              */
             sections: {
                 [key: string]: components["schemas"]["SectionRefresh"];
