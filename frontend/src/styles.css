@@ -581,26 +581,16 @@ h2 {
    per giorno, il giorno a sinistra come etichetta e la seduta accanto.
    Niente tabella: sono sette righe corte, e una tabella a due colonne qui
    aggiungerebbe bordi e allineamenti per nulla. */
-/* Il previsto e il fatto, affiancati (todo 73): due colonne uguali come la
-   griglia delle card, ma **senza pareggiare le altezze**. Li' due card di
-   misure si allungano perche' una riga sfaldata si legge come un errore di
-   allineamento; qui sono due elenchi di lunghezza diversa per natura — sette
-   giorni previsti contro le sedute che ci sono state — e allungare il piu'
-   corto vuol dire un riquadro mezzo vuoto. */
+/* Il previsto e il fatto, affiancati (todo 73): a sinistra cosa chiedeva la
+   settimana, a destra cosa e' successo.
+   **Le due card si pareggiano in altezza** (todo 76), come fa la griglia
+   delle card: la piu' alta decide — di solito il piano, che ha sempre sette
+   righe — e l'altra si allunga. Due riquadri affiancati che finiscono a
+   quote diverse si leggono come una riga sfaldata, e il bianco in fondo alle
+   sedute e' meno fastidioso del gradino. */
 .week-work {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: start;
-  gap: 16px;
-}
-/* Due colonne, non tre riquadri: a sinistra il piano, a destra le sedute e
-   sotto il commento che le giudica. Il commento sta a destra e non a tutta
-   pagina per la misura della riga — larga tutta la pagina arrivava a
-   centoventi battute, e oltre le settanta l'occhio perde il capo della riga
-   dopo. Mezza pagina gliela da' giusta senza stringerla a mano. */
-.week-work > div {
-  display: grid;
-  align-content: start;
   gap: 16px;
 }
 @media (max-width: 900px) {
