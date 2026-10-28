@@ -116,8 +116,8 @@ come senza piano (todo 63). Per tutti quelli il testo resta quello di adesso.
 
 ## Come e' andata
 
-Fatto come scritto. Il meccanismo e' finito e verificato; **il punto 5 della
-verifica no**, e si vede sotto perche'.
+Fatto come scritto, e verificato per intero: i prompt prima, e poi la sezione
+del 27 ottobre riscritta per davvero.
 
 ### Una cosa che il piano non aveva previsto
 
@@ -151,16 +151,9 @@ Le due righe della domenica sono il punto: **due file diversi nella stessa
 sera**, che il Training giudica la domenica e il Next prescrive per il
 lunedi'. Next e' identico a prima, parola per parola.
 
-### Il punto 5 non e' stato fatto, e una ragione che vale la pena scrivere
+### Il punto 5: la sezione del 27 ottobre, prima e dopo
 
-Rifare la sezione del 27 ottobre vuol dire sovrascrivere
-`summary/01.daily/2026-10-27/training.md`, e **quel file git non lo traccia**:
-`summary/01.daily/` sta fuori dal repo. Non e' come un file di codice che si
-ripristina con un `checkout` — il testo di prima, una volta riscritto, non c'e'
-piu'.
-
-Quindi, prima di rifare una sezione che si vuole poter confrontare, **si copia
-il file da parte**:
+Rifatta su richiesta di Andrea con
 
 ```bash
 cp summary/01.daily/2026-10-27/training.md /tmp/training-27-prima.md
@@ -169,10 +162,38 @@ uv run training-daily-report --day 2026-10-27 --section training --no-update
 
 Il comando diretto e non `make daily_report`, che il target non passa
 `--no-update`: senza quel flag il giro chiama anche Garmin
-(`make update_activity`), che per riscrivere un testo di ieri non serve.
+(`make update_activity`), che per riscrivere un testo di ieri non serve. La
+copia prima perche' **`summary/01.daily/` git non lo traccia**: un report
+sovrascritto non si ripristina con un `checkout`. Chi rifa' una sezione che
+vuole poter confrontare se la copia da parte.
 
-Il testo del 27 ottobre resta quindi quello cieco finche' non si rifa' a
-mano. Per i giorni nuovi il giro della sera lo scrive gia' col piano.
+**Prima:** «Out at 19:42 for an hour on the road, after a rest day. Nothing
+was planned on the watch (...) Against your other easy runs of the last three
+months this was a strong one (...) Barely any cost for a lot more running.»
+
+**Dopo:** «Five easy kilometres at 7'15"-7'40" with six strides, heart rate
+under 138: that was the ask for your first run back (...) some forty seconds a
+kilometre quicker than the band, and nearly twice the distance. The cap you
+kept, 134 average (...) Week one asks you to be bored. The work is Thursday.»
+
+Quello che la regola voleva, c'e' tutto: il piano in apertura invece di
+«nothing was planned»; le due deviazioni coi numeri; **il merito al tetto del
+battito**, che era l'unica cosa rispettata e prima passava sotto silenzio; e
+il confronto con lo storico **tenuto e riformulato** — gli stessi 9,1 km
+contro i 7,2 soliti, che da «a strong one» diventano «the big one, and a km/h
+faster». Il vincolo del "non si sostituisce, ci si somma" ha retto alla prova.
+
+Due cose da sapere su quel testo:
+
+- **gli strides non li giudica.** Li cita nella richiesta e non dice se sono
+  stati fatti: dai campi che ha non si vede, e non ha inventato. Per saperlo
+  servirebbero i lap, che nei fatti del giorno non ci sono;
+- scrive «about 6'35"/km» partendo da 9,1 km/h arrotondato, mentre il valore
+  e' 6'34". L'«about» la copre e la conseguenza (~40 s/km sotto la fascia) e'
+  giusta.
+
+Gli altri report vecchi restano come sono. Per i giorni nuovi il giro della
+sera scrive gia' col piano.
 
 ## Revert
 
