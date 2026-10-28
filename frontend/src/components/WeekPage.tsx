@@ -495,8 +495,14 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             riquadri, che sono due cose — i fatti e il giudizio. */}
         {view === "training" && (
           <>
-            {/* Cosa chiedeva la settimana, prima di quello che si e' fatto:
-                lo stesso ordine della Day (todo 63). */}
+            {/* Il previsto e il fatto **affiancati**, nella griglia a due
+                colonne delle card (todo 73): sono due liste corte della
+                stessa settimana, e una sotto l'altra a tutta larghezza
+                lasciavano tre quarti di riquadro bianchi e costringevano a
+                scorrere per confrontarle. A sinistra cosa chiedeva, a destra
+                cosa e' successo; sotto i 900 px tornano in colonna. */}
+            <div className="week-work">
+            <div>
             <WeekPlanBrief
               plan={plan}
               monday={monday}
@@ -504,6 +510,8 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               sport={{ label: sportLabel, icon: (key) => sportIcons.get(key ?? "") ?? null }}
               restIcon={sportList?.rest_icon ?? null}
             />
+            </div>
+            <div>
             <section className="card" aria-label="Sessions">
               <CardHead icon={sectionIconFile("training")} title="Sessions" />
               {ordered.length === 0 ? (
@@ -564,6 +572,8 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               )}
               <WrittenAt when={when("Training")} day={monday} />
             </section>
+            </div>
+            </div>
           </>
         )}
         {/* Lo Snap e' il corpo, come quello del giorno (todo 68): il

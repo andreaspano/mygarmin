@@ -127,7 +127,7 @@ export function WeekPlanBrief({
               {plan.sessions.map((session) => {
                 const icon = sessionIcon(session, sport, restIcon);
                 return (
-                  <li key={session.day}>
+                  <li key={session.day} className={session.sport === "rest" ? "rest" : undefined}>
                     {/* Il giorno della settimana davanti alla data, come
                         nell'elenco delle sedute: in sette righe "Mon" si
                         legge prima del numero. */}

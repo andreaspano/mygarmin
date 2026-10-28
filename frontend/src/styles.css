@@ -581,24 +581,73 @@ h2 {
    per giorno, il giorno a sinistra come etichetta e la seduta accanto.
    Niente tabella: sono sette righe corte, e una tabella a due colonne qui
    aggiungerebbe bordi e allineamenti per nulla. */
+/* Il previsto e il fatto, affiancati (todo 73): due colonne uguali come la
+   griglia delle card, ma **senza pareggiare le altezze**. Li' due card di
+   misure si allungano perche' una riga sfaldata si legge come un errore di
+   allineamento; qui sono due elenchi di lunghezza diversa per natura — sette
+   giorni previsti contro le sedute che ci sono state — e allungare il piu'
+   corto vuol dire un riquadro mezzo vuoto. */
+.week-work {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+/* Due colonne, non tre riquadri: a sinistra il piano, a destra le sedute e
+   sotto il commento che le giudica. Il commento sta a destra e non a tutta
+   pagina per la misura della riga — larga tutta la pagina arrivava a
+   centoventi battute, e oltre le settanta l'occhio perde il capo della riga
+   dopo. Mezza pagina gliela da' giusta senza stringerla a mano. */
+.week-work > div {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .week-work {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* I quattro numeri del blocco in mezza larghezza vanno a due a due: su una
+   riga sola «28 Feb 2027» arrivava addosso al bersaglio, che le colonne
+   della griglia sono uguali e il contenuto no. */
+.week-work .stats.four {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 14px;
+}
+
 .plan-days {
   list-style: none;
-  margin: 16px 0 0;
+  margin: 14px 0 0;
   padding: 0;
-  display: grid;
-  gap: 8px;
 }
+/* Lo stesso passo delle sedute nella colonna accanto: le due liste si
+   leggono come una tabella a due colonne, e le righe si corrispondono. */
 .plan-days li {
   display: grid;
-  grid-template-columns: 6.5rem 22px 1fr;
+  grid-template-columns: 5.5rem 22px 1fr;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
+  padding: 9px 0;
+  border-top: 1px solid var(--border);
   font-size: 0.92rem;
+}
+.plan-days li:first-child {
+  border-top: none;
 }
 /* Il giorno in tono minore: e' la chiave della riga, non il contenuto. */
 .plan-day {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+/* I riposi in secondo piano, cosi' l'occhio trova le sedute senza contarle.
+   Non e' meno informazione: e' la stessa riga, detta piu' piano. */
+.plan-days li.rest {
+  color: var(--muted);
+}
+.plan-days li.rest img {
+  opacity: 0.55;
 }
 /* Un giorno di riposo senza icona lascia la colonna vuota e il testo
    allineato con gli altri: la griglia tiene la colonna, non il contenuto. */
