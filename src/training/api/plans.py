@@ -192,6 +192,60 @@ def _day_row(body: str, day: date) -> str | None:
     return None
 
 
+def _distance_ends(value: Any) -> tuple[float, float] | None:
+    """I due estremi di una distanza: un numero da' due volte se stesso, un
+    intervallo `[min, max]` da' i suoi. `None` se non e' ne' l'uno ne'
+    l'altro."""
+    if isinstance(value, (list, tuple)):
+        ends = [km for v in value if (km := _as_number(v)) is not None]
+        if len(ends) >= 2:
+            return min(ends), max(ends)
+        return (ends[0], ends[0]) if ends else None
+    km = _as_number(value)
+    return (km, km) if km is not None else None
+
+
+def _km_label(low: float, high: float) -> str:
+    return f"{low:g} km" if low == high else f"{low:g}-{high:g} km"
+
+
+def _planned_week(sessions: Any) -> dict[str, Any] | None:
+    """Cosa chiedeva la settimana, contato dalle sette sedute del front
+    matter (todo 70): quante sedute, quanti chilometri, la piu' lunga,
+    quante di qualita' e quanti riposi.
+
+    E' la riga «Totals» che il piano si scrive da solo nel testo, ricavata
+    dai campi invece che letta dalla prosa: li' e' una frase, qui sono
+    numeri da mettere accanto alle sedute fatte. Il piano la scrive a mano e
+    puo' contare diversamente — i suoi chilometri sono «of running», questi
+    sono tutti quelli che una seduta dichiara — e quando le due non tornano
+    e' il file a dire la verita' su cosa voleva l'autore.
+
+    Gli intervalli restano intervalli: una settimana di `[10, 11]` piu'
+    `[14, 16]` chiede «24-27 km», non una media che nessuno ha scritto.
+
+    `None` quando `sessions` non c'e': il file di settembre 2026 ha la
+    tabella e non i campi, e inventare i totali dalla prosa e' la strada che
+    il todo 14 aveva scartato."""
+    if not isinstance(sessions, list):
+        return None
+    entries = [e for e in sessions if isinstance(e, dict)]
+    if not entries:
+        return None
+    rest = [e for e in entries if _as_text(e.get("sport")) == "rest"]
+    work = [e for e in entries if _as_text(e.get("sport")) != "rest"]
+    ends = [pair for e in work if (pair := _distance_ends(e.get("distance_km"))) is not None]
+    total = (sum(lo for lo, _ in ends), sum(hi for _, hi in ends)) if ends else None
+    longest = max(ends, key=lambda pair: pair[1]) if ends else None
+    return {
+        "sessions": len(work),
+        "rest_days": len(rest),
+        "quality": sum(1 for e in work if _as_text(e.get("kind")) == "quality"),
+        "distance_label": _km_label(*total) if total else None,
+        "longest_label": _km_label(*longest) if longest else None,
+    }
+
+
 def load_day_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
     """La seduta prevista per `day`, dal piano della sua settimana, o `None`
     se per quel giorno un piano non c'e'.
@@ -247,11 +301,13 @@ def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
     sono quelle delle sette sedute invece di quelle di una gara, e
     `summary/05.plan/README.md` le elenca.
 
-    **`sessions` non si legge qui.** E' la parte che una macchina deve leggere
-    — il confronto fra previsto e fatto del todo 14 — e finche' nessuno fa
-    quel confronto resterebbe un campo che l'API manda e nessuno guarda. La
-    pagina mostra la tabella del testo, che dice le stesse sedute con dentro
-    anche il perche'."""
+    **Le sette sedute non si mandano una per una**, ne' qui ne' altrove: per
+    quelle c'e' `load_day_plan`, un giorno alla volta, che e' come la pagina
+    le chiede. Di `sessions` qui si prendono solo i **totali** (todo 70) —
+    quante sedute, quanti chilometri, quante di qualita', quanti riposi — che
+    e' cosa chiedeva la settimana, da mettere accanto a quello che si e'
+    fatto. Il testo resta com'e': la sua tabella dice le stesse sedute con
+    dentro anche il perche'."""
     path = week_plan_path(summary_dir, day)
     if path is None:
         return None
@@ -267,6 +323,7 @@ def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
         "phase": _as_text(meta.get("phase")),
         "race": _as_date(meta.get("race")),
         "target_time": _as_text(meta.get("target_time")),
+        "planned": _planned_week(meta.get("sessions")),
         "written_at": datetime.fromtimestamp(path.stat().st_mtime),
         "body": text,
     }

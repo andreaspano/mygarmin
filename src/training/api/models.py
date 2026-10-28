@@ -657,6 +657,24 @@ class PlanList(BaseModel):
     plans: list[PlanSummary]
 
 
+# Cosa chiedeva una settimana, contato dalle sette sedute del suo front
+# matter (todo 70): la riga «Totals» che il piano si scrive nel testo, ma in
+# numeri invece che in prosa, per stare accanto alle sedute fatte.
+class PlannedWeek(BaseModel):
+    """The totals the week's plan asks for."""
+
+    sessions: int = Field(description="Planned sessions, rest days excluded.")
+    rest_days: int = Field(description="Days the plan leaves without training.")
+    quality: int = Field(description="Of the sessions, how many are `quality`.")
+    distance_label: str | None = Field(
+        description='Planned distance over the week, as read ("26 km", "24-27 km"). '
+        "Null when no session names one."
+    )
+    longest_label: str | None = Field(
+        description="The longest single planned session, same form. Null likewise."
+    )
+
+
 # Il piano di una settimana, da `summary/05.plan/<lunedi>.md` (todo 60). Non
 # e' il blocco di `plan/`: quello dura quattro mesi e parla di una gara,
 # questo dura sette giorni e dice le sedute. Le sette sedute del front matter
@@ -674,6 +692,10 @@ class WeekPlan(BaseModel):
     phase: str | None = Field(description="base, build, specific, taper or race.")
     race: date | None = Field(description="Race day of the block.")
     target_time: str | None = Field(description='Target finishing time, as written ("2:20:00").')
+    planned: PlannedWeek | None = Field(
+        description="The totals the plan asks for. Null for a file written before the "
+        "front matter had the sessions."
+    )
     written_at: datetime | None = Field(description="When the file was last written.")
     body: str = Field(description="Markdown, without the front matter and without the title.")
 

@@ -205,10 +205,11 @@ l'ora e il tasto per rifarla, come nella Day.
 
 Dal todo 68 la Week ha le **stesse quattro viste della Day, nello stesso
 ordine**. Lo **Snap** e' il corpo: il verdetto a tutta larghezza e le quattro
-card. La **Training** e' il lavoro: le sedute col grafico per sport (un clic
-su una seduta apre la Day di quel giorno) e il commento sulla forma della
-settimana. Prima stavano tutte nello Snap, sette riquadri in fila, insieme a
-un **Next** che dal todo 69 non c'e' piu'.
+card. La **Training** e' il lavoro: in cima il **Plan**, cosa chiedeva la
+settimana (todo 70), poi le sedute col grafico per sport (un clic su una
+seduta apre la Day di quel giorno) e il commento sulla forma della settimana.
+Prima stavano tutte nello Snap, sette riquadri in fila, insieme a un **Next**
+che dal todo 69 non c'e' piu'.
 
 Il **Plan** e' la stessa settimana dall'altra parte: **come doveva andare**
 (todo 60). E' il file `summary/05.plan/<lunedi>.md` — le sette sedute con
@@ -218,6 +219,16 @@ bersaglio. Una settimana senza file non e' un
 errore, e la vista lo dice: le settimane prima dell'inizio di un blocco non ne
 hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
 fila delle settimane, un punto per settimana invece di uno per giorno.
+
+La card Plan della Training e la vista Plan leggono **lo stesso file e
+rispondono a due domande** (todo 70): la vista ha il documento, da leggere —
+la tabella, i ritmi, le deroghe — la card ha i numeri che chiedeva, da
+mettere accanto alle sedute fatte due riquadri sotto. I totali li conta l'API
+dal front matter (`planned` in `WeekPlan`): quante sedute, quanti chilometri,
+la piu' lunga, quante di qualita' e quanti riposi. Non si leggono dalla riga
+«Totals» del testo, che e' prosa scritta a mano — ma tornano: sulla settimana
+del 26 ottobre il file dice «26 km · longest run 14 km · 1 quality session ·
+4 rest days» e il conto dice gli stessi quattro numeri.
 
 Comune a tutte e quattro e' l'intestazione — titolo, frecce, calendario, il
 tasto che riscrive la settimana — e il selettore: cambiando settimana la

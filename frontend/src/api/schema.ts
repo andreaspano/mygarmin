@@ -1301,6 +1301,37 @@ export interface components {
              */
             written_at: string | null;
         };
+        /**
+         * PlannedWeek
+         * @description The totals the week's plan asks for.
+         */
+        PlannedWeek: {
+            /**
+             * Sessions
+             * @description Planned sessions, rest days excluded.
+             */
+            sessions: number;
+            /**
+             * Rest Days
+             * @description Days the plan leaves without training.
+             */
+            rest_days: number;
+            /**
+             * Quality
+             * @description Of the sessions, how many are `quality`.
+             */
+            quality: number;
+            /**
+             * Distance Label
+             * @description Planned distance over the week, as read ("26 km", "24-27 km"). Null when no session names one.
+             */
+            distance_label: string | null;
+            /**
+             * Longest Label
+             * @description The longest single planned session, same form. Null likewise.
+             */
+            longest_label: string | null;
+        };
         /** Range */
         Range: {
             /** Low */
@@ -1876,6 +1907,8 @@ export interface components {
              * @description Target finishing time, as written ("2:20:00").
              */
             target_time: string | null;
+            /** @description The totals the plan asks for. Null for a file written before the front matter had the sessions. */
+            planned: components["schemas"]["PlannedWeek"] | null;
             /**
              * Written At
              * @description When the file was last written.
