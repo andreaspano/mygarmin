@@ -19,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 from training.interface.grade import MODEL_SLOPE_LIMIT_PCT, rolling_mean, segments, slope_pct
-from training.interface.sports import has_distance, sport_label
+from training.interface.sports import has_distance
 
 BIN_S = 30
 # Un intervallo con meno di 10 s di dati si scarta: 10 campioni a un record al
@@ -604,82 +604,6 @@ def run_analysis_chart(
             + "."
         )
     )
-
-
-def week_sports_chart(by_sport: dict[str, dict], theme: str = "light") -> alt.Chart | None:
-    """Il lavoro della settimana per sport (todo 52): per ogni sport due
-    barre affiancate, il tempo e la distanza, con il numero di sedute
-    nell'etichetta.
-
-    **Ogni barra e' in scala sul massimo della sua misura**, non su un asse
-    comune: minuti e chilometri non si confrontano fra loro, e un asse solo
-    farebbe sembrare un'ora di bici piu' corta di dieci chilometri di corsa.
-    Il numero vero sta in fondo alla barra. Per questo l'asse delle x non si
-    mostra: sarebbe una percentuale, che non vuol dire niente.
-
-    Un grafico solo, senza `facet`: Vega-Lite non sa stare nella larghezza
-    del riquadro (`width: "container"`) dentro una vista composta, e il
-    grafico veniva largo zero.
-
-    La distanza **salta gli sport che non ne hanno** (il tapis roulant, todo
-    45), dove resta solo il tempo. `None` se la settimana e' vuota."""
-    if not by_sport:
-        return None
-    palette = _PALETTES.get(theme, _PALETTES["light"])
-    righe = []
-    for sport, v in by_sport.items():
-        sessions = int(v.get("sessions") or 0)
-        etichetta = f"{sport_label(sport)} ({sessions})"
-        minuti = v.get("time_min") or 0
-        righe.append(
-            {
-                "sport": etichetta,
-                "misura": "Time",
-                "valore": minuti,
-                "testo": f"{int(minuti) // 60}h{int(minuti) % 60:02d}" if minuti >= 60 else f"{minuti:.0f} min",
-            }
-        )
-        if has_distance(sport) and v.get("distance_km"):
-            km = v["distance_km"]
-            righe.append({"sport": etichetta, "misura": "Distance", "valore": km, "testo": f"{km:.1f} km"})
-    data = pd.DataFrame(righe)
-    # La frazione sul massimo della propria misura: e' quella che da' la
-    # lunghezza della barra.
-    massimi = data.groupby("misura")["valore"].transform("max").replace(0, 1)
-    data["quota"] = data["valore"] / massimi
-
-    base = alt.Chart(data).encode(
-        y=alt.Y("sport:N", title=None, sort=None, axis=alt.Axis(labelLimit=220, labelFontWeight="bold")),
-        yOffset=alt.YOffset("misura:N", sort=["Time", "Distance"]),
-    )
-    barre = base.mark_bar(cornerRadiusEnd=3, height=13).encode(
-        x=alt.X("quota:Q", title=None, axis=None, scale=alt.Scale(domain=[0, 1.18], nice=False)),
-        color=alt.Color(
-            "misura:N",
-            title=None,
-            scale=alt.Scale(
-                domain=["Time", "Distance"],
-                # Gli stessi due viola delle barre del carico: il pieno per
-                # il tempo, il chiaro per la distanza.
-                range=[palette["zone"], palette["low_aerobic"]],
-            ),
-            legend=alt.Legend(orient="bottom", direction="horizontal"),
-        ),
-        tooltip=[
-            alt.Tooltip("sport:N", title="Sport"),
-            alt.Tooltip("misura:N", title="Measure"),
-            alt.Tooltip("testo:N", title="Total"),
-        ],
-    )
-    etichette = base.mark_text(align="left", dx=5, fontSize=11, color=palette["muted"]).encode(
-        x=alt.X("quota:Q", scale=alt.Scale(domain=[0, 1.18], nice=False)),
-        text="testo:N",
-    )
-    # Altezza in pixel e non `alt.Step`: con la larghezza a "container"
-    # vega-embed impone il suo autosize, e un'altezza discreta lo fa
-    # lamentare ("Dropping fit-y") a ogni disegno. Trentasei pixel per sport
-    # bastano alle due barre e al loro spazio.
-    return (barre + etichette).properties(height=36 * data["sport"].nunique(), width="container")
 
 
 # Oltre questa ampiezza i pallini sui punti si impastano e restano le linee.
