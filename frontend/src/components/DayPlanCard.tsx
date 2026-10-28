@@ -13,9 +13,12 @@
 // giorni tranquilli»). I campi li manda l'API gia' fatti, etichetta della
 // distanza compresa.
 //
-// **La card c'e' sempre.** Un giorno senza piano lo dice dentro la cornice
-// invece di far sparire la cornice: la vista Training ha due riquadri a
-// qualunque data, e uno che va e viene si legge come un errore.
+// **La card c'e' sempre, e un giorno senza piano la lascia vuota.** La
+// cornice resta perche' la vista Training ha due riquadri a qualunque data, e
+// uno che va e viene si legge come un errore; dentro non ci va niente perche'
+// la cornice vuota lo dice gia' — un paragrafo che spiega dove stanno i file
+// del piano e' documentazione, e si leggeva ogni volta che si apre un giorno
+// fuori dal blocco.
 import { iconUrl, type DayPlan } from "../api/client";
 import { inline } from "../markdown";
 import { CardHead, WrittenAt } from "./Stat";
@@ -84,19 +87,11 @@ export function DayPlanCard({
     <section className="card plan-card day-plan-card" aria-label="Plan">
       <CardHead icon={PLAN_ICON} title="Plan" />
       {plan === null ? (
-        // Finche' la chiamata e' in volo non si dice ancora che il piano non
-        // c'e': "Loading…" e "No plan" sono due cose diverse, e scambiarle fa
-        // lampeggiare un piano mancante che invece sta arrivando. La stessa
-        // regola di `WeekPlanCard`.
-        loading ? (
-          <p className="caption">Loading…</p>
-        ) : (
-          <p className="info">
-            No plan for this day. The weeks of a block are files in{" "}
-            <code>summary/05.plan/</code>, named after their Monday; the days outside a
-            block do not have one.
-          </p>
-        )
+        // Finche' la chiamata e' in volo si dice che si sta cercando: senza,
+        // la cornice vuota del caricamento e quella del giorno senza piano
+        // sarebbero identiche, e la prima diventa la seconda un istante dopo.
+        // E' la stessa distinzione di `WeekPlanCard`, con l'altro capo muto.
+        loading ? <p className="caption">Loading…</p> : null
       ) : (
         <>
           <PlanLine plan={plan} sport={sport} restIcon={restIcon} />

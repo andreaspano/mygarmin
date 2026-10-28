@@ -193,6 +193,26 @@ scuro, cioe' le variabili di `.card` che c'erano gia'. L'unica regola nuova e'
 `make frontend_types` (110 righe in piu' in `schema.ts`), `npm run typecheck` e
 `npm run build` puliti.
 
+### Rifinitura, dopo il merge
+
+**Il giorno senza piano lascia la card vuota**, chiesto da Andrea guardando la
+pagina vera. Prima dentro la cornice c'era un paragrafo che diceva "No plan" e
+spiegava dove stanno i file del piano: giusto una volta, documentazione tutte
+le altre, e si leggeva a ogni giorno fuori dal blocco — cioe' quasi tutti,
+finche' il blocco e' lungo diciotto settimane e cominciato il 26 ottobre.
+Adesso resta la sola intestazione: la cornice vuota dice la stessa cosa senza
+dirla.
+
+Resta il "Loading…" mentre la richiesta e' in volo, e adesso serve piu' di
+prima: senza, la cornice vuota del caricamento e quella del giorno senza piano
+sarebbero identiche, e la prima diventa la seconda un istante dopo. La regola
+del todo 60 — «sto cercando» e «non ce n'e' uno» sono due cose diverse — vale
+ancora, con l'altro capo muto.
+
+Verificato: sul 20 ottobre e sul 30 settembre la card ha un figlio solo
+(`block-head`), tutto il suo testo e' «Plan» e sta in 74 pixel di altezza; sul
+27 ottobre i cinque figli e i 203 pixel di prima.
+
 ## Revert
 
 ```bash
