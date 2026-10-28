@@ -70,7 +70,6 @@ from training.interface.run_chart import (
     pauses,
     run_analysis_chart,
     trend_panel_charts,
-    week_sports_chart,
     zone_bands,
     zone_settings,
 )
@@ -379,22 +378,6 @@ def get_week_plan(monday: date, ctx: Context) -> WeekPlan:
     if plan is None:
         raise HTTPException(status_code=404, detail=f"No plan for the week of {monday}.")
     return WeekPlan(**{name: plan[name] for name in WeekPlan.model_fields})
-
-
-@app.get("/api/weekly/{monday}/chart/vega", summary="Weekly chart, Vega-Lite")
-def get_weekly_chart_vega(
-    monday: date,
-    ctx: Context,
-    theme: Literal["light", "dark"] = "light",
-) -> dict[str, Any]:
-    """The week's work by sport, as a ready-to-render Vega-Lite specification."""
-    if monday.weekday() != 0:
-        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
-    data = weekly_payload(monday, ctx.data_dir)
-    chart = week_sports_chart(data["training"]["by_sport"], theme)
-    if chart is None:
-        raise HTTPException(status_code=404, detail="No sessions to plot for this week.")
-    return chart.to_dict()
 
 
 def _fragment_path(folder: Path, key: str, kind: Report_) -> Path:

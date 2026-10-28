@@ -137,17 +137,6 @@ export const api = {
   weekly: (monday: string, signal?: AbortSignal) =>
     getJson<WeeklyData>(`/api/weekly/${monday}`, signal),
 
-  // Il lavoro della settimana per sport, gia' pronto da disegnare. `null`
-  // quando la settimana non ha sedute.
-  weeklyChartVega: (
-    monday: string,
-    theme: "light" | "dark",
-    signal?: AbortSignal,
-  ) =>
-    getOrNull<VegaSpec>(
-      `/api/weekly/${monday}/chart/vega?theme=${theme}`,
-      signal,
-    ),
 
   // Le serie giornaliere fra due giorni compresi (todo 55). La finestra sta
   // fra 5 e 365 giorni: fuori, l'API risponde 422.

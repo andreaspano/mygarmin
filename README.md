@@ -206,8 +206,9 @@ l'ora e il tasto per rifarla, come nella Day.
 Dal todo 68 la Week ha le **stesse quattro viste della Day, nello stesso
 ordine**. Lo **Snap** e' il corpo: il verdetto a tutta larghezza e le quattro
 card. La **Training** e' il lavoro: in cima il **Plan**, cosa chiedeva la
-settimana (todo 70), poi le sedute col grafico per sport (un clic su una
-seduta apre la Day di quel giorno) e il commento sulla forma della settimana.
+settimana (todo 71), poi l'elenco delle sedute (un clic su una seduta apre la
+Day di quel giorno) e il commento sulla forma della settimana. Le sedute
+avevano sopra un grafico del lavoro per sport, tolto col todo 72.
 Prima stavano tutte nello Snap, sette riquadri in fila, insieme a un **Next**
 che dal todo 69 non c'e' piu'.
 

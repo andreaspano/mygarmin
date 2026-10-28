@@ -43,13 +43,11 @@ import {
 } from "../format";
 import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
 import { paramFromUrl, pushUrl, type View } from "../navigation";
-import { useColorScheme } from "../useColorScheme";
 import { WeekCalendar } from "./WeekCalendar";
 import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
 import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
-import { WeekChart } from "./WeekChart";
 import { WeekPicker } from "./WeekPicker";
 import { WeekPlanBrief, WeekPlanCard } from "./WeekPlanCard";
 
@@ -188,7 +186,6 @@ const ZONE_ROWS: {
 ];
 
 export function WeekPage({ view = "snap" }: { view?: View }) {
-  const theme = useColorScheme();
   const now = today();
   const currentMonday = mondayOf(now);
   const [monday, setMonday] = useState(() => mondayFromUrl(now));
@@ -512,51 +509,48 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               {ordered.length === 0 ? (
                 <p className="caption">No sessions this week.</p>
               ) : (
-                <>
-                  <WeekChart monday={monday} theme={theme} />
-                  <ul className="week-sessions">
-                    {ordered.map((a) => {
-                      const icon = sportIcons.get(a.sport ?? "") ?? null;
-                      const day = a.start_time.slice(0, 10);
-                      return (
-                        <li key={a.activity_id}>
-                          <button
-                            type="button"
-                            className="week-session"
-                            onClick={() => openDay(day)}
-                          >
-                            {icon && (
-                              <img
-                                src={iconUrl(icon)}
-                                alt=""
-                                width={30}
-                                height={30}
-                              />
-                            )}
-                            <span className="week-session-name">
-                              {a.activity_name ?? sportLabel(a.sport)}
-                              {/* Il giorno della settimana davanti alla data:
-                                  in una pagina che parla di sette giorni,
-                                  "Mon" si legge prima del numero. */}
-                              <span className="muted">
-                                {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
-                                {timeOf(a.start_time)}
-                              </span>
+                <ul className="week-sessions">
+                  {ordered.map((a) => {
+                    const icon = sportIcons.get(a.sport ?? "") ?? null;
+                    const day = a.start_time.slice(0, 10);
+                    return (
+                      <li key={a.activity_id}>
+                        <button
+                          type="button"
+                          className="week-session"
+                          onClick={() => openDay(day)}
+                        >
+                          {icon && (
+                            <img
+                              src={iconUrl(icon)}
+                              alt=""
+                              width={30}
+                              height={30}
+                            />
+                          )}
+                          <span className="week-session-name">
+                            {a.activity_name ?? sportLabel(a.sport)}
+                            {/* Il giorno della settimana davanti alla data:
+                                in una pagina che parla di sette giorni,
+                                "Mon" si legge prima del numero. */}
+                            <span className="muted">
+                              {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
+                              {timeOf(a.start_time)}
                             </span>
-                            <span className="week-session-size">
-                              {a.total_distance_km != null
-                                ? fixed(a.total_distance_km, 1, " km")
-                                : "–"}
-                              <span className="muted">
-                                {durationLabel(a.total_time_min)}
-                              </span>
+                          </span>
+                          <span className="week-session-size">
+                            {a.total_distance_km != null
+                              ? fixed(a.total_distance_km, 1, " km")
+                              : "–"}
+                            <span className="muted">
+                              {durationLabel(a.total_time_min)}
                             </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </>
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               )}
             </section>
             <section className="card comment-card" aria-label="Comment">
