@@ -30,7 +30,7 @@ const PLAN_ICON = "next.png";
  * card Training): si leggono come una didascalia del titolo — fase, settimana
  * del blocco, gara, bersaglio — e su due righe la griglia a tre colonne ne
  * lasciava uno spaiato in fondo. */
-export function WeekPlanStats({ plan }: { plan: WeekPlan }) {
+function WeekPlanStats({ plan }: { plan: WeekPlan }) {
   const of =
     plan.block_week != null && plan.block_weeks != null
       ? `${plan.block_week} of ${plan.block_weeks}`
@@ -88,6 +88,13 @@ export function WeekPlanCard({
 /** Il piano della settimana **giorno per giorno**: la card Plan della vista
  * Training (todo 71).
  *
+ * **Solo i sette giorni** (todo 75). I quattro numeri del blocco — fase,
+ * settimana, gara, bersaglio — stavano in cima e sono andati via: sono del
+ * blocco, non della settimana, non cambiano da un lunedi all'altro, e qui
+ * spingevano in basso la riga del lunedi' disallineandola dalla prima seduta
+ * della colonna accanto. Restano nella vista Plan, dove il documento li
+ * vuole.
+ *
  * **Non e' la card della vista Plan**, ed e' il punto. Li' c'e' il documento
  * — la tabella con il perche' di ogni seduta, i ritmi, i segnali per
  * scaricare — che si apre e si legge. Qui ci sono le sette sedute come dati,
@@ -121,7 +128,6 @@ export function WeekPlanBrief({
         loading ? <p className="caption">Loading…</p> : null
       ) : (
         <>
-          <WeekPlanStats plan={plan} />
           {plan.sessions && (
             <ul className="plan-days">
               {plan.sessions.map((session) => {
@@ -134,7 +140,7 @@ export function WeekPlanBrief({
                     <span className="plan-day">
                       {weekdayShort(session.day)} {shortDayLabel(session.day)}
                     </span>
-                    {icon && <img src={iconUrl(icon)} alt="" width={22} height={22} />}
+                    {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
                     <span>{sessionLabel(session, sport)}</span>
                   </li>
                 );

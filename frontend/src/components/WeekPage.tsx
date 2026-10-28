@@ -542,14 +542,7 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
                           className="week-session"
                           onClick={() => openDay(day)}
                         >
-                          {icon && (
-                            <img
-                              src={iconUrl(icon)}
-                              alt=""
-                              width={30}
-                              height={30}
-                            />
-                          )}
+                          {icon && <img src={iconUrl(icon)} alt="" width={26} height={26} />}
                           <span className="week-session-name">
                             {a.activity_name ?? sportLabel(a.sport)}
                             {/* Il giorno della settimana davanti alla data:
