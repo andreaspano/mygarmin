@@ -1,16 +1,25 @@
-"""Configurazione, letta da `user/config.yaml`.
+"""Configurazione, letta da `<radice dei dati>/user/config.yaml`.
 
-Il file sta nella radice del repo, sotto `user/`, ed e' l'unica fonte: non ci
-sono default nel codice e nessuna variabile d'ambiente lo scavalca. Se il file
-manca, o manca una chiave, il programma si ferma all'import con un
-`ConfigError` che elenca tutto quello che non va in un messaggio solo, cosi'
-non si scoprono i problemi uno alla volta. Lo stesso per le chiavi sconosciute
-(un refuso come `data_dirr` va detto per nome, non come "manca data_dir") e
-per i valori del tipo sbagliato.
+**Due file, in quest'ordine** (todo 65). Nel repo c'e' `data.yaml`, che dice
+una cosa sola: dove sta la cartella dei dati. Nella cartella dei dati c'e'
+`user/config.yaml`, con tutto il resto. Il puntatore e' nel repo perche' non
+puo' stare in quello che deve trovare, ed e' l'unica cosa che il repo sa dei
+dati.
+
+Sotto la radice stanno sette cartelle — `fit`, `health`, `json`, `db`,
+`user`, `summary`, `plan` — e questo modulo le nomina tutte, una volta sola:
+chi gli serve una di quelle importa la costante invece di ricostruirsela.
+
+E' l'unica fonte: non ci sono default nel codice e nessuna variabile
+d'ambiente la scavalca. Se un file manca, o manca una chiave, il programma si
+ferma all'import con un `ConfigError` che elenca tutto quello che non va in
+un messaggio solo, cosi' non si scoprono i problemi uno alla volta. Lo stesso
+per le chiavi sconosciute (un refuso come `data_dirr` va detto per nome, non
+come "manca data_dir") e per i valori del tipo sbagliato.
 
 Il resto del codice importa i valori da qui, con i nomi di sempre
 (`DATA_DIR`, `REQUEST_DELAY`, ...): cosa significa ogni chiave lo dicono i
-commenti nel file YAML, che e' dove si cambiano.
+commenti nei file YAML, che e' dove si cambiano.
 """
 
 from dataclasses import dataclass
@@ -21,9 +30,10 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
 
-# La radice del repo e non la cartella corrente: la configurazione si deve
-# trovare da qualunque cartella si lanci il programma.
-CONFIG_PATH = Path(__file__).resolve().parents[3] / "user" / "config.yaml"
+# La radice del repo e non la cartella corrente: il puntatore si deve trovare
+# da qualunque cartella si lanci il programma.
+REPO_ROOT = Path(__file__).resolve().parents[3]
+POINTER_PATH = REPO_ROOT / "data.yaml"
 
 
 class ConfigError(RuntimeError):
@@ -32,7 +42,6 @@ class ConfigError(RuntimeError):
 
 @dataclass(frozen=True)
 class Config:
-    data_dir: Path
     token_store: str
     local_tz: ZoneInfo
     history_start: date
@@ -91,7 +100,6 @@ def _days(value: Any) -> tuple[Any, str | None]:
 
 # Una funzione per chiave: torna il valore convertito, o il problema.
 _FIELDS = {
-    "data_dir": _path,
     "token_store": _token_store,
     "local_tz": _local_tz,
     "history_start": _history_start,
@@ -99,6 +107,43 @@ _FIELDS = {
     "health_refresh_days": _days,
     "fitness_status_window_days": _days,
 }
+
+
+def load_data_root(path: Path) -> Path:
+    """La cartella dei dati, letta dal puntatore `data.yaml`.
+
+    Tre modi di sbagliare e tre messaggi distinti — file assente, chiave
+    assente o storta, cartella che non c'e' — perche' sono tre rimedi
+    diversi.
+
+    **La cartella non si crea.** Ovunque nel codice un `mkdir(parents=True)`
+    su un percorso storto costruisce un albero vuoto invece di fermarsi, e
+    quello e' il modo di accorgersi di un refuso tre giorni dopo, guardando
+    dei report che non arrivano. Qui si pretende che esista: e' la radice di
+    tutto, e crearla a vuoto non aiuta nessuno.
+
+    Il percorso si espande (`~`) **e si risolve**: `Path(data_dir)` e' anche
+    la chiave della cache in `api/cache.py`, e un percorso relativo darebbe
+    una cache diversa per ogni cartella da cui si lancia un comando."""
+    if not path.exists():
+        raise ConfigError(
+            f"Manca il puntatore dei dati: {path}\n"
+            '  Una riga sola, per esempio:  data_root: ~/adrive/data/training'
+        )
+    try:
+        with open(path, encoding="utf-8") as f:
+            raw = yaml.safe_load(f)
+    except yaml.YAMLError as exc:
+        raise ConfigError(f"{path} non e' YAML valido:\n{exc}") from exc
+    if not isinstance(raw, dict):
+        raise ConfigError(f"{path} deve contenere delle chiavi (chiave: valore)")
+    value = raw.get("data_root")
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(f"{path}: data_root deve essere un path (testo non vuoto)")
+    root = Path(value).expanduser().resolve()
+    if not root.is_dir():
+        raise ConfigError(f"{path}: la cartella dei dati non esiste: {root}")
+    return root
 
 
 def load_config(path: Path) -> Config:
@@ -138,11 +183,28 @@ def load_config(path: Path) -> Config:
     return Config(**values)
 
 
+DATA_ROOT = load_data_root(POINTER_PATH)
+
+# Le sette cartelle della radice (todo 65), nominate qui una volta sola.
+# `health/` era gia' cosi'; le altre raccoglievano file che stavano tutti
+# piatti nella stessa cartella, FIT, JSON e database insieme.
+FIT_DIR = DATA_ROOT / "fit"
+HEALTH_DIR = DATA_ROOT / "health"
+JSON_DIR = DATA_ROOT / "json"
+DB_DIR = DATA_ROOT / "db"
+USER_DIR = DATA_ROOT / "user"
+SUMMARY_DIR = DATA_ROOT / "summary"
+PLAN_DIR = DATA_ROOT / "plan"
+
+CONFIG_PATH = USER_DIR / "config.yaml"
 _config = load_config(CONFIG_PATH)
 
-DATA_DIR = _config.data_dir
+# La radice, col nome di sempre: e' il valore che una dozzina di funzioni
+# prendono come argomento di default e che `api/cache.py` usa come chiave.
+# Le sottocartelle se le costruisce chi legge, dove serve.
+DATA_DIR = DATA_ROOT
 # Lo stesso posto: il backup completo e l'interfaccia lavorano sugli stessi file.
-OUTPUT_DIR = DATA_DIR
+OUTPUT_DIR = DATA_ROOT
 TOKEN_STORE = _config.token_store
 LOCAL_TZ = _config.local_tz
 HISTORY_START = _config.history_start

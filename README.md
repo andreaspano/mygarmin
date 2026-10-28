@@ -1,17 +1,57 @@
 # mygarmin
 
-## Configurazione
+## I dati stanno fuori dal repo
 
-Tutta la configurazione sta in `user/config.yaml`: la cartella dei dati, il
-token di login, il fuso orario, l'inizio dello storico, la pausa fra le
-richieste a Garmin e le finestre in giorni. Cosa fa ogni chiave e' scritto nei
-commenti del file.
+Dal todo 65 il confine e' netto: **nel repo solo il codice**, e tutto quello
+che riguarda l'allenamento sotto una radice sola, fuori. Prima il confine non
+era stato deciso, era successo — `summary/` ignorato da git ma con dentro
+tredici report tracciati da prima dell'ignore, `user/` e `plan/` tracciati, e
+FIT, JSON, salute e database tutti piatti nella stessa cartella.
+
+```
+~/adrive/data/training/
+  fit/       i FIT scaricati da Garmin
+  health/    le metriche giornaliere, una cartella per endpoint
+  json/      le correzioni (terreno, tipo di corsa) e le cache di nomi e tipi
+  db/        activities.db, la cache ricostruibile dai FIT
+  user/      config.yaml, profile.yaml, avatar.jpg
+  summary/   i report: 01.daily, 02.weekly, ... e 05.plan
+  plan/      i blocchi scritti a mano
+```
+
+**Due file di configurazione, in quest'ordine.**
+
+`data.yaml`, nella radice del repo, dice una cosa sola — dove sta la cartella
+dei dati:
+
+```yaml
+data_root: ~/adrive/data/training
+```
+
+E' l'unico file di configurazione rimasto nel repo, e **non puo' stare
+altrove**: e' quello che deve trovare i dati. E' versionato perche' senza di
+lui un clone pulito non parte, e il `~` lo rende valido su ogni macchina
+dello stesso utente. Se la cartella che nomina non esiste il programma si
+ferma: **non la crea**, che un albero vuoto nato da un refuso si scopre tre
+giorni dopo guardando dei report che non arrivano.
+
+`<radice>/user/config.yaml` ha tutto il resto: il token di login, il fuso
+orario, l'inizio dello storico, la pausa fra le richieste a Garmin e le
+finestre in giorni. Cosa fa ogni chiave e' scritto nei commenti del file.
+Non ha piu' una chiave `data_dir`: la radice e' il puntatore.
 
 Tutte le chiavi sono obbligatorie e non ci sono default nel codice: se il file
 manca, se manca una chiave, se ce n'e' una sconosciuta o un valore e' del tipo
 sbagliato, il programma si ferma all'avvio con un `ConfigError` che elenca
-tutti i problemi insieme. Il file si cerca sempre nella radice del repo,
+tutti i problemi insieme. Il puntatore si cerca sempre nella radice del repo,
 qualunque sia la cartella da cui si lancia il comando.
+
+Il trasloco dalla disposizione vecchia lo fa `tools/migrate_data.sh`, che di
+suo stampa cosa farebbe e si ferma: serve `--go` per muovere i file. Si lancia
+una volta.
+
+**Le icone restano nel repo** (`icons/`): sono dell'applicazione, uguali per
+tutti, e sono l'unica cosa che l'API serve da disco.
 
 ## API
 

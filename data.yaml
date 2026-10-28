@@ -1,0 +1,9 @@
+# Dove stanno i dati (todo 65). E' l'unico file di configurazione che resta
+# nel repo: tutto il resto — `config.yaml`, il profilo, i FIT, la salute, i
+# report, i piani — sta nella cartella che questa riga nomina.
+#
+# Il puntatore non puo' stare nei dati, che e' quello che deve trovare. Sta
+# qui, e' versionato perche' senza di lui un clone pulito non parte, e il `~`
+# lo rende valido su ogni macchina dello stesso utente. Chi ha una
+# disposizione diversa cambia questa riga in locale.
+data_root: ~/adrive/data/training

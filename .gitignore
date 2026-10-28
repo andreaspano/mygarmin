@@ -12,12 +12,15 @@ __pycache__/
 
 # Outputs
 out/
+
+# I dati stanno fuori dal repo dal todo 65, tutti sotto la radice che
+# `data.yaml` nomina: FIT, salute, JSON, database, piu' `user/`, `summary/` e
+# `plan/`, che prima stavano qui. Le righe restano perche' le copie vecchie
+# non spariscono finche' non si lancia `tools/migrate_data.sh`, e un
+# `git add -A` distratto le rimetterebbe dentro.
+user/
 summary/
-
-# Use-only distribution snapshots (tools/dispach.sh)
-#user/
-
-# data
+plan/
 data/
 archive/
 
