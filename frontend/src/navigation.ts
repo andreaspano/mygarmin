@@ -22,7 +22,7 @@
 // Activities, e non fra Day e Week; il piano aperto e' `?plan=<slug>`, cioe'
 // il nome del suo file senza `.md`. Viste non ne ha.
 export type Page = "day" | "week" | "plan";
-export type View = "report" | "snap" | "trend" | "plan";
+export type View = "report" | "training" | "snap" | "trend" | "plan";
 
 /** Le viste di ogni periodo, nell'ordine del menu (todo 59).
  *
@@ -32,11 +32,27 @@ export type View = "report" | "snap" | "trend" | "plan";
  *
  * Il Trend sta in tutte e due le liste perche' e' la stessa domanda — come
  * si muove nel tempo — e cambiando periodo la vista si porta dietro. Quello
- * della Week e' ancora vuoto, come il suo Plan. */
+ * della Week e' ancora vuoto, come il suo Plan.
+ *
+ * Il Training invece e' solo del giorno (todo 62): una settimana non ha una
+ * seduta, ne ha sette, e quelle le mostra gia' lo Snap. */
 export const VIEWS: Record<Page, View[]> = {
-  day: ["report", "trend"],
+  day: ["report", "training", "trend"],
   week: ["snap", "trend", "plan"],
   plan: [],
+};
+
+/** Il nome con cui ogni vista si scrive: nella riga del menu e nel titolo
+ * della pagina. Sta qui e non in `TopBar` perche' e' il vocabolario di
+ * `View`, e serve in tutti e due i posti; essendo un `Record<View, string>`
+ * il compilatore obbliga a riempirla, quindi una vista nuova non puo'
+ * restare senza nome. */
+export const ETICHETTE: Record<View, string> = {
+  report: "Report",
+  training: "Training",
+  snap: "Snap",
+  trend: "Trend",
+  plan: "Plan",
 };
 
 /** La vista che un periodo apre quando l'URL non ne chiede nessuna. */
