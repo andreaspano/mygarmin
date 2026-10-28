@@ -193,7 +193,7 @@ scuro, cioe' le variabili di `.card` che c'erano gia'. L'unica regola nuova e'
 `make frontend_types` (110 righe in piu' in `schema.ts`), `npm run typecheck` e
 `npm run build` puliti.
 
-### Rifinitura, dopo il merge
+### Rifiniture, dopo il merge
 
 **Il giorno senza piano lascia la card vuota**, chiesto da Andrea guardando la
 pagina vera. Prima dentro la cornice c'era un paragrafo che diceva "No plan" e
@@ -212,6 +212,26 @@ ancora, con l'altro capo muto.
 Verificato: sul 20 ottobre e sul 30 settembre la card ha un figlio solo
 (`block-head`), tutto il suo testo e' «Plan» e sta in 74 pixel di altezza; sul
 27 ottobre i cinque figli e i 203 pixel di prima.
+
+**Carattere e corpo uguali a quelli della card Training**, chiesto da Andrea
+con le due card una sopra l'altra davanti. La riga della seduta aveva una
+regola sua — 1.15rem, peso 600, icona da 28 — e accanto a un `h2` da 1.35rem
+sembrava un sottotitolo: due titoli di corpo diverso si leggono come due cose
+di peso diverso, e qui sono due facce della stessa.
+
+La via scelta non e' pareggiare i numeri ma **prendere le stesse classi**:
+`training-head` e un `h2`, icona da 44 come la' . Cosi' restano uguali anche
+dopo, senza che nessuno debba ricordarsi di cambiarle in due posti; e
+`.plan-line` e' sparita dal CSS invece di raddoppiarlo.
+
+Via anche il **monospaziato dal percorso del file**: nella card Training di
+caratteri ce n'e' uno solo, e `.plan-file` ne portava un secondo. Il percorso
+tiene lo stacco che aveva (`.plan-path`) e perde la famiglia. `.plan-file`
+resta dov'era per la card della settimana, che non si tocca.
+
+Misurato nel browser, `getComputedStyle` sulle due card: titolo 21.6px peso
+700 e prosa 14.4px, identici in tutte e due, una famiglia sola in tutta la
+card Plan, icone 44 e 44.
 
 ## Revert
 
