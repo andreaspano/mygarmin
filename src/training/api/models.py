@@ -185,11 +185,11 @@ class RefreshStatus(BaseModel):
     day: date | None = Field(
         description="The day whose report the job rewrites, or the Monday of the week."
     )
-    moment: Literal["morning", "evening", "start", "end"] | None = Field(
+    moment: Literal["morning", "evening", "end"] | None = Field(
         default=None,
-        description="Which part of the period the job speaks from: for a day it decides "
-        "whether Next suggests a session for today or tomorrow; for a week, whether the "
-        "summary opens it (start) or closes it (end).",
+        description="Which part of the period the job speaks from, and so the voice of the "
+        "text: a day is written in the morning (the body, ahead of him) or in the evening "
+        "(the session, behind him). A week has one moment, its close.",
     )
     started: datetime | None
     finished: datetime | None

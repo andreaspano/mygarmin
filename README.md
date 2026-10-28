@@ -199,15 +199,16 @@ tasto indietro torna al Trend, con la finestra di prima.
 
 La **Week** mostra una settimana ISO (lunedi-domenica) con il suo titolo —
 `Week 43 · October 2026`, dove il mese e' quello del **giovedi**, la regola
-ISO per le settimane a cavallo — un selettore di otto settimane (numero,
-lunedi e domenica), le quattro card, e le sedute con il grafico del lavoro
-per sport. Un clic su una seduta apre la Day di quel giorno, e **ogni card
+ISO per le settimane a cavallo — e una striscia di sei settimane. **Ogni card
 porta il testo della sua sezione del report settimanale** (todo 53), con
 l'ora e il tasto per rifarla, come nella Day.
 
-Tutto questo e' lo **Snap** (todo 59): la settimana com'e' andata. Si chiama
-cosi' e non Report perche' non e' solo il report — sono i numeri, le sedute e
-il grafico, e il testo sta dentro le card.
+Dal todo 68 la Week ha le **stesse quattro viste della Day, nello stesso
+ordine**. Lo **Snap** e' il corpo: il verdetto a tutta larghezza e le quattro
+card. La **Training** e' il lavoro: le sedute col grafico per sport (un clic
+su una seduta apre la Day di quel giorno), il commento sulla forma della
+settimana, e il **Next**, la strategia dei sette giorni che vengono. Prima
+stavano tutte nello Snap, sette riquadri in fila.
 
 Il **Plan** e' la stessa settimana dall'altra parte: **come doveva andare**
 (todo 60). E' il file `summary/05.plan/<lunedi>.md`, che prima leggeva solo
@@ -218,9 +219,9 @@ errore, e la vista lo dice: le settimane prima dell'inizio di un blocco non ne
 hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
 fila delle settimane, un punto per settimana invece di uno per giorno.
 
-Comune a tutte e tre e' l'intestazione — titolo, frecce, calendario, il tasto
-che riscrive la settimana — e il selettore: cambiando settimana la vista
-resta, e Snap e Plan parlano degli stessi sette giorni.
+Comune a tutte e quattro e' l'intestazione — titolo, frecce, calendario, il
+tasto che riscrive la settimana — e il selettore: cambiando settimana la
+vista resta, e tutte parlano degli stessi sette giorni.
 
 Le fasce della Week **non sono quelle della Day**: qui il valore della
 settimana si confronta con le **12 settimane precedenti** (todo 52), e ne
@@ -483,32 +484,32 @@ testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
 
 ### Il report della settimana
 
-Dal todo 53 anche la settimana ha il suo report, otto sezioni — le sei del
-giorno, piu' il Next e il verdetto in due pezzi che il giorno ha perso col
-todo 66 — in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
+Dal todo 53 anche la settimana ha il suo report, sette sezioni — le sei del
+giorno piu' il Next — in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
 `w7_summary` — che sono **altri** da quelli del giorno: i prompt del giorno
 parlano di stamattina e della seduta di ieri, e non si riusano. Il ciclo che
 li lancia invece e' lo stesso, parametrato su `sections.Report`
 (`api/sections.py`).
 
-Due giri, agganciati a quelli del giorno:
+**Un giro solo** (todo 68), agganciato a quello della domenica sera del
+giorno:
 
 | | quando | sezioni |
 |---|---|---|
-| apertura | lunedi, 10:00 | summary_start |
-| chiusura | domenica, 22:00 | health, recovery, load, fitness, training, next, summary_end |
+| chiusura | domenica, 21:00 | health, recovery, load, fitness, training, next, summary |
 
-**Il lunedi scrive una sezione sola**, e non e' una dimenticanza: una
-settimana al primo giorno non ha numeri da commentare. Chi apre non guarda i
-numeri di questa settimana — guarda **come ci arrivi**, e lo legge nel
-report della settimana prima, scritto la sera avanti. Tutto il resto si
-scrive la domenica, quando i sette giorni ci sono.
+Erano due: il lunedi' scriveva l'apertura, un verdetto che guardava la
+settimana prima, e la domenica tutto il resto. Il ragionamento era che una
+settimana al primo giorno non ha numeri da commentare, e vale ancora — ma se
+il verdetto e' uno, quello e' il verdetto della fine, non dell'inizio. Il
+prezzo e' che **dal lunedi' al sabato la settimana non ha nessun testo**: le
+card mostrano i numeri e basta. E' una scelta, scritta nel todo 68.
 
-Come nel giorno, il verdetto e' in due pezzi e il secondo legge il primo:
-l'apertura del lunedi e la chiusura della domenica stanno una sopra l'altra
-nel riquadro Summary. **Next e' solo la strategia** dei sette giorni che
-vengono — quante sedute, di che tipo, dove l'intensita' e dove il lungo — e
-si scrive la domenica sera, per la settimana che comincia il giorno dopo.
+**Next e' solo la strategia** dei sette giorni che vengono — quante sedute,
+di che tipo, dove l'intensita' e dove il lungo — e si scrive la domenica
+sera, per la settimana che comincia il giorno dopo. Al contrario di quello
+del giorno (todo 66) e' rimasto: nessun piano scritto da' la forma della
+settimana gia' adattata a com'e' andata quella appena finita.
 
 Il settimanale **non scarica mai**: gira in coda al giro del giorno, che ha
 appena chiamato Garmin.

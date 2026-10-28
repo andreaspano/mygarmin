@@ -397,23 +397,17 @@ def get_weekly_chart_vega(
     return chart.to_dict()
 
 
-# I nomi vecchi di una sezione, per i frammenti scritti prima che cambiasse
-# (todo 66). Il verdetto del giorno era in due pezzi — il sole del mattino e
-# la luna della sera (todo 49) — e adesso e' uno: senza questo ripiego i
-# settantanove giorni gia' scritti mostrerebbero un Summary vuoto, che non e'
-# "il testo non c'e'" ma "il file si chiama come si chiamava allora".
-#
-# La luna dopo il sole: su un giorno concluso e' lei il verdetto, il sole
-# resta solo dove la sera non e' mai girata.
-_OLD_FRAGMENTS = {"summary": ("summary_evening", "summary_morning")}
+def _fragment_path(folder: Path, key: str, kind: Report_) -> Path:
+    """Il file del frammento, o il primo dei suoi nomi vecchi che esiste.
 
-
-def _fragment_path(folder: Path, key: str) -> Path:
-    """Il file del frammento, o il primo dei suoi nomi vecchi che esiste."""
+    I nomi vecchi stanno nel registro (`Report.old_fragments`), che e' dove
+    si sa come si chiamavano le sezioni prima: il giorno ha perso il verdetto
+    in due pezzi col todo 66, la settimana col todo 68, e i periodi scritti
+    allora si leggono ancora."""
     path = folder / f"{key}.md"
     if path.exists():
         return path
-    for old in _OLD_FRAGMENTS.get(key, ()):
+    for old in kind.old_fragments.get(key, ()):
         legacy = folder / f"{old}.md"
         if legacy.exists():
             return legacy
@@ -443,7 +437,7 @@ def _fragment_sections(
     gia' `parse_report`, quindi alla pagina non e' mai arrivata."""
     found: list[tuple[str | None, str, datetime | None]] = []
     for section in kind.sections:
-        path = _fragment_path(folder, section.key)
+        path = _fragment_path(folder, section.key, kind)
         body = path.read_text(encoding="utf-8").strip() if path.exists() else ""
         written = datetime.fromtimestamp(path.stat().st_mtime) if body else None
         found.append((section.title, body, written))

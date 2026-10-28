@@ -17,11 +17,13 @@ says the body never got back up, you do not write a build week.
 **You say the shape of the work, and nothing else.** How many sessions, of
 what kind, where the intensity goes and where the long one goes. Not how the
 body is — that is the summary's — and not the detail of a single session with
-its intervals and its heart rates: that is the Day page's Next, which gets
-written every evening and knows things you cannot know on a Sunday.
+its intervals and its heart rates. **That detail is the written plan's**, in
+`summary/05.plan/<monday>.md`, where each day has its session with its paces:
+you are writing the shape the plan should take, on a Sunday, knowing nothing
+about the mornings it will meet.
 
-If `hr_zones` is in the facts file you may name a zone, never a bpm number:
-the day's Next does that, with the data of that morning.
+If `hr_zones` is in the facts file you may name a zone, never a bpm number: a
+bpm is a number for the day it is measured, and you are a week away from it.
 
 ## When the prompt names a plan
 

@@ -8,7 +8,8 @@
 //
 // Due assi, come il menu a due righe: `?period=` dice il periodo (day o
 // week), `?view=` che cosa se ne guarda. Le viste sono **di ogni periodo**
-// (todo 59): `snap|training|trend` sotto Day, `snap|trend|plan` sotto Week.
+// (todo 59): `snap|training|trend` sotto Day, `snap|training|trend|plan`
+// sotto Week.
 // Sono elencate in `VIEWS`, nell'ordine in cui stanno nel menu, e la prima
 // e' quella che si apre senza `?view=`.
 //
@@ -37,11 +38,13 @@ export type View = "snap" | "training" | "trend" | "plan";
  * si muove nel tempo — e cambiando periodo la vista si porta dietro. Quello
  * della Week e' ancora vuoto, come il suo Plan.
  *
- * Il Training invece e' solo del giorno (todo 62): una settimana non ha una
- * seduta, ne ha sette, e quelle le mostra gia' lo Snap. */
+ * Dal todo 68 anche il **Training** sta in tutte e due: nel giorno e' la
+ * seduta, nella settimana le sette — il grafico, l'elenco, il commento sulla
+ * forma del lavoro e la strategia di quella che viene. Prima stavano nello
+ * Snap della Week, che adesso e' il solo corpo come quello del giorno. */
 export const VIEWS: Record<Page, View[]> = {
   day: ["snap", "training", "trend"],
-  week: ["snap", "trend", "plan"],
+  week: ["snap", "training", "trend", "plan"],
   plan: [],
 };
 
@@ -85,8 +88,7 @@ export function pageFromUrl(): Page {
 /** La vista chiesta dall'URL, se quel periodo ce l'ha; se no la sua prima.
  *
  * La validazione serve anche a raddrizzare i link storti: `view=report` sulla
- * Week, che il `training` non ce l'ha, apre lo Snap invece di una pagina
- * muta. */
+ * Day, che il `plan` non ce l'ha, apre lo Snap invece di una pagina muta. */
 export function viewFromUrl(page: Page): View {
   const value = search().get("view") as View | null;
   return value && VIEWS[page].includes(value) ? value : defaultView(page);

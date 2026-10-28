@@ -1383,9 +1383,9 @@ export interface components {
             day: string | null;
             /**
              * Moment
-             * @description Which part of the period the job speaks from: for a day it decides whether Next suggests a session for today or tomorrow; for a week, whether the summary opens it (start) or closes it (end).
+             * @description Which part of the period the job speaks from, and so the voice of the text: a day is written in the morning (the body, ahead of him) or in the evening (the session, behind him). A week has one moment, its close.
              */
-            moment?: ("morning" | "evening" | "start" | "end") | null;
+            moment?: ("morning" | "evening" | "end") | null;
             /** Started */
             started: string | null;
             /** Finished */

@@ -15,7 +15,7 @@ import { addDays, isoWeek, shortDayLabel } from "../format";
 const WEEKS = 6;
 const AFTER = 2;
 
-/** Le otto settimane da mostrare, dalla piu' vecchia, quando si guarda
+/** Le sei settimane da mostrare, dalla piu' vecchia, quando si guarda
  * `monday` e la settimana corrente e' `current`. */
 export function weeksAround(monday: string, current: string): string[] {
   const oldest = addDays(current, -7 * (WEEKS - 1));
