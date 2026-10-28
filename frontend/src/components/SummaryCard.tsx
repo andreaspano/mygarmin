@@ -1,11 +1,13 @@
 // Il riquadro "Summary": fondo scuro e un accento suo, il viola, nato per
-// stare accanto all'arancio di Next.
+// stare accanto all'arancio di Next — che non c'e' piu', ne' nel giorno
+// (todo 66) ne' nella settimana (todo 69).
 //
-// **Due pezzi o uno, e li decide chi la usa.** La settimana ne ha due veri —
-// l'apertura del lunedi e la chiusura della domenica (todo 53) — e li tiene.
-// Il giorno dal todo 66 ne ha **uno**: un giro solo, la mattina, e un
-// soggetto solo, il corpo. Prima erano due anche li' (il sole e la luna del
-// todo 49), perche' i giri erano due e ognuno scriveva mezzo verdetto.
+// **Un pezzo, adesso, in tutti e due i periodi**: un giro scrive il
+// verdetto, e il verdetto e' uno. Il giorno ne aveva due fino al todo 66 (il
+// sole del mattino e la luna della sera, todo 49) e la settimana fino al 68
+// (l'apertura del lunedi e la chiusura della domenica). La forma a due pezzi
+// resta nel codice — `evening` opzionale — perche' costa due righe e un
+// giorno potrebbe tornare utile.
 //
 // Senza `evening` la card e' un pezzo solo e l'occhiello dice "Summary"
 // senza aggiungere altro: non c'e' niente da cui distinguerlo.

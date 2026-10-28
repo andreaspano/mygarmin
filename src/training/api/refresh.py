@@ -381,19 +381,6 @@ def _prepare(
     return True, None, download
 
 
-def _next_subject(kind: Report, subject: date, moment: str) -> date:
-    """Il periodo per cui Next prescrive, **che non e' quello del report**.
-
-    Il Next della sera parla di domani, e quello della settimana della
-    settimana che comincia il giorno dopo: sta nella chiusura della domenica
-    (`WEEK_MOMENT_SECTIONS`), non nell'apertura. Il piano da leggere e' quello
-    di quel giorno — la domenica sera la riga che serve e' nel file della
-    settimana dopo, non in quello del report."""
-    if kind is WEEKLY:
-        return subject + timedelta(days=7)
-    return subject if moment == "morning" else subject + timedelta(days=1)
-
-
 def _planned(
     kind: Report,
     section: Section,
@@ -404,21 +391,23 @@ def _planned(
     """La frase che mette il piano della settimana nel prompt, vuota per le
     sezioni che non lo leggono e per i giorni che non ne hanno uno.
 
-    **Lo leggono due sezioni, e per due date diverse.** Next prescrive la
-    seduta del giorno dopo, e il piano le serve come punto di partenza; il
-    Training del giorno giudica la seduta di oggi, e senza il piano giudicava
-    solo contro le sedute passate — da cui verdetti come «nothing was planned»
-    (vero del file dell'orologio) su un giorno che un piano ce l'aveva, e nove
-    chilometri lodati dove ne erano previsti cinque.
+    **La legge una sezione sola: il Training del giorno** (todo 64). Giudica
+    la seduta di oggi, e senza il piano giudicava solo contro le sedute
+    passate — da cui verdetti come «nothing was planned» (vero del file
+    dell'orologio) su un giorno che un piano ce l'aveva, e nove chilometri
+    lodati dove ne erano previsti cinque.
 
-    La data cambia la settimana, non solo il giorno: la sera di domenica Next
-    prescrive per lunedi, che e' un altro file. Per questo il percorso si
-    calcola qui e non una volta per tutte in `_run`.
+    Erano due: anche Next lo leggeva, come punto di partenza di quello che
+    prescriveva, e per una data diversa — la sera, il giorno dopo. Da cui il
+    percorso calcolato qui, sezione per sezione, e non una volta per tutte in
+    `_run`. Next non c'e' piu', ne' nel giorno (todo 66) ne' nella settimana
+    (todo 69), e **nessuno prescrive piu' niente**: il piano si segue come e'
+    scritto.
 
-    Le altre tre sezioni il piano non lo vedono: Health, Recovery, Load e
-    Fitness raccontano dei numeri, e quello che era previsto non li cambia.
-    Il Training della settimana resta fuori: li' il confronto e' con la forma
-    dei sette giorni, un'altra domanda (todo 64).
+    Le altre sezioni il piano non lo vedono: Health, Recovery, Load e Fitness
+    raccontano dei numeri, e quello che era previsto non li cambia. Il
+    Training della settimana resta fuori: li' il confronto e' con la forma
+    dei sette giorni, un'altra domanda.
 
     Un piano che non c'e' rende la stringa vuota, e il prompt torna quello di
     sempre: all'agente non si dice ne' che un piano esiste ne' che non esiste.
@@ -426,28 +415,6 @@ def _planned(
     e' la frase che sul 27 ottobre ha sviato il verdetto."""
     if summary_dir is None:
         return ""
-    if section.key == "next":
-        # **Solo la settimana ha ancora un Next**: dal todo 66 il giorno non
-        # ce l'ha piu'. Il ramo resta scritto per tutti e due perche' la
-        # domanda e' la stessa, e se un giorno il consiglio del giorno
-        # tornasse non ci sarebbe niente da riscrivere.
-        #
-        # La data per cui Next prescrive, non quella del report: la sera e'
-        # domani.
-        for_day = _next_subject(kind, subject, moment)
-        plan = week_plan_path(summary_dir, for_day)
-        if plan is None:
-            return ""
-        asks = (
-            f"the session it lists for {for_day.isoformat()}"
-            if kind is DAILY
-            else "the shape of the week it lays out"
-        )
-        return (
-            f"The plan for the week you are prescribing for is in {plan}: read it, and take "
-            f"{asks} as the default — depart from it only if the sections give you a reason, "
-            f"and say so when you do. "
-        )
     if section.key == "training" and kind is DAILY:
         plan = week_plan_path(summary_dir, subject)
         if plan is None:

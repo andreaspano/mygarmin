@@ -162,29 +162,6 @@ export function preamble(report: Report | null): string | null {
   return report?.sections.find((s) => s.title == null)?.body ?? null;
 }
 
-export type NextParts = { title: string | null; reason: string; steps: string[] };
-
-/** La sezione Next nel formato del todo 34: un titolo in grassetto da solo
- * sulla prima riga, il perche', i passi della seduta come elenco. I report
- * vecchi non hanno ne' titolo ne' elenco: tutto resta nel perche'. */
-export function nextParts(body: string): NextParts {
-  const parts = blocks(body);
-  let title: string | null = null;
-  const titleMatch = parts[0]?.trim().match(/^\*\*([^*]+)\*\*$/);
-  if (titleMatch) {
-    title = titleMatch[1].trim();
-    parts.shift();
-  }
-  const steps: string[] = [];
-  const reason: string[] = [];
-  for (const block of parts) {
-    const list = listItems(block);
-    if (list) steps.push(...list.items);
-    else reason.push(block);
-  }
-  return { title, reason: reason.join("\n\n"), steps };
-}
-
 /** L'icona della sezione `title` del report (il nome lo da' l'API), o
  * `null`. */
 export function sectionIcon(report: Report | null, title: string): string | null {
