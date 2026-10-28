@@ -260,8 +260,9 @@ Fitness e' la stessa media ma **sopra vuol dire che stai migliorando**; in
 Load e' di nuovo la stessa media, e dice quanto di quel tipo di lavoro stai
 portando rispetto al solito.
 Ogni card ha il testo della sua sezione del report giornaliero, l'ora in cui
-e' stato scritto e un tasto che la rifa' da sola (todo 44 e 47); i passi della
-seduta vengono dalla sezione Next.
+e' stato scritto e un tasto che la rifa' da sola (todo 44 e 47). In cima, a
+tutta larghezza, il **Summary**: il verdetto sulle quattro, e il solo testo
+del Report che non appartiene a una card.
 
 Per lanciarla servono l'API e Node.js:
 
@@ -397,10 +398,12 @@ nella tabella della Week e' ancora aperto (todo 61).
 **Due sezioni lo leggono, e per due date diverse** (`_planned` in
 `api/refresh.py`), quando il file della settimana esiste.
 
-**Next**, che prescrive: per l'agente la seduta prevista e' il punto di
-partenza — la prescrive com'e' se le sezioni sono d'accordo, la cambia se non
-lo sono, e allora **deve dire cosa ha cambiato e perche'**. Una settimana che
-si discosta dal piano in silenzio e' un piano che nessuno segue.
+**Il Next della settimana**, che prescrive la strategia dei sette giorni che
+vengono: la forma prevista e' il punto di partenza — la prescrive com'e' se
+le sezioni sono d'accordo, la cambia se non lo sono, e allora **deve dire
+cosa ha cambiato e perche'**. Una settimana che si discosta dal piano in
+silenzio e' un piano che nessuno segue. (Il Next **del giorno** leggeva il
+piano allo stesso modo; dal todo 66 non c'e' piu'.)
 
 **Il Training del giorno** (todo 64), che giudica: la seduta prevista per
 quella data e' il suo primo metro — distanza, fascia di ritmo, tetto del
@@ -429,40 +432,51 @@ come prima, dalle sole sedute presenti e passate. All'agente non si dice
 previsto niente" e' peggio del silenzio, perche' si legge come un verdetto
 sulla seduta.
 
-### I due giri dei timer
+### I due giri dei timer: una pagina per giro
 
-Dal todo 47 il report si scrive da solo due volte al giorno, e i due giri non
-sono uguali:
+Dal todo 47 il report si scrive da solo due volte al giorno, e dal todo 66
+**ogni giro scrive una pagina**:
 
-| | ore | sezioni |
-|---|---|---|
-| mattina | 10:00 | health, recovery, load, fitness, next, summary_morning |
-| sera | 22:00 | load, fitness, training, next, summary_evening |
+| | ore | sezioni | scrive |
+|---|---|---|---|
+| mattina | 08:00 | health, recovery, load, fitness, summary | Day:Report |
+| sera | 21:00 | training | Day:Training |
 
-Health e Recovery solo la mattina, perche' sono le misure della notte appena
-finita e alle 22 racconterebbero la stessa notte; Training solo la sera,
-perche' alle 10 non c'e' ancora niente da commentare.
+Ogni sezione gira **una volta al giorno**. Prima i due giri si
+sovrapponevano: `load` e `fitness` scritti due volte, `next` due volte, e un
+verdetto con mezzo pezzo per giro.
 
-**Il verdetto del giorno e' in due pezzi** (todo 49), scritti dallo stesso
-agente nei due giri: il **sole** la mattina, la **luna** la sera, uno sopra
-l'altro nel riquadro Summary. La mattina si vede solo il sole, perche' la
-luna non esiste ancora. La luna legge il sole e chiude il cerchio — "il
-mattino diceva di tenerla facile, e l'hai tenuta facile" — senza ripeterlo.
+Il prezzo del taglio, che va saputo: **Load e Fitness raccontano lo stato
+prima della seduta di oggi**. Scritti alle otto includono la seduta di ieri e
+non quella di oggi, quindi il Report dice come stai stamattina e il carico di
+oggi si legge domani.
 
-Gli agenti sanno **che giro e'**: la mattina Next propone la seduta per oggi
-e il Summary giudica la giornata che comincia, la sera Next guarda a domani
-e il Summary dice com'e' andata. Il momento si ricava dall'orologio
-(`EVENING_FROM_HOUR` in `api/sections.py`), quindi vale anche per il tasto
-della pagina, che pero' continua a rifare **tutte** le sezioni: il momento
-decide come parla il testo, l'insieme decide chi gira.
+**Next non c'e' piu'** (todo 66). Era l'unica cosa che prendeva i numeri di
+stamattina e diceva cosa fare oggi: le regole di deroga scritte nel piano
+(«readiness under 40: run it easy and move the session to Friday») adesso non
+le applica nessuno, e sui giorni fuori da un blocco di suggerimenti non ce ne
+sono. E' una scelta, non una dimenticanza. Il Next della **settimana** resta:
+e' la strategia dei sette giorni, un'altra cosa.
+
+**Il verdetto del giorno e' uno** — era in due pezzi, il sole del mattino e
+la luna della sera (todo 49), quando i giri erano due. Adesso e' del mattino
+e ha un soggetto solo: le quattro card del corpo. La seduta la giudica il
+commento della sera, nella sua pagina.
+
+Gli agenti sanno **che giro e'** (`EVENING_FROM_HOUR` in `api/sections.py`).
+Serve soprattutto al tasto della pagina, che continua a rifare **tutte** le
+sezioni a qualunque ora: il momento decide come parla il testo, l'insieme
+decide chi gira. Premuto alle 21:30 riscrive anche il Summary, e quello deve
+sapere che la giornata e' alle spalle.
 
 Siccome ogni sezione porta la sua ora, le card ne mostrano una sotto il
 testo: dopo il giro della sera le ore sono diverse, ed e' giusto che si veda.
 
 ### Il report della settimana
 
-Dal todo 53 anche la settimana ha il suo report, otto sezioni come il giorno,
-in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
+Dal todo 53 anche la settimana ha il suo report, otto sezioni — le sei del
+giorno, piu' il Next e il verdetto in due pezzi che il giorno ha perso col
+todo 66 — in `summary/02.weekly/<lunedi>/`. Lo scrivono sette agenti — `w1_health` ...
 `w7_summary` — che sono **altri** da quelli del giorno: i prompt del giorno
 parlano di stamattina e della seduta di ieri, e non si riusano. Il ciclo che
 li lancia invece e' lo stesso, parametrato su `sections.Report`
@@ -519,14 +533,14 @@ Tre regole, e sono quelle che lo rendono ripetibile:
   la precedenza: il backfill si rilancia dopo, e riprende da li'.
 
 I giri non sono quelli dei timer, perche' qui il periodo e' finito: il
-giorno si scrive in tre passate (le card e Next con la voce della sera, poi
-il sole, poi la luna che legge il sole), la settimana in due (prima la
-chiusura, poi l'apertura). L'apertura di una settimana legge il report di
+giorno si scrive in due passate (prima la seduta con la voce della sera, poi
+il corpo con quella del mattino), la settimana pure (prima la chiusura, poi
+l'apertura). L'apertura di una settimana legge il report di
 quella **precedente**: se non c'e' ancora, si salta e la scrive il
 rilancio dopo, quando c'e'.
 
-**Sono ore di agenti**: otto sezioni per giorno, a una ventina di secondi
-l'una, fanno circa tre ore e mezza per gli ottanta giorni da agosto; le
+**Sono ore di agenti**: sei sezioni per giorno, a una ventina di secondi
+l'una, fanno un paio d'ore e mezza per gli ottanta giorni da agosto; le
 settimane mezz'ora. Si lancia quando non c'e' altro in corso.
 
 ### Le righe di cron

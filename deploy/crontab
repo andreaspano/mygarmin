@@ -6,8 +6,9 @@
 # l'installazione toglie le vecchie righe che ce l'hanno. Il `#` finale lo
 # legge la shell, non cron, che gli passa la riga intera.
 #
-# La mattina sei agenti, la sera cinque: quali sono lo dice `--moment` (vedi
-# `api/sections.py`).
+# Dal todo 66 ogni giro scrive una pagina: la mattina alle 8 cinque agenti
+# per il Report (il corpo), la sera alle 21 uno solo per la Training (la
+# seduta). Quali sono lo dice `--moment` (vedi `api/sections.py`).
 #
 # **Il PATH va allargato, non basta il percorso assoluto di `uv`.** Cron da'
 # `/usr/bin:/bin`, dove `make` e `claude` ci sono ma `uv` no; e dentro il
@@ -26,7 +27,7 @@
 #
 # Percio' i giorni sono divisi: il giorno da solo quando non c'e' la
 # settimana, e la coppia quando c'e' (1 = lunedi, 0 = domenica).
-0 10 * * 0,2-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
-0 22 * * 1-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
-0 10 * * 1 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment morning; __UV__ run training-weekly-report --moment start' >> __LOG__ 2>&1 # mygarmin
-0 22 * * 0 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment evening; __UV__ run training-weekly-report --moment end' >> __LOG__ 2>&1 # mygarmin
+0 8 * * 0,2-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
+0 21 * * 1-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
+0 8 * * 1 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment morning; __UV__ run training-weekly-report --moment start' >> __LOG__ 2>&1 # mygarmin
+0 21 * * 0 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment evening; __UV__ run training-weekly-report --moment end' >> __LOG__ 2>&1 # mygarmin

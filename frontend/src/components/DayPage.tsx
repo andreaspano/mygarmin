@@ -1,7 +1,14 @@
 // La pagina Day (todo 34), sul mockup `todo/assets/34_day_mockup.jpeg`: un
-// giorno alla volta. Intestazione con la striscia della settimana, il
-// riquadro "Next", i segnali d'allarme, la griglia 2x2 (todo 37): Health e
-// Load sopra, Recovery e Fitness sotto, poi "Training" con grafico e mappa.
+// giorno alla volta, con l'intestazione e la striscia della settimana in
+// comune fra le viste.
+//
+// **Dal todo 66 le viste hanno un soggetto ciascuna.** Il Report e' il
+// corpo: il Summary in cima e la griglia 2x2 (todo 37) con Health e Load
+// sopra, Recovery e Fitness sotto. La Training e' la seduta: il piano, i
+// dati, il giudizio. Il Trend sono i grafici della finestra scelta col
+// cursore (todo 55). Prima il Report teneva anche il riquadro "Next" e un
+// verdetto in due pezzi, e la seduta aveva il commento dentro.
+//
 // I numeri vengono da `/api/daily/{day}` e `/api/activities`, i testi dalle
 // sezioni del report giornaliero. Il tasto Refresh (todo 41) aggiorna i dati e
 // riscrive il report: alla fine la pagina li richiede.
@@ -10,10 +17,8 @@
 // il tasto indietro torna a quello prima. Senza router: `URLSearchParams` e
 // `history.pushState`.
 //
-// Dal todo 55 la pagina ha due viste, che il menu sceglie con `?view=`: il
-// Report (le card) e il Trend (i grafici della finestra scelta col cursore).
-// L'intestazione e la scelta del giorno sono le stesse, che il giorno serve
-// a tutte e due.
+// Le viste le sceglie il menu con `?view=` (todo 55 e 62). L'intestazione e
+// la scelta del giorno sono le stesse, che il giorno serve a tutte.
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { api, isAbort, type Activity, type DailyData, type DayPlan, type RefreshStatus, type Report, type SportList } from "../api/client";
@@ -26,12 +31,12 @@ import { DayPlanCard } from "./DayPlanCard";
 import { FitnessCard } from "./FitnessCard";
 import { HealthCard } from "./HealthCard";
 import { LoadCard } from "./LoadCard";
-import { NextCard } from "./NextCard";
 import { RecoveryCard } from "./RecoveryCard";
 import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { TrainingCard } from "./TrainingCard";
+import { TrainingCommentCard } from "./TrainingCommentCard";
 import { TrendPanels } from "./TrendPanels";
 import { WeekStrip } from "./WeekStrip";
 
@@ -305,41 +310,35 @@ export function DayPage({ view = "report" }: { view?: View }) {
             <TrainingCard
               activities={dayActivities}
               data={data}
-              comment={sectionBody(report, "Training")}
-              commentWrittenAt={sectionWrittenAt(report, "Training")}
-              day={day}
               icon={sectionIcon(report, "Training")}
               restIcon={sportList?.rest_icon ?? null}
               sport={sport}
               theme={theme}
+            />
+            {/* Il giudizio sotto i dati: guarda il piano sopra e la seduta
+                che ha appena sopra di se'. */}
+            <TrainingCommentCard
+              comment={sectionBody(report, "Training")}
+              writtenAt={sectionWrittenAt(report, "Training")}
+              day={day}
+              icon={sectionIcon(report, "Training")}
               refresh={sectionButton("training")}
             />
           </>
         )}
         {view === "report" && (
         <>
-        <div className="head-row">
-          <NextCard
-            body={sectionBody(report, "Next")}
-            writtenAt={sectionWrittenAt(report, "Next")}
-            day={day}
-            tomorrow={data?.recent.trained_today ?? true}
-            refresh={sectionButton("next")}
-          />
-          <SummaryCard
-            day={day}
-            morning={{
-              body: sectionBody(report, "Morning summary"),
-              writtenAt: sectionWrittenAt(report, "Morning summary"),
-              refresh: sectionButton("summary_morning"),
-            }}
-            evening={{
-              body: sectionBody(report, "Evening summary"),
-              writtenAt: sectionWrittenAt(report, "Evening summary"),
-              refresh: sectionButton("summary_evening"),
-            }}
-          />
-        </div>
+        {/* Il verdetto a tutta larghezza sopra la griglia. La riga a due
+            colonne (`.head-row`) non c'e' piu': dal todo 66 il Report ha un
+            riquadro solo in cima, che Next e' uscito dal giorno. */}
+        <SummaryCard
+          day={day}
+          morning={{
+            body: sectionBody(report, "Summary"),
+            writtenAt: sectionWrittenAt(report, "Summary"),
+            refresh: sectionButton("summary"),
+          }}
+        />
         {data ? (
           <div className="cards-grid">
             <HealthCard

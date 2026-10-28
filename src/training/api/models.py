@@ -200,9 +200,9 @@ class RefreshStatus(BaseModel):
         "A failed download does not stop the job: the text is written on the data already here.",
     )
     sections: dict[str, SectionRefresh] = Field(
-        description="One entry per section of the report being written, by key: health, load, "
-        "recovery, fitness, training, next, and the two summaries — summary_morning and "
-        "summary_evening for a day, summary_start and summary_end for a week."
+        description="One entry per section of the report being written, by key. A day has "
+        "health, load, recovery, fitness, training and summary; a week has those plus next, "
+        "and its summary is in two halves, summary_start and summary_end."
     )
 
 

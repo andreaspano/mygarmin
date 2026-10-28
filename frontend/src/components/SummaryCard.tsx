@@ -1,11 +1,14 @@
-// Il riquadro "Summary", accanto a Next: lo stesso fondo scuro, un accento
-// suo (viola, contro l'arancio di Next) perche' i due si leggano come una
-// coppia e non come la stessa cosa.
+// Il riquadro "Summary": fondo scuro e un accento suo, il viola, nato per
+// stare accanto all'arancio di Next.
 //
-// Dal todo 49 il verdetto del giorno e' in due pezzi: il sole lo scrive il
-// giro del mattino, la luna quello della sera. La mattina si vede solo il
-// sole — la luna non esiste ancora, e non serve nessuna regola sull'orario
-// per saperlo: basta mostrare quello che c'e'.
+// **Due pezzi o uno, e li decide chi la usa.** La settimana ne ha due veri —
+// l'apertura del lunedi e la chiusura della domenica (todo 53) — e li tiene.
+// Il giorno dal todo 66 ne ha **uno**: un giro solo, la mattina, e un
+// soggetto solo, il corpo. Prima erano due anche li' (il sole e la luna del
+// todo 49), perche' i giri erano due e ognuno scriveva mezzo verdetto.
+//
+// Senza `evening` la card e' un pezzo solo e l'occhiello dice "Summary"
+// senza aggiungere altro: non c'e' niente da cui distinguerlo.
 import type { ReactNode } from "react";
 
 import { markdown } from "../markdown";
@@ -41,7 +44,7 @@ function Part({
       </span>
       <div>
         <div className="eyebrow">
-          Summary · {when}
+          Summary{when && ` · ${when}`}
           {part.refresh}
         </div>
         <div className="next-reason">{markdown(part.body)}</div>
@@ -58,7 +61,8 @@ export function SummaryCard({
   week,
 }: {
   morning: SummaryPart;
-  evening: SummaryPart;
+  // Senza di lui la card e' un pezzo solo: e' il caso del giorno (todo 66).
+  evening?: SummaryPart;
   day: string;
   // Il verdetto della settimana (todo 53): gli stessi due blocchi, e anche
   // qui il primo e' di mattina (il lunedi) e il secondo di sera (la
@@ -71,16 +75,18 @@ export function SummaryCard({
         part={morning}
         day={day}
         glyph="☀"
-        when={week ? "week start" : "morning"}
+        when={evening ? (week ? "week start" : "morning") : ""}
       />
-      <Part
-        part={evening}
-        day={day}
-        glyph="☾"
-        when={week ? "week end" : "evening"}
-        tone="moon"
-      />
-      {!morning.body && !evening.body && (
+      {evening && (
+        <Part
+          part={evening}
+          day={day}
+          glyph="☾"
+          when={week ? "week end" : "evening"}
+          tone="moon"
+        />
+      )}
+      {!morning.body && !evening?.body && (
         <div className="next-main">
           <span className="next-icon" aria-hidden="true">
             ≡

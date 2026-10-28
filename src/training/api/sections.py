@@ -30,24 +30,32 @@ class Section:
     reads_fragments: bool
 
 
-# Nell'ordine in cui si leggono nella pagina. Il verdetto del giorno e' in
-# due pezzi (todo 49), stesso agente e due momenti: il sole lo scrive il giro
-# del mattino, la luna quello della sera. Con un file solo il giro delle 22
-# cancellava il verdetto delle 10, che e' proprio quello con cui vale la pena
-# confrontarlo.
+# Nell'ordine in cui si leggono nella pagina.
+#
+# **Sei sezioni dal todo 66**, e due pagine con un giro ciascuna: il Report
+# e' il corpo, scritto la mattina (le quattro card piu' il Summary che le
+# riassume), la Training e' la seduta, scritta la sera. Prima erano otto: il
+# verdetto in due pezzi (il sole del mattino e la luna della sera, todo 49) e
+# un `next` che proponeva la seduta successiva. Il Summary e' tornato uno
+# perche' adesso ha un soggetto solo e un giro solo; `next` e' stato tolto,
+# e quello che si perde e' scritto nel todo 66 — la seduta suggerita non
+# c'e' piu', e le regole di deroga del piano non le applica piu' nessuno.
 SECTIONS: tuple[Section, ...] = (
-    Section("summary_morning", "Morning summary", "07_summary", True),
-    Section("summary_evening", "Evening summary", "07_summary", True),
+    Section("summary", "Summary", "07_summary", True),
     Section("training", "Training", "05_training", False),
     Section("recovery", "Recovery", "03_recovery", False),
     Section("health", "Health", "01_health", False),
     Section("load", "Load", "02_load", False),
     Section("fitness", "Fitness", "04_fitness", False),
-    Section("next", "Next", "06_next", True),
 )
 
 # La settimana (todo 53): le stesse cinque card piu' Next e il Summary in due
 # parti, che qui sono l'apertura del lunedi e la chiusura della domenica.
+#
+# **Il settimanale non ha seguito il todo 66** e tiene le sue otto sezioni:
+# una settimana ha due estremi veri — il lunedi che la apre e la domenica che
+# la chiude — e il suo Next e' la strategia dei sette giorni che vengono, che
+# e' un'altra cosa dal consiglio per domani.
 WEEK_SECTIONS: tuple[Section, ...] = (
     Section("summary_start", "Week start", "w7_summary", True),
     Section("summary_end", "Week end", "w7_summary", True),
@@ -72,9 +80,7 @@ _RUN_KEYS = (
     "recovery",
     "fitness",
     "training",
-    "next",
-    "summary_morning",
-    "summary_evening",
+    "summary",
 )
 _WEEK_RUN_KEYS = (
     "health",
@@ -103,17 +109,24 @@ RUN_ORDER: tuple[Section, ...] = _ordered(SECTIONS, _RUN_KEYS)
 WEEK_RUN_ORDER: tuple[Section, ...] = _ordered(WEEK_SECTIONS, _WEEK_RUN_KEYS)
 
 
-# I due giri dei timer (todo 47). Non sono due giri uguali: la mattina
-# Health e Recovery hanno qualcosa da dire, perche' sono le misure della
-# notte appena finita; la sera racconterebbero di nuovo la stessa notte.
-# Training il contrario: alle 10 non c'e' ancora niente da commentare.
+# I due giri dei timer (todo 47, riscritti dal todo 66). Adesso **ogni giro
+# scrive una pagina** e ogni sezione gira una volta al giorno: la mattina
+# alle otto il corpo, cioe' il Report; la sera alle nove la seduta, cioe' la
+# Training.
+#
+# Prima i due giri si sovrapponevano — `load` e `fitness` scritti due volte,
+# `next` due volte, e un Summary con mezzo verdetto per giro. Il prezzo del
+# taglio e' che `load` e `fitness` raccontano lo stato **prima** della seduta
+# di oggi: il Report dice come stai stamattina, e il carico di oggi si legge
+# domani.
 MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
-    "morning": ("health", "recovery", "load", "fitness", "next", "summary_morning"),
-    "evening": ("load", "fitness", "training", "next", "summary_evening"),
+    "morning": ("health", "recovery", "load", "fitness", "summary"),
+    "evening": ("training",),
 }
 
-# I due giri della settimana (todo 53): il lunedi alle 10 apre la settimana
-# che comincia, la domenica alle 22 la chiude.
+# I due giri della settimana (todo 53): il lunedi apre la settimana che
+# comincia, la domenica la chiude. Girano in coda a quelli del giorno (todo
+# 66: le 8 e le 21), nella stessa riga di cron.
 #
 # **Il lunedi scrive una sezione sola.** Il todo ne prevedeva sei, ma una
 # settimana al suo primo giorno non ha numeri da commentare: le medie
@@ -137,8 +150,11 @@ assert all(
 )
 
 # Come si dice all'agente a che punto siamo. Non e' un fatto del periodo ma
-# del giro (todo 47): lo usano Next, che deve sapere per quando e' il
-# consiglio, e Summary, che apre o chiude.
+# del giro (todo 47). Dal todo 66 ogni giro del giorno ha una sezione sola a
+# cui la riga serve: la mattina il Summary, che parla del corpo di stanotte;
+# la sera il Training, che parla della seduta appena fatta. Le due righe
+# restano anche perche' il tasto della pagina rifa' **tutte** le sezioni a
+# qualunque ora, e allora il momento decide con che voce.
 _DAY_MOMENT_LINES = {
     "morning": "This is the morning run: the day is ahead of him.",
     "evening": "This is the evening run: the day is behind him.",
@@ -154,14 +170,14 @@ _WEEK_MOMENT_LINES = {
 # I giri del backfill (todo 50): non sono quelli dei timer, perche' li' si
 # scrive il presente e qui un periodo finito.
 #
-# Il giorno ne vuole tre. Le card e Next con la voce della sera, perche' su
-# un giorno concluso il consiglio e' per il giorno dopo — ed e' quello che
-# dicevano i report vecchi ("Tomorrow, ..."). Poi il sole, che e' del
-# mattino, e infine la luna, che il sole lo legge e quindi va dopo.
+# Dal todo 66 il giorno ne vuole due, uno per pagina: prima la seduta con la
+# voce della sera, poi il corpo con quella del mattino. Erano tre, perche' il
+# verdetto era in due pezzi e il secondo leggeva il primo. Il Summary resta
+# in coda al suo giro — lo mette `run_order`, che i verdetti li tiene per
+# ultimi — cosi' trova scritte le quattro sezioni che deve riassumere.
 _DAY_BACKFILL = (
-    ("evening", ("health", "recovery", "load", "fitness", "training", "next")),
-    ("morning", ("summary_morning",)),
-    ("evening", ("summary_evening",)),
+    ("evening", ("training",)),
+    ("morning", ("health", "recovery", "load", "fitness", "summary")),
 )
 # La settimana ne vuole due, perche' i momenti sono due: prima la chiusura
 # con tutto, poi l'apertura. Chi apre legge il report della settimana
@@ -238,9 +254,13 @@ for _report in (DAILY, WEEKLY):
 
 
 # L'ora da cui una giornata si considera alle spalle. Serve alla **voce** del
-# testo, non a chi gira: prima di questa Next propone la seduta per oggi e
-# Summary giudica la giornata che comincia, dopo Next guarda a domani e
-# Summary dice com'e' andata.
+# testo, non a chi gira.
+#
+# Dal todo 66 i due giri del giorno scrivono sezioni diverse, quindi di suo
+# il momento sarebbe deciso dal giro. Serve ancora per il **tasto della
+# pagina**, che rifa' tutte le sezioni a qualunque ora: premuto alle 21:30
+# riscrive anche il Summary, e quello deve sapere che parla di una giornata
+# alle spalle e non di una che comincia.
 EVENING_FROM_HOUR = 15
 
 
