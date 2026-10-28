@@ -619,17 +619,19 @@ h2 {
 
 .plan-days {
   list-style: none;
-  margin: 14px 0 0;
+  margin: 6px 0 0;
   padding: 0;
 }
-/* Lo stesso passo delle sedute nella colonna accanto: le due liste si
-   leggono come una tabella a due colonne, e le righe si corrispondono. */
+/* Lo stesso passo delle sedute nella colonna accanto, perche' le righe si
+   corrispondano (todo 75): stessa altezza — l'icona e' uguale e il riempimento
+   anche — e stessa riga di separazione fra una e l'altra. Le due liste si
+   leggono come una tabella a due colonne. */
 .plan-days li {
   display: grid;
-  grid-template-columns: 5.5rem 22px 1fr;
+  grid-template-columns: 5.5rem 26px 1fr;
   align-items: center;
   gap: 12px;
-  padding: 9px 0;
+  padding: 10px 8px;
   border-top: 1px solid var(--border);
   font-size: 0.92rem;
 }
