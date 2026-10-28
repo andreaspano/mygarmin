@@ -239,6 +239,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/daily/{day}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Daily plan
+         * @description The session planned for one day, from the plan of its week (todo 63): the fields of
+         *     the front matter entry, plus that day's row of the plan's table.
+         *
+         *     A day with no planned session is a 404 and not an error — the days outside a block do
+         *     not have one, and neither do the weeks whose file predates the front matter. A day in
+         *     the future is allowed, unlike `/api/daily/{day}`: a block is written in advance, and
+         *     the plan of a day that has not come is the normal case.
+         */
+        get: operations["get_day_plan_api_daily__day__plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/weekly/{monday}": {
         parameters: {
             query?: never;
@@ -836,6 +862,59 @@ export interface components {
              * @description One line per activity, e.g. "running 8.1 km".
              */
             activities: string[];
+        };
+        /**
+         * DayPlan
+         * @description The session planned for one day, from `summary/05.plan/<monday>.md`.
+         */
+        DayPlan: {
+            /**
+             * Day
+             * Format: date
+             * @description The day the session is planned for.
+             */
+            day: string;
+            /**
+             * Week
+             * Format: date
+             * @description The Monday of the week this comes from.
+             */
+            week: string;
+            /**
+             * File
+             * @description The file name in `summary/05.plan/`.
+             */
+            file: string;
+            /**
+             * Sport
+             * @description A sport of `activities.sport`, or `rest`.
+             */
+            sport: string | null;
+            /**
+             * Kind
+             * @description easy, quality, long or race.
+             */
+            kind: string | null;
+            /**
+             * Distance Label
+             * @description Planned distance, as read ("10-11 km").
+             */
+            distance_label: string | null;
+            /**
+             * Optional
+             * @description On a rest day, the sport that may be done anyway.
+             */
+            optional: string | null;
+            /**
+             * Text
+             * @description The day's row of the plan's table, Markdown; null when it has none.
+             */
+            text: string | null;
+            /**
+             * Written At
+             * @description When the file was last written.
+             */
+            written_at: string | null;
         };
         /**
          * Download
@@ -2267,6 +2346,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DailyData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_day_plan_api_daily__day__plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                day: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DayPlan"];
                 };
             };
             /** @description Validation Error */

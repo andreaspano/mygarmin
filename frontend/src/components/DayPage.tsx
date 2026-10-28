@@ -16,12 +16,13 @@
 // a tutte e due.
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
+import { api, isAbort, type Activity, type DailyData, type DayPlan, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon, sectionWrittenAt } from "../markdown";
 import { ETICHETTE, daysFromUrl, type View } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { DayHeader } from "./DayHeader";
+import { DayPlanCard } from "./DayPlanCard";
 import { FitnessCard } from "./FitnessCard";
 import { HealthCard } from "./HealthCard";
 import { LoadCard } from "./LoadCard";
@@ -69,6 +70,8 @@ export function DayPage({ view = "report" }: { view?: View }) {
   const [data, setData] = useState<DailyData | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [plan, setPlan] = useState<DayPlan | null>(null);
+  const [planLoading, setPlanLoading] = useState(true);
   const [refresh, setRefresh] = useState<RefreshStatus | null>(null);
   // Sale a ogni Refresh finito bene: dati e report si richiedono.
   const [reloads, setReloads] = useState(0);
@@ -198,6 +201,29 @@ export function DayPage({ view = "report" }: { view?: View }) {
     return () => controller.abort();
   }, [day, reloads, view]);
 
+  // La seduta prevista (todo 63), solo sulla vista che la mostra. Un giorno
+  // senza piano rende `null`, che qui vuol dire "non ce n'e' uno" e non "non
+  // si e' potuto chiedere": `planLoading` tiene separate le due cose, cosi'
+  // la card non annuncia un piano mancante mentre lo cerca.
+  useEffect(() => {
+    if (view !== "training") return;
+    const controller = new AbortController();
+    setPlan(null);
+    setPlanLoading(true);
+    api
+      .dayPlan(day, controller.signal)
+      .then((found) => {
+        setPlan(found);
+        setPlanLoading(false);
+      })
+      .catch((e: unknown) => {
+        if (isAbort(e)) return;
+        setPlanLoading(false);
+        setError(API_DOWN);
+      });
+    return () => controller.abort();
+  }, [day, view]);
+
   // Il Report e' la vista di partenza e non si nomina, come non si nomina
   // nell'URL; le altre prendono la loro etichetta dal menu, cosi' il nome e'
   // scritto in un posto solo.
@@ -267,18 +293,28 @@ export function DayPage({ view = "report" }: { view?: View }) {
           <TrendPanels day={day} days={days} onDays={changeDays} theme={theme} />
         )}
         {view === "training" && (
-          <TrainingCard
-            activities={dayActivities}
-            data={data}
-            comment={sectionBody(report, "Training")}
-            commentWrittenAt={sectionWrittenAt(report, "Training")}
-            day={day}
-            icon={sectionIcon(report, "Training")}
-            restIcon={sportList?.rest_icon ?? null}
-            sport={sport}
-            theme={theme}
-            refresh={sectionButton("training")}
-          />
+          <>
+            {/* Prima quello che era previsto, poi quello che si e' fatto. */}
+            <DayPlanCard
+              plan={plan}
+              day={day}
+              loading={planLoading}
+              sport={sport}
+              restIcon={sportList?.rest_icon ?? null}
+            />
+            <TrainingCard
+              activities={dayActivities}
+              data={data}
+              comment={sectionBody(report, "Training")}
+              commentWrittenAt={sectionWrittenAt(report, "Training")}
+              day={day}
+              icon={sectionIcon(report, "Training")}
+              restIcon={sportList?.rest_icon ?? null}
+              sport={sport}
+              theme={theme}
+              refresh={sectionButton("training")}
+            />
+          </>
         )}
         {view === "report" && (
         <>

@@ -203,7 +203,11 @@ La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
 la seduta suggerita e il verdetto del giorno, e una griglia 2x2 con Health e
 Load sopra, Recovery e Fitness sotto (todo 37). Dal todo 62 l'allenamento non
 sta piu' in fondo a questa colonna: ha una vista sua, **Training**, fra Report
-e Trend — la stessa card di prima, spostata di posto e non rifatta.
+e Trend — la stessa card di prima, spostata di posto e non rifatta. Dal todo 63
+sopra di lei c'e' la card **Plan**, la seduta che quel giorno prevedeva: prima
+quello che era previsto, poi quello che si e' fatto. **La card c'e' sempre**, e
+un giorno senza piano lo dice dentro la cornice invece di far sparire la
+cornice.
 **Tutte e quattro le card hanno la stessa forma**: le misure, ognuna
 con la barra della sua fascia e il valore di oggi come tacca, e niente testo
 accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e allora e'
@@ -334,10 +338,20 @@ dei piani di `plan/`: `WEEK_PLAN_FOLDER` e `week_plan_path` sono li', una
 definizione sola per l'orchestratore e per l'API.
 
 Dal todo 60 **si vedono anche**, nella vista Plan della Week
-(`GET /api/weekly/<lunedi>/plan`, 404 quella settimana non ne ha). Le sette
+(`GET /api/weekly/<lunedi>/plan`, 404 quella settimana non ne ha). Li' le sette
 sedute del front matter (`sessions`) l'API non le manda: la tabella del testo
-dice le stesse cose col perche' dentro, e la lettura a macchina serve al
-confronto previsto/fatto del todo 14, che non c'e' ancora.
+dice le stesse cose col perche' dentro.
+
+Dal todo 63 **`sessions` si legge, per un giorno alla volta**:
+`GET /api/daily/<giorno>/plan` rende la seduta prevista per quel giorno nei suoi
+campi — sport, tipo, distanza gia' in etichetta, lo sport che un riposo ammette
+comunque — piu' la riga di quel giorno presa dalla tabella, che e' dove sta il
+perche'. La voce si cerca **per data e non per posizione**, che il file di
+settembre 2026 ha la tabella che parte dalla domenica e otto righe. 404 quando
+per quel giorno un piano non c'e', compreso il caso di un file piu' vecchio del
+front matter: per chi guarda e' la stessa cosa, quel giorno non e' previsto
+niente. La settimana intera resta senza `sessions`: marcare il giorno di oggi
+nella tabella della Week e' ancora aperto (todo 61).
 
 **Next li legge.** Quando esiste il file della settimana per cui sta
 prescrivendo, l'orchestratore (`week_plan_path` in `api/plans.py`) lo nomina nel

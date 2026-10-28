@@ -23,7 +23,7 @@ from training.api import refresh
 from training.api.cache import invalidate, load_activities, load_health
 from training.api.context import ICONS_DIR, REPO_ROOT, UserContext, get_user_context
 from training.api.daily import daily_payload
-from training.api.plans import load_plans, load_week_plan
+from training.api.plans import load_day_plan, load_plans, load_week_plan
 from training.api.sections import DAILY, SECTIONS, WEEKLY
 from training.api.sections import Report as Report_
 from training.api.weekly import weekly_payload
@@ -33,6 +33,7 @@ from training.api.models import (
     ChartBin,
     ChartData,
     DailyData,
+    DayPlan,
     EffectSeconds,
     Pause,
     Plan,
@@ -331,6 +332,21 @@ def get_daily(day: date, ctx: Context) -> DailyData:
     # agenti: una strada sola, cosi' la pagina e chi scrive il testo vedono
     # le stesse cose.
     return DailyData(**daily_payload(day, ctx.data_dir))
+
+
+@app.get("/api/daily/{day}/plan", response_model=DayPlan, summary="Daily plan")
+def get_day_plan(day: date, ctx: Context) -> DayPlan:
+    """The session planned for one day, from the plan of its week (todo 63): the fields of
+    the front matter entry, plus that day's row of the plan's table.
+
+    A day with no planned session is a 404 and not an error — the days outside a block do
+    not have one, and neither do the weeks whose file predates the front matter. A day in
+    the future is allowed, unlike `/api/daily/{day}`: a block is written in advance, and
+    the plan of a day that has not come is the normal case."""
+    plan = load_day_plan(ctx.summary_dir, day)
+    if plan is None:
+        raise HTTPException(status_code=404, detail=f"No plan for {day}.")
+    return DayPlan(**{name: plan[name] for name in DayPlan.model_fields})
 
 
 @app.get("/api/weekly/{monday}", response_model=WeeklyData, summary="Weekly data")
