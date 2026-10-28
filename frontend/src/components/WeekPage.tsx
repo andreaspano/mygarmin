@@ -516,7 +516,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
                 Il commento sta sopra tutte e due (todo 74): e' il verdetto,
                 e un verdetto si legge per primo. */}
             <div className="week-work">
-            <div>
             <WeekPlanBrief
               plan={plan}
               monday={monday}
@@ -524,8 +523,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
               sport={{ label: sportLabel, icon: (key) => sportIcons.get(key ?? "") ?? null }}
               restIcon={sportList?.rest_icon ?? null}
             />
-            </div>
-            <div>
             <section className="card" aria-label="Sessions">
               <CardHead icon={sectionIconFile("training")} title="Sessions" />
               {ordered.length === 0 ? (
@@ -568,7 +565,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
                 </ul>
               )}
             </section>
-            </div>
             </div>
           </>
         )}
