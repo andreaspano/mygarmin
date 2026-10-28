@@ -8,13 +8,16 @@
 //
 // Due assi, come il menu a due righe: `?period=` dice il periodo (day o
 // week), `?view=` che cosa se ne guarda. Le viste sono **di ogni periodo**
-// (todo 59): `report|trend` sotto Day, `snap|trend|plan` sotto Week. Sono
-// elencate in `VIEWS`, nell'ordine in cui stanno nel menu, e la prima e'
-// quella che si apre senza `?view=`.
+// (todo 59): `snap|training|trend` sotto Day, `snap|trend|plan` sotto Week.
+// Sono elencate in `VIEWS`, nell'ordine in cui stanno nel menu, e la prima
+// e' quella che si apre senza `?view=`.
 //
 // `?page=week` e' la forma vecchia e continua a valere: i link scritti prima
-// del todo 55 aprono la Week col suo Snap. Senza niente si apre Day/Report,
-// cosi' anche `?day=2026-10-07` funziona come prima.
+// del todo 55 aprono la Week col suo Snap. Senza niente si apre Day/Snap,
+// cosi' anche `?day=2026-10-07` funziona come prima. E anche
+// `?view=report`, la vista del giorno fino al todo 67: non e' piu' fra le
+// chiavi, quindi `viewFromUrl` ci ricade sopra la vista di partenza, che e'
+// la stessa pagina con un altro nome.
 //
 // La **Plan** sta sullo stesso asse, `?period=plan`, ma non e' un periodo: i
 // piani di `plan/` guardano avanti e durano quanto dura un blocco, non un
@@ -22,7 +25,7 @@
 // Activities, e non fra Day e Week; il piano aperto e' `?plan=<slug>`, cioe'
 // il nome del suo file senza `.md`. Viste non ne ha.
 export type Page = "day" | "week" | "plan";
-export type View = "report" | "training" | "snap" | "trend" | "plan";
+export type View = "snap" | "training" | "trend" | "plan";
 
 /** Le viste di ogni periodo, nell'ordine del menu (todo 59).
  *
@@ -37,7 +40,7 @@ export type View = "report" | "training" | "snap" | "trend" | "plan";
  * Il Training invece e' solo del giorno (todo 62): una settimana non ha una
  * seduta, ne ha sette, e quelle le mostra gia' lo Snap. */
 export const VIEWS: Record<Page, View[]> = {
-  day: ["report", "training", "trend"],
+  day: ["snap", "training", "trend"],
   week: ["snap", "trend", "plan"],
   plan: [],
 };
@@ -48,16 +51,15 @@ export const VIEWS: Record<Page, View[]> = {
  * il compilatore obbliga a riempirla, quindi una vista nuova non puo'
  * restare senza nome. */
 export const ETICHETTE: Record<View, string> = {
-  report: "Report",
-  training: "Training",
   snap: "Snap",
+  training: "Training",
   trend: "Trend",
   plan: "Plan",
 };
 
 /** La vista che un periodo apre quando l'URL non ne chiede nessuna. */
 export function defaultView(page: Page): View {
-  return VIEWS[page][0] ?? "report";
+  return VIEWS[page][0] ?? "snap";
 }
 
 /** L'ampiezza della finestra del Trend: gli stessi estremi che l'API
@@ -83,7 +85,8 @@ export function pageFromUrl(): Page {
 /** La vista chiesta dall'URL, se quel periodo ce l'ha; se no la sua prima.
  *
  * La validazione serve anche a raddrizzare i link storti: `view=report` sulla
- * Week, che il Report non ce l'ha, apre lo Snap invece di una pagina muta. */
+ * Week, che il `training` non ce l'ha, apre lo Snap invece di una pagina
+ * muta. */
 export function viewFromUrl(page: Page): View {
   const value = search().get("view") as View | null;
   return value && VIEWS[page].includes(value) ? value : defaultView(page);
@@ -125,7 +128,7 @@ export function pushUrl(changes: Record<string, string | null>): void {
 /** L'indirizzo di una pagina, per gli `href` della barra in alto: un
  * collegamento vero, che si puo' aprire in una scheda nuova.
  *
- * Tiene il giorno, il lunedi' e l'ampiezza del Trend: passando da Report a
+ * Tiene il giorno, il lunedi' e l'ampiezza del Trend: passando da Snap a
  * Trend si resta sul giorno che si stava guardando, che e' il motivo per cui
  * il menu e' annidato. E toglie sempre `page`, la forma vecchia, cosi' i due
  * modi di dire il periodo non finiscono insieme nello stesso URL.
