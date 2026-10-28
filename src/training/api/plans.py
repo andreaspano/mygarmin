@@ -192,58 +192,47 @@ def _day_row(body: str, day: date) -> str | None:
     return None
 
 
-def _distance_ends(value: Any) -> tuple[float, float] | None:
-    """I due estremi di una distanza: un numero da' due volte se stesso, un
-    intervallo `[min, max]` da' i suoi. `None` se non e' ne' l'uno ne'
-    l'altro."""
-    if isinstance(value, (list, tuple)):
-        ends = [km for v in value if (km := _as_number(v)) is not None]
-        if len(ends) >= 2:
-            return min(ends), max(ends)
-        return (ends[0], ends[0]) if ends else None
-    km = _as_number(value)
-    return (km, km) if km is not None else None
+def _session(entry: dict, day: date, text: str) -> dict[str, Any]:
+    """Una voce di `sessions` nei campi che l'API manda, piu' la riga che quel
+    giorno ha nella tabella del testo.
+
+    La usano in due (todo 71): `load_day_plan`, per il giorno che la Day sta
+    mostrando, e `load_week_plan`, che le manda tutte e sette. Prima era
+    scritta una volta e mezza — i campi dentro `load_day_plan`, e i soli
+    totali altrove."""
+    return {
+        "day": day,
+        "sport": _as_text(entry.get("sport")),
+        "kind": _as_text(entry.get("kind")),
+        "distance_label": _distance_label(entry.get("distance_km")),
+        "optional": _as_text(entry.get("optional")),
+        "text": _day_row(text, day),
+    }
 
 
-def _km_label(low: float, high: float) -> str:
-    return f"{low:g} km" if low == high else f"{low:g}-{high:g} km"
-
-
-def _planned_week(sessions: Any) -> dict[str, Any] | None:
-    """Cosa chiedeva la settimana, contato dalle sette sedute del front
-    matter (todo 70): quante sedute, quanti chilometri, la piu' lunga,
-    quante di qualita' e quanti riposi.
-
-    E' la riga «Totals» che il piano si scrive da solo nel testo, ricavata
-    dai campi invece che letta dalla prosa: li' e' una frase, qui sono
-    numeri da mettere accanto alle sedute fatte. Il piano la scrive a mano e
-    puo' contare diversamente — i suoi chilometri sono «of running», questi
-    sono tutti quelli che una seduta dichiara — e quando le due non tornano
-    e' il file a dire la verita' su cosa voleva l'autore.
-
-    Gli intervalli restano intervalli: una settimana di `[10, 11]` piu'
-    `[14, 16]` chiede «24-27 km», non una media che nessuno ha scritto.
+def _planned_sessions(meta: dict, text: str) -> list[dict[str, Any]] | None:
+    """Le sette sedute di una settimana, in ordine di data.
 
     `None` quando `sessions` non c'e': il file di settembre 2026 ha la
-    tabella e non i campi, e inventare i totali dalla prosa e' la strada che
-    il todo 14 aveva scartato."""
+    tabella e non i campi, e ricavare le sedute dalla prosa e' la strada
+    fragile che il todo 14 aveva scartato.
+
+    **In ordine di data e non di file.** Il front matter le scrive da lunedi'
+    a domenica, ma quel file di settembre dimostra che non e' garantito — la
+    sua tabella parte dalla domenica — e una card che le mette in fila le
+    vuole in fila. Le voci senza una data si saltano: senza di quella una
+    seduta non si sa di che giorno e'."""
+    sessions = meta.get("sessions")
     if not isinstance(sessions, list):
         return None
-    entries = [e for e in sessions if isinstance(e, dict)]
-    if not entries:
+    dated = [
+        (day, entry)
+        for entry in sessions
+        if isinstance(entry, dict) and (day := _as_date(entry.get("date"))) is not None
+    ]
+    if not dated:
         return None
-    rest = [e for e in entries if _as_text(e.get("sport")) == "rest"]
-    work = [e for e in entries if _as_text(e.get("sport")) != "rest"]
-    ends = [pair for e in work if (pair := _distance_ends(e.get("distance_km"))) is not None]
-    total = (sum(lo for lo, _ in ends), sum(hi for _, hi in ends)) if ends else None
-    longest = max(ends, key=lambda pair: pair[1]) if ends else None
-    return {
-        "sessions": len(work),
-        "rest_days": len(rest),
-        "quality": sum(1 for e in work if _as_text(e.get("kind")) == "quality"),
-        "distance_label": _km_label(*total) if total else None,
-        "longest_label": _km_label(*longest) if longest else None,
-    }
+    return [_session(entry, day, text) for day, entry in sorted(dated, key=lambda p: p[0])]
 
 
 def load_day_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
@@ -261,10 +250,10 @@ def load_day_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
     ne' l'ordine ne' il numero delle righe sono garantiti (la sua tabella
     parte dalla domenica e ha otto righe).
 
-    Qui `sessions` si legge, al contrario di `load_week_plan`: una card del
-    giorno vuole la seduta di un giorno, e la tabella del testo da sola non la
-    da' separata nei suoi campi. Il testo di quella riga arriva comunque,
-    accanto ai campi, perche' e' dov'e' scritto il perche'."""
+    Il testo di quella riga arriva comunque, accanto ai campi, perche' e'
+    dov'e' scritto il perche'. I campi sono gli stessi che `load_week_plan`
+    manda per tutti e sette i giorni (`_session`), con attorno da che file
+    vengono."""
     path = week_plan_path(summary_dir, day)
     if path is None:
         return None
@@ -280,14 +269,9 @@ def load_day_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
         return None
     _, text = _title(body)
     return {
-        "day": day,
+        **_session(entry, day, text),
         "week": _as_date(meta.get("week")) or day - timedelta(days=day.weekday()),
         "file": path.name,
-        "sport": _as_text(entry.get("sport")),
-        "kind": _as_text(entry.get("kind")),
-        "distance_label": _distance_label(entry.get("distance_km")),
-        "optional": _as_text(entry.get("optional")),
-        "text": _day_row(text, day),
         "written_at": datetime.fromtimestamp(path.stat().st_mtime),
     }
 
@@ -301,13 +285,12 @@ def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
     sono quelle delle sette sedute invece di quelle di una gara, e
     `summary/05.plan/README.md` le elenca.
 
-    **Le sette sedute non si mandano una per una**, ne' qui ne' altrove: per
-    quelle c'e' `load_day_plan`, un giorno alla volta, che e' come la pagina
-    le chiede. Di `sessions` qui si prendono solo i **totali** (todo 70) —
-    quante sedute, quanti chilometri, quante di qualita', quanti riposi — che
-    e' cosa chiedeva la settimana, da mettere accanto a quello che si e'
-    fatto. Il testo resta com'e': la sua tabella dice le stesse sedute con
-    dentro anche il perche'."""
+    **Le sette sedute si mandano, una per giorno** (todo 71): e' il piano
+    della settimana giorno per giorno, che e' la domanda che si fa guardando
+    una settimana. Il todo 60 non le mandava perche' nessuno le guardava, e
+    il todo 70 ne aveva mandato i soli totali, che rispondevano a un'altra
+    domanda. Il testo resta com'e': la sua tabella dice le stesse sedute con
+    dentro anche il perche', e quello e' il documento."""
     path = week_plan_path(summary_dir, day)
     if path is None:
         return None
@@ -323,7 +306,7 @@ def load_week_plan(summary_dir: Path, day: date) -> dict[str, Any] | None:
         "phase": _as_text(meta.get("phase")),
         "race": _as_date(meta.get("race")),
         "target_time": _as_text(meta.get("target_time")),
-        "planned": _planned_week(meta.get("sessions")),
+        "sessions": _planned_sessions(meta, text),
         "written_at": datetime.fromtimestamp(path.stat().st_mtime),
         "body": text,
     }

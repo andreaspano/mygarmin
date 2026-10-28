@@ -577,6 +577,32 @@ h2 {
   color: var(--summary-accent);
 }
 
+/* I sette giorni del piano nella card Plan della Week (todo 71): una riga
+   per giorno, il giorno a sinistra come etichetta e la seduta accanto.
+   Niente tabella: sono sette righe corte, e una tabella a due colonne qui
+   aggiungerebbe bordi e allineamenti per nulla. */
+.plan-days {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.plan-days li {
+  display: grid;
+  grid-template-columns: 6.5rem 22px 1fr;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.92rem;
+}
+/* Il giorno in tono minore: e' la chiave della riga, non il contenuto. */
+.plan-day {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Un giorno di riposo senza icona lascia la colonna vuota e il testo
+   allineato con gli altri: la griglia tiene la colonna, non il contenuto. */
+
 /* Il grafico della settimana (todo 52): senza la cornice del riquadro, che
    qui separerebbe due cose che stanno nella stessa card. */
 .week-chart .chart-box {

@@ -221,14 +221,27 @@ hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
 fila delle settimane, un punto per settimana invece di uno per giorno.
 
 La card Plan della Training e la vista Plan leggono **lo stesso file e
-rispondono a due domande** (todo 70): la vista ha il documento, da leggere —
-la tabella, i ritmi, le deroghe — la card ha i numeri che chiedeva, da
-mettere accanto alle sedute fatte due riquadri sotto. I totali li conta l'API
-dal front matter (`planned` in `WeekPlan`): quante sedute, quanti chilometri,
-la piu' lunga, quante di qualita' e quanti riposi. Non si leggono dalla riga
-«Totals» del testo, che e' prosa scritta a mano — ma tornano: sulla settimana
-del 26 ottobre il file dice «26 km · longest run 14 km · 1 quality session ·
-4 rest days» e il conto dice gli stessi quattro numeri.
+rispondono a due domande** (todo 71): la vista ha il **documento**, che si
+apre e si legge — la tabella con il perche' di ogni seduta, i ritmi, i
+segnali per scaricare — la card ha le sette sedute come **dati**, una riga
+per giorno, da scorrere con un'occhiata accanto alle sedute fatte due
+riquadri sotto:
+
+```
+Mon 26 Oct   Rest
+Tue 27 Oct   Running · easy · 5 km
+Wed 28 Oct   Rest · or Cycling
+Thu 29 Oct   Running · quality · 7 km
+...
+```
+
+Le sedute arrivano dal front matter (`sessions` in `WeekPlan`), **in ordine
+di data e non di file**: il file di settembre 2026 ha la tabella che parte
+dalla domenica, e una card che le mette in fila le vuole in fila. Quel file
+pero' il front matter non ce l'ha, quindi per la sua settimana la card mostra
+i quattro riquadri del blocco a trattino e nessuna riga: le sedute a macchina
+non ci sono, e ricavarle dalla prosa e' la strada che il todo 14 aveva
+scartato.
 
 Comune a tutte e quattro e' l'intestazione — titolo, frecce, calendario, il
 tasto che riscrive la settimana — e il selettore: cambiando settimana la

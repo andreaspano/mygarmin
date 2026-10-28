@@ -657,29 +657,33 @@ class PlanList(BaseModel):
     plans: list[PlanSummary]
 
 
-# Cosa chiedeva una settimana, contato dalle sette sedute del suo front
-# matter (todo 70): la riga «Totals» che il piano si scrive nel testo, ma in
-# numeri invece che in prosa, per stare accanto alle sedute fatte.
-class PlannedWeek(BaseModel):
-    """The totals the week's plan asks for."""
+# La seduta che il piano prevede per un giorno (todo 71): i campi del front
+# matter, piu' la riga che quel giorno ha nella tabella del testo.
+#
+# Sta da sola perche' la vogliono in due: `WeekPlan` ne manda sette, una per
+# giorno della settimana, e `DayPlan` ne manda una con attorno da che file
+# viene. Da cui l'ereditarieta', come `ActivityDetail` da `Activity`.
+class PlannedSession(BaseModel):
+    """One day's session, as the week's plan asks for it."""
 
-    sessions: int = Field(description="Planned sessions, rest days excluded.")
-    rest_days: int = Field(description="Days the plan leaves without training.")
-    quality: int = Field(description="Of the sessions, how many are `quality`.")
-    distance_label: str | None = Field(
-        description='Planned distance over the week, as read ("26 km", "24-27 km"). '
-        "Null when no session names one."
-    )
-    longest_label: str | None = Field(
-        description="The longest single planned session, same form. Null likewise."
+    day: date = Field(description="The day the session is planned for.")
+    sport: str | None = Field(description="A sport of `activities.sport`, or `rest`.")
+    kind: str | None = Field(description="easy, quality, long or race.")
+    distance_label: str | None = Field(description='Planned distance, as read ("10-11 km").')
+    optional: str | None = Field(description="On a rest day, the sport that may be done anyway.")
+    text: str | None = Field(
+        description="The day's row of the plan's table, Markdown; null when it has none."
     )
 
 
 # Il piano di una settimana, da `summary/05.plan/<lunedi>.md` (todo 60). Non
 # e' il blocco di `plan/`: quello dura quattro mesi e parla di una gara,
-# questo dura sette giorni e dice le sedute. Le sette sedute del front matter
-# (`sessions`) non sono qui — le dice la tabella del testo, e la lettura a
-# macchina serve al confronto previsto/fatto del todo 14, che non c'e' ancora.
+# questo dura sette giorni e dice le sedute.
+#
+# **Le sette sedute sono qui dal todo 71**, una per giorno. Fino al todo 60
+# non c'erano di proposito — le diceva la tabella del testo, e un campo che
+# nessuno guarda non si manda — e il todo 70 ne aveva mandato i soli totali,
+# che e' una domanda diversa da quella che si voleva.
 class WeekPlan(BaseModel):
     """The plan of one week, from `summary/05.plan/<monday>.md`."""
 
@@ -692,30 +696,19 @@ class WeekPlan(BaseModel):
     phase: str | None = Field(description="base, build, specific, taper or race.")
     race: date | None = Field(description="Race day of the block.")
     target_time: str | None = Field(description='Target finishing time, as written ("2:20:00").')
-    planned: PlannedWeek | None = Field(
-        description="The totals the plan asks for. Null for a file written before the "
-        "front matter had the sessions."
+    sessions: list[PlannedSession] | None = Field(
+        description="The planned session of each day, Monday to Sunday, in order. Null for "
+        "a file written before the front matter had them."
     )
     written_at: datetime | None = Field(description="When the file was last written.")
     body: str = Field(description="Markdown, without the front matter and without the title.")
 
 
-# La seduta prevista per un giorno, dallo stesso file di `WeekPlan` (todo 63).
-# Qui le sette sedute del front matter si leggono, al contrario del piano
-# settimanale: la vista Training di un giorno ne vuole una sola, e la tabella
-# del testo non la da' separata nei suoi campi. Il testo di quella riga viene
-# comunque, accanto ai campi, che e' dov'e' scritto il perche'.
-class DayPlan(BaseModel):
-    """The session planned for one day, from `summary/05.plan/<monday>.md`."""
+# La seduta prevista per un giorno (todo 63), con attorno da che file viene:
+# la chiede la vista Training della Day, per il giorno che sta mostrando.
+class DayPlan(PlannedSession):
+    """The session planned for one day, with the plan it comes from."""
 
-    day: date = Field(description="The day the session is planned for.")
     week: date = Field(description="The Monday of the week this comes from.")
     file: str = Field(description="The file name in `summary/05.plan/`.")
-    sport: str | None = Field(description="A sport of `activities.sport`, or `rest`.")
-    kind: str | None = Field(description="easy, quality, long or race.")
-    distance_label: str | None = Field(description='Planned distance, as read ("10-11 km").')
-    optional: str | None = Field(description="On a rest day, the sport that may be done anyway.")
-    text: str | None = Field(
-        description="The day's row of the plan's table, Markdown; null when it has none."
-    )
     written_at: datetime | None = Field(description="When the file was last written.")

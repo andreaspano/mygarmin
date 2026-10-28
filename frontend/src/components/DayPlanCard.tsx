@@ -19,62 +19,15 @@
 // la cornice vuota lo dice gia' — un paragrafo che spiega dove stanno i file
 // del piano e' documentazione, e si leggeva ogni volta che si apre un giorno
 // fuori dal blocco.
-import { iconUrl, type DayPlan } from "../api/client";
+import { type DayPlan } from "../api/client";
 import { inline } from "../markdown";
+import { PlanLine, type Sport } from "./PlanSession";
 import { CardHead, WrittenAt } from "./Stat";
 
 // L'icona di Next, la stessa che `WeekPlanCard` e la pagina Plan danno a un
 // piano: il riquadro che dice cosa fare. Un piano del giorno e' la stessa
 // domanda, su un giorno invece che su sette.
 const PLAN_ICON = "next.png";
-
-/** Lo sport e l'icona con cui la pagina lo mostra. La stessa forma che vuole
- * `TrainingCard`, cosi' la `DayPage` passa l'adattatore che ha gia'. */
-type Sport = {
-  label: (sport: string | null | undefined) => string;
-  icon: (sport: string | null | undefined) => string | null;
-};
-
-/** La seduta in una riga: l'icona dello sport, poi il tipo e la distanza
- * separati da un punto mediano, come nelle schede delle attivita'.
- *
- * Cornice e carattere sono quelli della card Training — `training-head` e un
- * `h2` — e non una regola di qui: le due card stanno una sopra l'altra nella
- * stessa vista, e due titoli di corpo diverso si leggono come due cose di
- * peso diverso. Prendendo le stesse classi restano uguali anche dopo, senza
- * che nessuno si ricordi di cambiarle in due posti.
- *
- * Il riposo ha l'icona sua (`restIcon`, da `/api/sports`) e non sta fra gli
- * sport: e' lo stesso trattamento che gli da' `TrainingCard`. Un riposo con
- * uno sport ammesso comunque lo dice — "Rest · or cycling" — perche' un
- * riposo facoltativo e un riposo secco sono due giornate diverse. */
-function PlanLine({
-  plan,
-  sport,
-  restIcon,
-}: {
-  plan: DayPlan;
-  sport: Sport;
-  restIcon: string | null;
-}) {
-  const rest = plan.sport === "rest";
-  const icon = rest ? restIcon : sport.icon(plan.sport);
-  const parts = [
-    // `rest` non e' uno sport e non sta in `/api/sports`: `sport.label` ci
-    // renderebbe la chiave cruda, "rest" minuscolo. Il nome e' scritto qui
-    // come lo scrive `TrainingCard` nel suo stato di riposo.
-    rest ? "Rest" : plan.sport ? sport.label(plan.sport) : null,
-    plan.kind,
-    plan.distance_label,
-    rest && plan.optional ? `or ${sport.label(plan.optional)}` : null,
-  ].filter((part): part is string => Boolean(part));
-  return (
-    <div className="training-head">
-      {icon && <img src={iconUrl(icon)} alt="" width={44} height={44} />}
-      <h2>{parts.join(" · ") || "Nothing planned"}</h2>
-    </div>
-  );
-}
 
 export function DayPlanCard({
   plan,

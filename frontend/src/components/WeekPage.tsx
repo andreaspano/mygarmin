@@ -500,7 +500,13 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
           <>
             {/* Cosa chiedeva la settimana, prima di quello che si e' fatto:
                 lo stesso ordine della Day (todo 63). */}
-            <WeekPlanBrief plan={plan} monday={monday} loading={planLoading} />
+            <WeekPlanBrief
+              plan={plan}
+              monday={monday}
+              loading={planLoading}
+              sport={{ label: sportLabel, icon: (key) => sportIcons.get(key ?? "") ?? null }}
+              restIcon={sportList?.rest_icon ?? null}
+            />
             <section className="card" aria-label="Sessions">
               <CardHead icon={sectionIconFile("training")} title="Sessions" />
               {ordered.length === 0 ? (
