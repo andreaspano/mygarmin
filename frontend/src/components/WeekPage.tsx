@@ -138,8 +138,10 @@ function byCard(data: WeeklyData, card: "health" | "recovery"): WeekMeasure[] {
 }
 
 /** L'icona di una card: gli stessi file della Day, che l'API serve sotto
- * /icons. Qui non passano dal report, perche' la Week un report non ce l'ha
- * ancora (todo 53). */
+ * /icons. Scritte qui e non prese dal report come fa la Day
+ * (`sectionIcon`): il report della settimana c'e' (todo 53), ma le sue
+ * sezioni non portano un'icona propria, e queste sono le stesse per tutte le
+ * settimane. */
 const CARD_ICONS: Record<string, string> = {
   health: "health.png",
   load: "trend.png",
@@ -222,11 +224,12 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
     document.title = `Training · ${weekLabel(monday)}${coda}`;
   }, [monday, view]);
 
-  // Le tre chiamate dello Snap non partono sulle altre viste, che di card e
-  // di sedute non ne hanno (todo 59). Quella dei numeri della settimana si',
-  // sempre: il cerotto "N of 7 days" sta nel titolo, che e' di tutte e tre.
+  // Ogni chiamata solo sulla vista che la guarda. Gli sport e le sedute sono
+  // della **Training** dal todo 68: nello Snap non ci sono piu'. Quella dei
+  // numeri della settimana invece parte sempre, che il cerotto "N of 7 days"
+  // sta nel titolo, che e' di tutte e quattro.
   useEffect(() => {
-    if (view !== "snap") return;
+    if (view !== "training") return;
     const controller = new AbortController();
     api
       .sports(controller.signal)
@@ -236,7 +239,7 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
   }, [view]);
 
   useEffect(() => {
-    if (view !== "snap") return;
+    if (view !== "training") return;
     const controller = new AbortController();
     api
       .activities(monday, sunday, [], controller.signal)
@@ -258,10 +261,11 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
     return () => controller.abort();
   }, [monday]);
 
-  // Il testo della settimana. `reloads` lo rilegge quando un lavoro
-  // finisce, senza ricaricare la pagina.
+  // Il testo della settimana: lo leggono lo Snap (il Summary e le quattro
+  // card) e la Training (il commento e il Next). `reloads` lo rilegge quando
+  // un lavoro finisce, senza ricaricare la pagina.
   useEffect(() => {
-    if (view !== "snap") return;
+    if (view !== "snap" && view !== "training") return;
     const controller = new AbortController();
     setReport(null);
     api
@@ -488,33 +492,102 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
         {view === "plan" && (
           <WeekPlanCard plan={plan} monday={monday} loading={planLoading} />
         )}
-        {/* Dalle card alle sedute: e' lo Snap. */}
+        {/* La Training della settimana (todo 68), sulla linea di quella del
+            giorno: cosa hai fatto, com'e' andato, cosa viene dopo. Le sedute
+            e il grafico stavano dentro la card del commento; qui sono due
+            riquadri, che sono due cose — i fatti e il giudizio. */}
+        {view === "training" && (
+          <>
+            <section className="card" aria-label="Sessions">
+              <CardHead icon={sectionIconFile("training")} title="Sessions" />
+              {ordered.length === 0 ? (
+                <p className="caption">No sessions this week.</p>
+              ) : (
+                <>
+                  <WeekChart monday={monday} theme={theme} />
+                  <ul className="week-sessions">
+                    {ordered.map((a) => {
+                      const icon = sportIcons.get(a.sport ?? "") ?? null;
+                      const day = a.start_time.slice(0, 10);
+                      return (
+                        <li key={a.activity_id}>
+                          <button
+                            type="button"
+                            className="week-session"
+                            onClick={() => openDay(day)}
+                          >
+                            {icon && (
+                              <img
+                                src={iconUrl(icon)}
+                                alt=""
+                                width={30}
+                                height={30}
+                              />
+                            )}
+                            <span className="week-session-name">
+                              {a.activity_name ?? sportLabel(a.sport)}
+                              {/* Il giorno della settimana davanti alla data:
+                                  in una pagina che parla di sette giorni,
+                                  "Mon" si legge prima del numero. */}
+                              <span className="muted">
+                                {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
+                                {timeOf(a.start_time)}
+                              </span>
+                            </span>
+                            <span className="week-session-size">
+                              {a.total_distance_km != null
+                                ? fixed(a.total_distance_km, 1, " km")
+                                : "–"}
+                              <span className="muted">
+                                {durationLabel(a.total_time_min)}
+                              </span>
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </>
+              )}
+            </section>
+            <section className="card comment-card" aria-label="Comment">
+              <CardHead
+                icon={sectionIconFile("training")}
+                title="Comment"
+                refresh={sectionButton("training")}
+              />
+              {text("Training") && (
+                <div className="prose">{markdown(text("Training")!)}</div>
+              )}
+              <WrittenAt when={when("Training")} day={monday} />
+            </section>
+            {/* La strategia dei sette giorni che vengono. Il Next del giorno
+                non c'e' piu' (todo 66); questo resta, che e' un'altra
+                domanda: la forma del lavoro, non la seduta di domani. */}
+            <NextCard
+              body={text("Next")}
+              writtenAt={when("Next")}
+              day={monday}
+              tomorrow
+              week
+              refresh={sectionButton("next")}
+            />
+          </>
+        )}
+        {/* Lo Snap e' il corpo, come quello del giorno (todo 68): il
+            verdetto a tutta larghezza e le quattro card. Le sedute e il Next
+            sono passati alla Training. */}
         {view === "snap" && (
         <>
-        <div className="head-row">
-          <NextCard
-            body={text("Next")}
-            writtenAt={when("Next")}
-            day={monday}
-            tomorrow
-            week
-            refresh={sectionButton("next")}
-          />
-          <SummaryCard
-            day={monday}
-            morning={{
-              body: text("Week start"),
-              writtenAt: when("Week start"),
-              refresh: sectionButton("summary_start"),
-            }}
-            evening={{
-              body: text("Week end"),
-              writtenAt: when("Week end"),
-              refresh: sectionButton("summary_end"),
-            }}
-            week
-          />
-        </div>
+        <SummaryCard
+          day={monday}
+          morning={{
+            body: text("Summary"),
+            writtenAt: when("Summary"),
+            refresh: sectionButton("summary"),
+          }}
+          week
+        />
         {data && (
           <div className="cards-grid">
             <MeasureCard
@@ -642,66 +715,6 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             </section>
           </div>
         )}
-        <section className="card" aria-label="Training">
-          <CardHead
-            icon={sectionIconFile("training")}
-            title="Training"
-            refresh={sectionButton("training")}
-          />
-          {text("Training") && (
-            <div className="prose">{markdown(text("Training")!)}</div>
-          )}
-          <WrittenAt when={when("Training")} day={monday} />
-          {ordered.length === 0 ? (
-            <p className="caption">No sessions this week.</p>
-          ) : (
-            <>
-              <WeekChart monday={monday} theme={theme} />
-              <ul className="week-sessions">
-                {ordered.map((a) => {
-                  const icon = sportIcons.get(a.sport ?? "") ?? null;
-                  const day = a.start_time.slice(0, 10);
-                  return (
-                    <li key={a.activity_id}>
-                      <button
-                        type="button"
-                        className="week-session"
-                        onClick={() => openDay(day)}
-                      >
-                        {icon && (
-                          <img
-                            src={iconUrl(icon)}
-                            alt=""
-                            width={30}
-                            height={30}
-                          />
-                        )}
-                        <span className="week-session-name">
-                          {a.activity_name ?? sportLabel(a.sport)}
-                          {/* Il giorno della settimana davanti alla data:
-                              in una pagina che parla di sette giorni,
-                              "Mon" si legge prima del numero. */}
-                          <span className="muted">
-                            {sportLabel(a.sport)} · {weekdayShort(day)} {day} ·{" "}
-                            {timeOf(a.start_time)}
-                          </span>
-                        </span>
-                        <span className="week-session-size">
-                          {a.total_distance_km != null
-                            ? fixed(a.total_distance_km, 1, " km")
-                            : "–"}
-                          <span className="muted">
-                            {durationLabel(a.total_time_min)}
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </>
-          )}
-        </section>
         </>
         )}
       </main>

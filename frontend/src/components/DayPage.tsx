@@ -330,8 +330,9 @@ export function DayPage({ view = "snap" }: { view?: View }) {
         {view === "snap" && (
         <>
         {/* Il verdetto a tutta larghezza sopra la griglia. La riga a due
-            colonne (`.head-row`) non c'e' piu': dal todo 66 lo Snap ha un
-            riquadro solo in cima, che Next e' uscito dal giorno. */}
+            colonne che c'era qui e' sparita col todo 66, quando Next e'
+            uscito dal giorno, e la regola CSS col todo 68, quando anche la
+            Week ha smesso di usarla. */}
         <SummaryCard
           day={day}
           morning={{

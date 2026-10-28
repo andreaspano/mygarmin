@@ -49,16 +49,21 @@ SECTIONS: tuple[Section, ...] = (
     Section("fitness", "Fitness", "04_fitness", False),
 )
 
-# La settimana (todo 53): le stesse cinque card piu' Next e il Summary in due
-# parti, che qui sono l'apertura del lunedi e la chiusura della domenica.
+# La settimana (todo 53), sulla linea del giorno dal todo 68: le quattro card
+# del corpo con il Summary che le riassume, il Training, e il Next.
 #
-# **Il settimanale non ha seguito il todo 66** e tiene le sue otto sezioni:
-# una settimana ha due estremi veri — il lunedi che la apre e la domenica che
-# la chiude — e il suo Next e' la strategia dei sette giorni che vengono, che
-# e' un'altra cosa dal consiglio per domani.
+# **Il Summary e' uno.** Erano due — l'apertura del lunedi e la chiusura
+# della domenica — e il secondo leggeva il primo. Adesso e' solo la chiusura,
+# scritta quando i sette giorni ci sono: una settimana ha i numeri alla fine,
+# non all'inizio. Il prezzo e' che dal lunedi al sabato la settimana non ha
+# nessun testo, ed e' scritto nel todo 68.
+#
+# **Il Next invece resta**, al contrario di quello del giorno (todo 66): e' la
+# strategia dei sette giorni che vengono — quante sedute, di che tipo, dove
+# l'intensita' — non il consiglio per domani, e nessun piano scritto la da'
+# gia' adattata alla settimana appena finita.
 WEEK_SECTIONS: tuple[Section, ...] = (
-    Section("summary_start", "Week start", "w7_summary", True),
-    Section("summary_end", "Week end", "w7_summary", True),
+    Section("summary", "Summary", "w7_summary", True),
     Section("training", "Training", "w5_training", False),
     Section("recovery", "Recovery", "w3_recovery", False),
     Section("health", "Health", "w1_health", False),
@@ -88,9 +93,10 @@ _WEEK_RUN_KEYS = (
     "recovery",
     "fitness",
     "training",
+    # Il Next prima del Summary: la chiusura legge `next.md`, e quando girano
+    # insieme lo deve trovare scritto.
     "next",
-    "summary_start",
-    "summary_end",
+    "summary",
 )
 
 
@@ -124,22 +130,21 @@ MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
     "evening": ("training",),
 }
 
-# I due giri della settimana (todo 53): il lunedi apre la settimana che
-# comincia, la domenica la chiude. Girano in coda a quelli del giorno (todo
-# 66: le 8 e le 21), nella stessa riga di cron.
+# **Un giro solo** (todo 68): la domenica sera, in coda a quello del giorno
+# (todo 66: le 21), nella stessa riga di cron.
 #
-# **Il lunedi scrive una sezione sola.** Il todo ne prevedeva sei, ma una
-# settimana al suo primo giorno non ha numeri da commentare: le medie
-# starebbero su un giorno e le sedute su nessuna. Chi apre non guarda i
-# numeri di questa settimana — guarda come ci arrivi, e questo lo sa dal
-# report della settimana prima e dalla notte appena finita. Tutto il resto
-# si scrive la domenica, quando i sette giorni ci sono tutti.
+# Erano due. Il lunedi scriveva una sezione sola — l'apertura, che guardava
+# la settimana prima — perche' una settimana al suo primo giorno non ha
+# numeri da commentare: le medie starebbero su un giorno e le sedute su
+# nessuna. Quel ragionamento vale ancora, e la conclusione e' cambiata: se
+# l'unica cosa che il lunedi puo' dire e' come ci arrivi, e il verdetto e'
+# uno, allora il verdetto e' quello della fine. **Un momento che scrive una
+# sezione sola non e' un momento.**
 #
-# Next sta nella chiusura, perche' la strategia e' per la settimana che
-# comincia il giorno dopo: come il Next della sera parla di domani.
+# Il Next sta qui perche' la strategia e' per la settimana che comincia il
+# giorno dopo, e la si scrive sapendo com'e' andata questa.
 WEEK_MOMENT_SECTIONS: dict[str, tuple[str, ...]] = {
-    "start": ("summary_start",),
-    "end": ("health", "recovery", "load", "fitness", "training", "next", "summary_end"),
+    "end": ("health", "recovery", "load", "fitness", "training", "next", "summary"),
 }
 
 MOMENTS = tuple(MOMENT_SECTIONS)
@@ -160,8 +165,6 @@ _DAY_MOMENT_LINES = {
     "evening": "This is the evening run: the day is behind him.",
 }
 _WEEK_MOMENT_LINES = {
-    "start": "This is the Monday run: the week you are writing about starts today, and has "
-    "no numbers of its own yet.",
     "end": "This is the Sunday evening run: the week is finished, and the next one starts "
     "tomorrow.",
 }
@@ -179,12 +182,12 @@ _DAY_BACKFILL = (
     ("evening", ("training",)),
     ("morning", ("health", "recovery", "load", "fitness", "summary")),
 )
-# La settimana ne vuole due, perche' i momenti sono due: prima la chiusura
-# con tutto, poi l'apertura. Chi apre legge il report della settimana
-# **precedente**, quindi il ciclo va dalla piu' vecchia alla piu' recente.
+# La settimana ne vuole uno dal todo 68, che di momenti ne ha uno: tutto
+# nella chiusura. Erano due, e il secondo era l'apertura, che del report
+# della settimana **precedente** aveva bisogno — da cui il ciclo dalla piu'
+# vecchia alla piu' recente, che resta giusto comunque.
 _WEEK_BACKFILL = (
-    ("end", ("health", "recovery", "load", "fitness", "training", "next", "summary_end")),
-    ("start", ("summary_start",)),
+    ("end", ("health", "recovery", "load", "fitness", "training", "next", "summary")),
 )
 
 
@@ -211,6 +214,14 @@ class Report:
     moment_lines: dict[str, str]
     # I giri con cui si riscrive un periodo passato, nell'ordine.
     backfill: tuple[tuple[str, tuple[str, ...]], ...]
+    # I nomi che una sezione aveva prima, per i frammenti scritti allora
+    # (todo 66 per il giorno, 68 per la settimana). Il verdetto era in due
+    # pezzi e adesso e' uno: senza questo, i giorni e le settimane gia'
+    # scritti mostrerebbero un Summary vuoto, che non e' "il testo non c'e'"
+    # ma "il file si chiama come si chiamava allora". L'ordine conta: il
+    # pezzo della fine prima di quello dell'inizio, che su un periodo
+    # concluso e' lui il verdetto.
+    old_fragments: dict[str, tuple[str, ...]]
 
     @property
     def by_key(self) -> dict[str, Section]:
@@ -233,6 +244,7 @@ DAILY = Report(
     moments=MOMENT_SECTIONS,
     moment_lines=_DAY_MOMENT_LINES,
     backfill=_DAY_BACKFILL,
+    old_fragments={"summary": ("summary_evening", "summary_morning")},
 )
 WEEKLY = Report(
     name="weekly",
@@ -243,6 +255,7 @@ WEEKLY = Report(
     moments=WEEK_MOMENT_SECTIONS,
     moment_lines=_WEEK_MOMENT_LINES,
     backfill=_WEEK_BACKFILL,
+    old_fragments={"summary": ("summary_end", "summary_start")},
 )
 KINDS = {report.name: report for report in (DAILY, WEEKLY)}
 
@@ -275,11 +288,15 @@ def moment_at(when: datetime) -> str:
 
 
 def week_moment_at(monday: date, today: date) -> str:
-    """Il momento di una settimana, per la voce del testo: una settimana
-    finita si racconta da domenica sera, una ancora aperta dal lunedi.
+    """Il momento di una settimana, per la voce del testo.
 
-    Non guarda l'orologio come `moment_at`: una settimana dura sette giorni,
-    e quello che cambia la voce e' se e' finita o no. L'ultimo giorno conta
-    come finita: il giro delle 22 della domenica chiude la settimana che sta
-    finendo in quel momento."""
-    return "start" if monday + timedelta(days=6) > today else "end"
+    Dal todo 68 ce n'e' **uno solo**, la chiusura: il verdetto e' uno e si
+    scrive quando i sette giorni ci sono. Prima una settimana ancora aperta
+    si raccontava dal lunedi, con l'apertura che guardava la settimana prima.
+
+    La funzione resta, con un valore solo, perche' il momento e' un parametro
+    del ciclo condiviso col giorno: il tasto della pagina lo chiede per
+    sapere con che voce fare scrivere, e togliere il concetto per la sola
+    settimana costerebbe piu' di quanto rende. `monday` e `today` non si
+    guardano piu'."""
+    return "end"

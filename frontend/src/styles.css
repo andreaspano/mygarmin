@@ -507,11 +507,6 @@ h2 {
 /* Next e Summary pari in altezza: la piu' alta decide, l'altra si allunga.
    Due riquadri affiancati di altezza diversa si leggono come se uno fosse
    finito a meta'. */
-.head-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-}
 /* Riquadro Next */
 .next-card {
   background: var(--next-bg);
@@ -1060,9 +1055,6 @@ h2 {
   }
   .day-header {
     flex-direction: column;
-  }
-  .head-row {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
 

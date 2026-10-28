@@ -6,9 +6,10 @@
 # l'installazione toglie le vecchie righe che ce l'hanno. Il `#` finale lo
 # legge la shell, non cron, che gli passa la riga intera.
 #
-# Dal todo 66 ogni giro scrive una pagina: la mattina alle 8 cinque agenti
-# per il Report (il corpo), la sera alle 21 uno solo per la Training (la
-# seduta). Quali sono lo dice `--moment` (vedi `api/sections.py`).
+# Dal todo 66 ogni giro del giorno scrive una pagina: la mattina alle 8
+# cinque agenti per lo Snap (il corpo), la sera alle 21 uno solo per la
+# Training (la seduta). La settimana ha un giro solo, la domenica sera (todo
+# 68). Quali sezioni lo dice `--moment` (vedi `api/sections.py`).
 #
 # **Il PATH va allargato, non basta il percorso assoluto di `uv`.** Cron da'
 # `/usr/bin:/bin`, dove `make` e `claude` ci sono ma `uv` no; e dentro il
@@ -17,17 +18,18 @@
 # proprio per questo: "uv: not found", scritto nel registro e segnalato
 # dalla pagina, ma lo scaricamento non era avvenuto.
 #
-# **Il lunedi e la domenica il giorno si tira dietro la settimana**, nella
-# stessa riga e con un `;` in mezzo: il report settimanale deve girare
-# **dopo** quello del giorno, perche' il lock ne lascia passare uno solo e
-# chi lo trova occupato se ne va senza fare niente. Con due righe a orari
-# diversi bisognerebbe indovinare quanto dura il giro del giorno; cosi' non
-# serve. Il `;` e non `&&`: se una sezione del giorno fallisce il comando
-# esce 1, e la settimana deve girare lo stesso.
+# **La domenica il giorno si tira dietro la settimana**, nella stessa riga e
+# con un `;` in mezzo: il report settimanale deve girare **dopo** quello del
+# giorno, perche' il lock ne lascia passare uno solo e chi lo trova occupato
+# se ne va senza fare niente. Con due righe a orari diversi bisognerebbe
+# indovinare quanto dura il giro del giorno; cosi' non serve. Il `;` e non
+# `&&`: se una sezione del giorno fallisce il comando esce 1, e la settimana
+# deve girare lo stesso.
 #
-# Percio' i giorni sono divisi: il giorno da solo quando non c'e' la
-# settimana, e la coppia quando c'e' (1 = lunedi, 0 = domenica).
-0 8 * * 0,2-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
+# Percio' la sera della domenica (0) ha la sua riga, e le altre sei sere la
+# riga del giorno da solo. Il mattino e' sempre il giorno da solo: dal todo
+# 68 la settimana ha un giro solo, la chiusura, e il lunedi' non scrive piu'
+# niente — il suo verdetto d'apertura non esiste.
+0 8 * * * cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment morning >> __LOG__ 2>&1 # mygarmin
 0 21 * * 1-6 cd __REPO__ && PATH=__UVDIR__:$PATH __UV__ run training-daily-report --moment evening >> __LOG__ 2>&1 # mygarmin
-0 8 * * 1 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment morning; __UV__ run training-weekly-report --moment start' >> __LOG__ 2>&1 # mygarmin
 0 21 * * 0 cd __REPO__ && PATH=__UVDIR__:$PATH sh -c '__UV__ run training-daily-report --moment evening; __UV__ run training-weekly-report --moment end' >> __LOG__ 2>&1 # mygarmin
