@@ -36,8 +36,8 @@ dati di salute. La documentazione interattiva e' su
 Corse, camminate ed escursioni hanno un terreno: `track`, `road`, `gravel`,
 `trail` o `mountain`. L'API lo stima dal tipo dell'attivita' e dalla salita
 per km (`src/training/interface/terrain.py`; strada quando i dati non
-decidono, sterrato mai), e lo si corregge dalla scheda Training della Day in
-React. Le correzioni stanno in `activity_terrain.json` nella cartella dati,
+decidono, sterrato mai), e lo si corregge dalla vista Training della Day in
+React (todo 62). Le correzioni stanno in `activity_terrain.json` nella cartella dati,
 accanto a `activity_names.json`: `activities.db` non le contiene, e un
 rebuild non le perde.
 
@@ -48,7 +48,7 @@ lo stima dall'allenamento pianificato salvato nel FIT e dalla durata
 (`src/training/interface/run_type.py`): almeno due passi attivi sono ripetute,
 un solo passo attivo di almeno 10 minuti e' un tempo, senza allenamento da 100
 minuti in su e' una lunga, altrimenti facile. Gara non si stima mai. Lo si
-corregge dalla scheda Training della Day in React; le correzioni stanno in
+corregge dalla vista Training della Day in React; le correzioni stanno in
 `activity_run_type.json` nella cartella dati, accanto a
 `activity_terrain.json`, e un rebuild non le perde. Il report giornaliero lo
 usa nella sezione Training (todo 43): e' il metro con cui l'allenatore giudica
@@ -101,9 +101,9 @@ grigia. Accanto a lei, a destra per lo stesso motivo, c'e' **Plan**: un piano
 guarda avanti a una gara, non indietro a un giorno. Month e Year si
 aggiungeranno quando esisteranno, non prima.
 
-**Le viste sono di ogni periodo** (todo 59): **Report** e **Trend** sotto
-Day, **Snap**, **Trend** e **Plan** sotto Week; la Plan, che un periodo non
-e', non ne ha e apre la barra con una riga sola. Stanno in `VIEWS`
+**Le viste sono di ogni periodo** (todo 59): **Report**, **Training** e
+**Trend** sotto Day, **Snap**, **Trend** e **Plan** sotto Week; la Plan, che
+un periodo non e', non ne ha e apre la barra con una riga sola. Stanno in `VIEWS`
 (`src/navigation.ts`) nell'ordine in cui si leggono, e **la prima e' quella
 che il periodo apre da solo** — Report per la Day, Snap per la Week.
 
@@ -200,9 +200,11 @@ lo scrive quando capita. Il carico cronico e il rapporto fra i due restano
 nella Day, dove il mese e' il contesto giusto per un giorno.
 
 La **Day** mostra un giorno alla volta (todo 34): la striscia della settimana,
-la seduta suggerita e il verdetto del giorno, una griglia 2x2 con Health e
-Load sopra, Recovery e Fitness sotto (todo 37), e l'allenamento con grafico e
-mappa. **Tutte e quattro le card hanno la stessa forma**: le misure, ognuna
+la seduta suggerita e il verdetto del giorno, e una griglia 2x2 con Health e
+Load sopra, Recovery e Fitness sotto (todo 37). Dal todo 62 l'allenamento non
+sta piu' in fondo a questa colonna: ha una vista sua, **Training**, fra Report
+e Trend — la stessa card di prima, spostata di posto e non rifatta.
+**Tutte e quattro le card hanno la stessa forma**: le misure, ognuna
 con la barra della sua fascia e il valore di oggi come tacca, e niente testo
 accanto ne' sotto il numero. Qualche misura la fascia non ce l'ha, e allora e'
 un numero nudo: la soglia del lattato, il rapporto di carico, la quota e il

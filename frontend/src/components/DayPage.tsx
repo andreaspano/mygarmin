@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api, isAbort, type Activity, type DailyData, type RefreshStatus, type Report, type SportList } from "../api/client";
 import { addDays, dayOf, today } from "../format";
 import { preamble, sectionBody, sectionIcon, sectionWrittenAt } from "../markdown";
-import { daysFromUrl, type View } from "../navigation";
+import { ETICHETTE, daysFromUrl, type View } from "../navigation";
 import { useColorScheme } from "../useColorScheme";
 import { DayHeader } from "./DayHeader";
 import { FitnessCard } from "./FitnessCard";
@@ -179,8 +179,11 @@ export function DayPage({ view = "report" }: { view?: View }) {
     return () => controller.abort();
   }, [stripStart, stripEnd, reloads]);
 
+  // I dati del giorno e il report servono al Report e al Training, che la
+  // card della seduta ha dentro il testo della sua sezione; il Trend no, che
+  // ha i suoi pannelli e la sua finestra.
   useEffect(() => {
-    if (view !== "report") return;
+    if (view === "trend") return;
     const controller = new AbortController();
     setData(null);
     setReport(null);
@@ -195,8 +198,12 @@ export function DayPage({ view = "report" }: { view?: View }) {
     return () => controller.abort();
   }, [day, reloads, view]);
 
+  // Il Report e' la vista di partenza e non si nomina, come non si nomina
+  // nell'URL; le altre prendono la loro etichetta dal menu, cosi' il nome e'
+  // scritto in un posto solo.
   useEffect(() => {
-    document.title = view === "trend" ? `Training · ${day} · Trend` : `Training · ${day}`;
+    document.title =
+      view === "report" ? `Training · ${day}` : `Training · ${day} · ${ETICHETTE[view]}`;
   }, [day, view]);
 
   const dayActivities = useMemo(
@@ -254,9 +261,26 @@ export function DayPage({ view = "report" }: { view?: View }) {
             {refresh.download.message && ` ${refresh.download.message}`}
           </p>
         )}
-        {view === "trend" ? (
+        {/* Tre viste, tre guardie: il ternario reggeva finche' erano due.
+            Intestazione e avvisi stanno fuori, che servono a tutte. */}
+        {view === "trend" && (
           <TrendPanels day={day} days={days} onDays={changeDays} theme={theme} />
-        ) : (
+        )}
+        {view === "training" && (
+          <TrainingCard
+            activities={dayActivities}
+            data={data}
+            comment={sectionBody(report, "Training")}
+            commentWrittenAt={sectionWrittenAt(report, "Training")}
+            day={day}
+            icon={sectionIcon(report, "Training")}
+            restIcon={sportList?.rest_icon ?? null}
+            sport={sport}
+            theme={theme}
+            refresh={sectionButton("training")}
+          />
+        )}
+        {view === "report" && (
         <>
         <div className="head-row">
           <NextCard
@@ -281,57 +305,43 @@ export function DayPage({ view = "report" }: { view?: View }) {
           />
         </div>
         {data ? (
-          <>
-            <div className="cards-grid">
-              <HealthCard
-                data={data}
-                text={sectionBody(report, "Health")}
-                writtenAt={sectionWrittenAt(report, "Health")}
-                day={day}
-                icon={sectionIcon(report, "Health")}
-                refresh={sectionButton("health")}
-              />
-              <LoadCard
-                data={data}
-                text={sectionBody(report, "Load")}
-                writtenAt={sectionWrittenAt(report, "Load")}
-                day={day}
-                icon={sectionIcon(report, "Load")}
-                refresh={sectionButton("load")}
-              />
-              <RecoveryCard
-                data={data}
-                text={sectionBody(report, "Recovery")}
-                writtenAt={sectionWrittenAt(report, "Recovery")}
-                day={day}
-                icon={sectionIcon(report, "Recovery")}
-                refresh={sectionButton("recovery")}
-              />
-              <FitnessCard
-                data={data}
-                text={sectionBody(report, "Fitness")}
-                writtenAt={sectionWrittenAt(report, "Fitness")}
-                day={day}
-                icon={sectionIcon(report, "Fitness")}
-                refresh={sectionButton("fitness")}
-              />
-            </div>
-          </>
+          <div className="cards-grid">
+            <HealthCard
+              data={data}
+              text={sectionBody(report, "Health")}
+              writtenAt={sectionWrittenAt(report, "Health")}
+              day={day}
+              icon={sectionIcon(report, "Health")}
+              refresh={sectionButton("health")}
+            />
+            <LoadCard
+              data={data}
+              text={sectionBody(report, "Load")}
+              writtenAt={sectionWrittenAt(report, "Load")}
+              day={day}
+              icon={sectionIcon(report, "Load")}
+              refresh={sectionButton("load")}
+            />
+            <RecoveryCard
+              data={data}
+              text={sectionBody(report, "Recovery")}
+              writtenAt={sectionWrittenAt(report, "Recovery")}
+              day={day}
+              icon={sectionIcon(report, "Recovery")}
+              refresh={sectionButton("recovery")}
+            />
+            <FitnessCard
+              data={data}
+              text={sectionBody(report, "Fitness")}
+              writtenAt={sectionWrittenAt(report, "Fitness")}
+              day={day}
+              icon={sectionIcon(report, "Fitness")}
+              refresh={sectionButton("fitness")}
+            />
+          </div>
         ) : (
           !error && <p className="caption">Loading…</p>
         )}
-        <TrainingCard
-          activities={dayActivities}
-          data={data}
-          comment={sectionBody(report, "Training")}
-          commentWrittenAt={sectionWrittenAt(report, "Training")}
-          day={day}
-          icon={sectionIcon(report, "Training")}
-          restIcon={sportList?.rest_icon ?? null}
-          sport={sport}
-          theme={theme}
-          refresh={sectionButton("training")}
-        />
         {dataNote && <p className="caption">{dataNote}</p>}
         </>
         )}

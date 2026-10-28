@@ -5,9 +5,10 @@
 // fossero la stessa cosa. Activities non e' un periodo e sta a destra,
 // staccata, ancora disattivata.
 //
-// Le viste sono di ogni periodo e stanno in `VIEWS` (todo 59): Report e
-// Trend sotto Day, Snap, Trend e Plan sotto Week. Qui ci sono solo i nomi
-// con cui si scrivono, che la barra e' il posto dove si leggono.
+// Le viste sono di ogni periodo e stanno in `VIEWS` (todo 59): Report,
+// Training e Trend sotto Day, Snap, Trend e Plan sotto Week. I nomi con cui
+// si scrivono stanno li' accanto (`ETICHETTE`), che servono anche al titolo
+// della pagina.
 //
 // A destra sta anche **Plan**, per lo stesso motivo di Activities: un piano
 // non e' un periodo. Non guarda indietro a un giorno o a una settimana,
@@ -17,18 +18,12 @@
 // Niente voci grigie nei due menu: Month e Year si aggiungono quando
 // esistono, non prima. Resta disattivata solo Activities, che la forma della
 // barra ce l'ha gia'.
-import { VIEWS, defaultView, hrefFor, type Page, type View } from "../navigation";
+import { ETICHETTE, VIEWS, defaultView, hrefFor, type Page, type View } from "../navigation";
 
 const PERIODI: { page: Page; label: string }[] = [
   { page: "day", label: "Day" },
   { page: "week", label: "Week" },
 ];
-const ETICHETTE: Record<View, string> = {
-  report: "Report",
-  snap: "Snap",
-  trend: "Trend",
-  plan: "Plan",
-};
 
 export function TopBar({
   current = "day",
