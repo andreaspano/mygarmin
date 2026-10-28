@@ -268,18 +268,21 @@ def _run(
             else:
                 folder = Path(summary_dir) / kind.folder / subject.isoformat()
                 folder.mkdir(parents=True, exist_ok=True)
-                # Il piano della settimana (todo 14), che fra le sezioni
-                # **lo legge solo Next**: e' quella che prescrive una seduta,
-                # e prescriverne una diversa da quella prevista senza saperlo
-                # e' il modo di avere un piano che nessuno segue. Niente file,
-                # nessuna frase nel prompt: un piano che non c'e' non deve
-                # diventare un'istruzione da inventare.
-                plan = week_plan_path(Path(summary_dir), _next_subject(kind, subject, moment))
+                # Il piano della settimana (todo 14) lo leggono **due**
+                # sezioni, e per due date diverse: Next, che prescrive la
+                # seduta del giorno dopo, e Training del giorno (todo 64),
+                # che giudica quella di oggi. Il percorso lo sceglie `_prompt`
+                # sezione per sezione: la stessa data per entrambe sarebbe
+                # sbagliata per una delle due, e la sera i due giorni cadono
+                # perfino in settimane diverse. Niente file, nessuna frase nel
+                # prompt: un piano che non c'e' non deve diventare
+                # un'istruzione da inventare.
                 for section in sections:
                     began = datetime.now()
                     _set(section.key, status="running", started=began, finished=None, message=None)
                     good, problem = _write_section(
-                        kind, section, subject, moment, repo_root, facts, folder, began, plan
+                        kind, section, subject, moment, repo_root, facts, folder, began,
+                        Path(summary_dir),
                     )
                     _set(
                         section.key,
@@ -376,6 +379,67 @@ def _next_subject(kind: Report, subject: date, moment: str) -> date:
     return subject if moment == "morning" else subject + timedelta(days=1)
 
 
+def _planned(
+    kind: Report,
+    section: Section,
+    subject: date,
+    moment: str,
+    summary_dir: Path | None,
+) -> str:
+    """La frase che mette il piano della settimana nel prompt, vuota per le
+    sezioni che non lo leggono e per i giorni che non ne hanno uno.
+
+    **Lo leggono due sezioni, e per due date diverse.** Next prescrive la
+    seduta del giorno dopo, e il piano le serve come punto di partenza; il
+    Training del giorno giudica la seduta di oggi, e senza il piano giudicava
+    solo contro le sedute passate — da cui verdetti come «nothing was planned»
+    (vero del file dell'orologio) su un giorno che un piano ce l'aveva, e nove
+    chilometri lodati dove ne erano previsti cinque.
+
+    La data cambia la settimana, non solo il giorno: la sera di domenica Next
+    prescrive per lunedi, che e' un altro file. Per questo il percorso si
+    calcola qui e non una volta per tutte in `_run`.
+
+    Le altre tre sezioni il piano non lo vedono: Health, Recovery, Load e
+    Fitness raccontano dei numeri, e quello che era previsto non li cambia.
+    Il Training della settimana resta fuori: li' il confronto e' con la forma
+    dei sette giorni, un'altra domanda (todo 64).
+
+    Un piano che non c'e' rende la stringa vuota, e il prompt torna quello di
+    sempre: all'agente non si dice ne' che un piano esiste ne' che non esiste.
+    Dirgli "per questo giorno non c'era un piano" sarebbe peggio di tacere —
+    e' la frase che sul 27 ottobre ha sviato il verdetto."""
+    if summary_dir is None:
+        return ""
+    if section.key == "next":
+        # La data per cui Next prescrive, non quella del report: la sera e'
+        # domani.
+        for_day = _next_subject(kind, subject, moment)
+        plan = week_plan_path(summary_dir, for_day)
+        if plan is None:
+            return ""
+        asks = (
+            f"the session it lists for {for_day.isoformat()}"
+            if kind is DAILY
+            else "the shape of the week it lays out"
+        )
+        return (
+            f"The plan for the week you are prescribing for is in {plan}: read it, and take "
+            f"{asks} as the default — depart from it only if the sections give you a reason, "
+            f"and say so when you do. "
+        )
+    if section.key == "training" and kind is DAILY:
+        plan = week_plan_path(summary_dir, subject)
+        if plan is None:
+            return ""
+        return (
+            f"The plan for the week is in {plan}: the session it lists for "
+            f"{subject.isoformat()} is what this one was meant to be. Read it, and judge "
+            f"the session against it as well as against the past ones. "
+        )
+    return ""
+
+
 def _prompt(
     kind: Report,
     section: Section,
@@ -383,28 +447,10 @@ def _prompt(
     moment: str,
     facts: Path,
     folder: Path,
-    plan: Path | None = None,
+    summary_dir: Path | None = None,
 ) -> str:
     where = f"Write the body of the section (no `## ` heading) to {folder / f'{section.key}.md'}."
-    # Il piano va solo a Next: le altre sezioni raccontano com'e' andata, e
-    # quello che era previsto non cambia i loro numeri.
-    # Al giorno interessa la seduta di quella data, alla settimana la forma
-    # dei sette giorni: la stessa frase per entrambi direbbe una cosa falsa a
-    # uno dei due. La data e' quella per cui Next prescrive, non quella del
-    # report: la sera e' domani.
-    for_day = _next_subject(kind, subject, moment)
-    asks = (
-        f"the session it lists for {for_day.isoformat()}"
-        if kind is DAILY
-        else "the shape of the week it lays out"
-    )
-    planned = (
-        f"The plan for the week you are prescribing for is in {plan}: read it, and take "
-        f"{asks} as the default — depart from it only if the sections give you a reason, "
-        f"and say so when you do. "
-        if plan is not None and section.key == "next"
-        else ""
-    )
+    planned = _planned(kind, section, subject, moment, summary_dir)
     when = kind.moment_lines[moment]
     period = kind.period(subject)
     if section.key == "summary_start":
@@ -429,7 +475,7 @@ def _prompt(
     return (
         f"Write the {section.title} section of the {kind.what} for {period}. "
         f"{when} "
-        f"The facts are in {facts}: read that file, do not run anything. {where}"
+        f"{planned}The facts are in {facts}: read that file, do not run anything. {where}"
     )
 
 
@@ -442,7 +488,7 @@ def _write_section(
     facts: Path,
     folder: Path,
     began: datetime,
-    plan: Path | None = None,
+    summary_dir: Path | None = None,
 ) -> tuple[bool, str | None]:
     claude = shutil.which("claude")
     if claude is None:
@@ -451,7 +497,7 @@ def _write_section(
         claude, "-p", "--agent", section.agent,
         "--append-system-prompt-file", str(repo_root / STYLE_FILE),
         "--allowedTools", *_allowed_tools(kind),
-        "--", _prompt(kind, section, subject, moment, facts, folder, plan),
+        "--", _prompt(kind, section, subject, moment, facts, folder, summary_dir),
     ]
     try:
         result = subprocess.run(

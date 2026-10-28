@@ -354,23 +354,40 @@ front matter: per chi guarda e' la stessa cosa, quel giorno non e' previsto
 niente. La settimana intera resta senza `sessions`: marcare il giorno di oggi
 nella tabella della Week e' ancora aperto (todo 61).
 
-**Next li legge.** Quando esiste il file della settimana per cui sta
-prescrivendo, l'orchestratore (`week_plan_path` in `api/plans.py`) lo nomina nel
-prompt, e per l'agente la seduta prevista e' il punto di partenza: la
-prescrive com'e' se le sezioni sono d'accordo, la cambia se non lo sono — e
-allora **deve dire cosa ha cambiato e perche'**. Una settimana che si discosta
-dal piano in silenzio e' un piano che nessuno segue.
+**Due sezioni lo leggono, e per due date diverse** (`_planned` in
+`api/refresh.py`), quando il file della settimana esiste.
+
+**Next**, che prescrive: per l'agente la seduta prevista e' il punto di
+partenza — la prescrive com'e' se le sezioni sono d'accordo, la cambia se non
+lo sono, e allora **deve dire cosa ha cambiato e perche'**. Una settimana che
+si discosta dal piano in silenzio e' un piano che nessuno segue.
+
+**Il Training del giorno** (todo 64), che giudica: la seduta prevista per
+quella data e' il suo primo metro — distanza, fascia di ritmo, tetto del
+battito, a cosa serviva il giorno — e il confronto con le sedute passate
+**non viene sostituito, ci si somma**: cosa era chiesto, cosa si e' fatto, e
+come sta rispetto al solito. Prima del todo 64 vedeva solo le sedute passate,
+e di "previsto" conosceva il solo allenamento caricato sull'orologio: su un
+giorno con un piano scriveva «nothing was planned» (vero di quel file) e
+lodava nove chilometri dove ne erano previsti cinque.
 
 La data che conta non e' quella del report: **il Next della sera parla di
 domani**, e quello della settimana della settimana che comincia il giorno dopo
 (`_next_subject`). La domenica sera la riga da leggere sta quindi nel file
-della settimana successiva, non in quello del report. Le altre sezioni il
-piano non lo vedono: raccontano com'e' andata, e quello che era previsto non
-cambia i loro numeri — e' la vista Plan della Week che lo mette accanto, senza
-mescolarlo al testo di nessuno.
+della settimana successiva, non in quello del report — e quella sera Training
+e Next leggono **due file diversi**, che il Training giudica la domenica e il
+Next prescrive per il lunedi'.
 
-Nessun file, nessuna frase nel prompt: i giorni fuori da un blocco si
-scrivono come prima, dalle sole sezioni.
+Health, Recovery, Load e Fitness il piano non lo vedono: raccontano dei
+numeri, e quello che era previsto non li cambia. Nemmeno il Training della
+settimana, dove il confronto e' con la forma dei sette giorni, un'altra
+domanda.
+
+Nessun file, nessuna frase nel prompt: i giorni fuori da un blocco si scrivono
+come prima, dalle sole sedute presenti e passate. All'agente non si dice
+**ne' che un piano c'e' ne' che non c'e'**: "per questo giorno non era
+previsto niente" e' peggio del silenzio, perche' si legge come un verdetto
+sulla seduta.
 
 ### I due giri dei timer
 
