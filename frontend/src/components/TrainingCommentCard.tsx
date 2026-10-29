@@ -15,22 +15,27 @@ import type { ReactNode } from "react";
 import { markdown } from "../markdown";
 import { CardHead, WrittenAt } from "./Stat";
 
+// Un fumetto, non il manubrio della sezione Training: fino a ieri la card
+// prendeva l'icona del report, la stessa della card della seduta che ha
+// subito sopra, e due riquadri di fila con lo stesso segno si leggevano come
+// uno solo. Qui l'icona e' fissa come quella di Plan (`PLAN_ICON`), perche'
+// anche questa dice cosa e' il riquadro, non di che sezione e' figlio.
+const COMMENT_ICON = "comment.png";
+
 export function TrainingCommentCard({
   comment,
   writtenAt,
   day,
-  icon,
   refresh,
 }: {
   comment: string | null;
   writtenAt: string | null;
   day: string;
-  icon: string | null;
   refresh?: ReactNode;
 }) {
   return (
     <section className="card comment-card" aria-label="Comment">
-      <CardHead icon={icon} title="Comment" refresh={refresh} />
+      <CardHead icon={COMMENT_ICON} title="Comment" refresh={refresh} />
       {comment && <div className="prose">{markdown(comment)}</div>}
       <WrittenAt when={writtenAt} day={day} />
     </section>
