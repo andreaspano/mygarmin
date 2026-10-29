@@ -3,9 +3,8 @@
 //
 // E' il gemello del Trend della Day, e il meccanismo e' letteralmente lo
 // stesso: `OneChart`, `Panel`, `TrendWindow` e i cinque pannelli vengono da
-// li'. Qui dentro sta solo quello che cambia, che sono le **parole** —
-// l'ampiezza in settimane, l'intervallo scritto per settimane, le due
-// didascalie — piu' una cosa che non e' una parola: dove porta un clic.
+// li'. Qui dentro sta solo quello che cambia: l'ampiezza in settimane,
+// l'intervallo scritto per settimane, e dove porta un clic.
 //
 // Niente conti: medie, somme, fasce e specifiche Vega-Lite arrivano pronte
 // dall'API, come per la Day.
@@ -76,12 +75,9 @@ export function WeekTrendPanels({
     return () => controller.abort();
   }, [monday, weeks]);
 
+  // Serve solo a dare a ogni pannello il suo titolo e la sua icona: i numeri
+  // delle serie stanno nelle specifiche Vega, che arrivano gia' disegnate.
   const heads = new Map((data?.panels ?? []).map((p) => [p.key, p]));
-  const minDays = data?.min_week_days ?? 3;
-  // Quanti giorni ha l'ultima settimana: lo dice un pannello a media
-  // qualunque, che il conto e' lo stesso su tutti.
-  const ultima = data?.panels[0]?.series[0]?.points.at(-1);
-  const aperta = ultima !== undefined && ultima.days > 0 && ultima.days < 7;
 
   return (
     <>
@@ -93,24 +89,6 @@ export function WeekTrendPanels({
         label={(pending) => `${pending} weeks`}
         range={(pending) => weekRangeLabel(startOf(monday, pending), monday)}
       />
-      {/* Due didascalie, tutte e due per cose che si leggerebbero male da
-          sole. La fascia di qui non e' quella delle altre viste e va detto
-          cosa misura; e una settimana aperta spiega da se' perche' l'ultimo
-          punto cala e la sua fascia e' larga. */}
-      <p className="caption">
-        It reads as a control chart. The dashed line is the window&rsquo;s centre, the mean of
-        the weekly means; the band around it is one and two standard errors, built from the
-        typical scatter inside a week and divided by the root of the days each week was
-        measured on &mdash; so it widens where an average rests on fewer days.{" "}
-        <strong>A point outside the band is a week that did something different.</strong> A
-        week with fewer than {minDays} measured days has no band, and Training has none at all.
-      </p>
-      {aperta && (
-        <p className="caption">
-          This week is still running: {ultima.days} of 7 days. Its averages are made of fewer
-          days and its totals are partial.
-        </p>
-      )}
       {PANELS.map((panel) => (
         <Panel
           key={panel}
