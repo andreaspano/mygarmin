@@ -145,6 +145,11 @@ const CARD_ICONS: Record<string, string> = {
   recovery: "recovery.png",
   fitness: "fitness.png",
   training: "training.png",
+  // Il fumetto del giudizio, come nella Day: il commento prendeva il
+  // manubrio della sezione Training, lo stesso della card delle sedute che
+  // ha sotto, e due riquadri di fila con lo stesso segno si leggevano come
+  // uno solo.
+  comment: "comment.png",
 };
 const sectionIconFile = (card: string) => CARD_ICONS[card] ?? null;
 
@@ -508,7 +513,7 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
           <>
             <section className="card comment-card" aria-label="Comment">
               <CardHead
-                icon={sectionIconFile("training")}
+                icon={sectionIconFile("comment")}
                 title="Comment"
                 refresh={sectionButton("training")}
               />
