@@ -231,14 +231,23 @@ Due cose non sono quelle dello Snap, e sono volute. Lo Snap legge carico e
 forma come **stati di fine settimana**; il Trend li media come tutto il resto,
 perche' una linea i cui punti fossero stati su un pannello e medie su un altro
 non si confronterebbe. E la **fascia risponde a un'altra domanda** di tutte le
-altre dell'app: non dove sta di solito la misura, ma **quanto bene si conosce
-la media di quella settimana** — la media piu' e meno uno e due errori
-standard. Lo scarto tipo da cui vengono e' **uno solo per la finestra**: si
-prende la varianza dentro ogni settimana, se ne fa la media, e se ne prende la
-radice; poi ogni settimana divide per la radice dei **suoi** giorni. La fascia
-si allarga quindi dove la media sta su **meno misure** — due settimane piene
-hanno la stessa larghezza, una settimana a meta' ce l'ha piu' larga. Sotto tre
-giorni misurati non si disegna, e il pannello Training non ce l'ha affatto.
+altre dell'app, perche' il grafico **e' una carta di controllo**: la settimana
+e' il sottogruppo, la riga tratteggiata e' la linea centrale e la fascia sono i
+limiti.
+
+- la **linea tratteggiata** e' il centro della finestra, la media delle medie
+  settimanali;
+- la **fascia** e' quel centro piu' e meno uno e due errori standard. Lo scarto
+  tipo da cui vengono e' uno solo per la finestra — la varianza dentro ogni
+  settimana, mediata su tutte, e poi la radice — e ogni settimana lo divide per
+  la radice dei **suoi** giorni, quindi la fascia si allarga dove una media sta
+  su meno misure;
+- i **punti** sono le medie settimanali, e si guardano rispetto ai limiti e non
+  a se stessi: **una settimana fuori dalla fascia e' una settimana che ha fatto
+  qualcosa di diverso**.
+
+Sotto tre giorni misurati la fascia non si disegna, e il pannello Training non
+ce l'ha affatto.
 
 La card Plan della Training e la vista Plan leggono **lo stesso file e
 rispondono a due domande** (todo 71): la vista ha il **documento**, che si

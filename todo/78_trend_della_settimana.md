@@ -379,6 +379,45 @@ uno o due giorni e' un punto debole, e disegnarle attorno una fascia regolare
 la farebbe sembrare una misura come le altre. Se si vuole, adesso puo'
 scendere a uno senza rompere niente.
 
+### La fascia centrata, e la linea centrale
+
+Sempre su richiesta di Andrea, subito dopo. La fascia era costruita attorno
+**alla media di ogni settimana**, e cosi' accompagnava la linea: il punto
+stava dentro la sua fascia per costruzione, sempre, e non c'era niente da
+leggere. Adesso e' costruita attorno a **x-bar-bar**, la media delle medie
+settimanali, che e' una sola per la finestra; e x-bar-bar si disegna, come
+**riga tratteggiata**.
+
+Con questo le tre richieste messe in fila si rivelano una cosa sola, e ha un
+nome: **e' una carta di controllo x-bar**. La settimana e' il sottogruppo,
+x-bar-bar e' la linea centrale, i limiti sono a uno e due errori standard, la
+varianza e' aggregata dentro i sottogruppi e ogni settimana divide per la
+radice dei suoi giorni. Separate, le tre scelte sembravano tre dettagli
+statistici; insieme sono il disegno standard, e il grafico si legge come si
+leggono quelli: **dove sta la settimana rispetto a dove di solito sta il
+corpo**, non rispetto a se stessa.
+
+Si vede subito. Sul readiness delle dodici settimane fino al 26 ottobre il
+centro e' a 63.2 e i limiti stanno a 57.39 / 69: le settimane di inizio agosto
+(42, 48, 53) cadono **sotto**, il picco di inizio settembre (86) sta **sopra**,
+e sono esattamente le settimane in cui era successo qualcosa. Prima, con la
+fascia attaccata a ogni punto, quelle cinque settimane sembravano identiche a
+tutte le altre.
+
+Il `centre` e' un campo della serie e non del punto, che e' uno solo per la
+finestra, ed e' nullo dove la fascia non c'e': l'ACWR e tutto il pannello
+Training.
+
+**Una cosa da decidere, che adesso si vede.** Con la fascia costante il minimo
+di `MIN_WEEK_DAYS` lascia un **buco** nel rettangolo dove una settimana ha meno
+di tre giorni misurati - sul battito a riposo succede a fine agosto, e la riga
+centrale prosegue mentre la fascia si interrompe. In una carta di controllo
+vera i limiti con un sottogruppo piccolo non spariscono: si **allargano**, ed
+e' il tipico profilo a scalini. Il minimo e' rimasto a tre perche' nessuno ha
+chiesto di toglierlo, ma la sua ragione originale era caduta gia' col passo
+prima, e adesso si paga anche a vedersi. Portarlo a uno e' cambiare una
+costante.
+
 ## Revert
 
 ```bash

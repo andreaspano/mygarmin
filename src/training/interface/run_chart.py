@@ -893,6 +893,12 @@ def week_trend_chart(
     la linea, che Vega sull'area taglia sul nullo esattamente come sulla
     spezzata.
 
+    Sopra le aree va la **linea centrale tratteggiata**, x-bar-bar: il livello
+    attorno a cui le due fasce sono costruite. Senza di lei la fascia sembra
+    galleggiare, e il grafico non si legge per quello che e' - una carta di
+    controllo, con la settimana come sottogruppo e i punti da guardare rispetto
+    ai limiti, non rispetto a se stessi.
+
     Niente ramo "un livello solo" come nella Day: li' una fascia degenere
     restava un filo spesso quanto il grafico, e disegnarlo due volte lo
     scuriva; qui un'area di altezza zero non disegna niente.
@@ -946,6 +952,20 @@ def week_trend_chart(
                 y=alt.Y(f"{low}:Q", title=unit),
                 y2=alt.Y2(f"{high}:Q"),
             )
+        )
+
+    # La linea centrale, tratteggiata: x-bar-bar, la media delle medie
+    # settimanali. Senza `x`, quindi presa per tutta la larghezza come le
+    # fasce della Day. E' quella attorno a cui le due aree sono costruite, e
+    # disegnarla e' meta' di come si legge il grafico: la fascia dice dove una
+    # settimana starebbe se niente fosse cambiato, la riga dice il livello
+    # attorno a cui tutto gira.
+    centro = series.get("centre")
+    if centro is not None:
+        strati.append(
+            alt.Chart(pd.DataFrame([{"centro": centro}]))
+            .mark_rule(color=colors["line"], strokeWidth=1, strokeDash=[4, 3], opacity=0.55)
+            .encode(y=alt.Y("centro:Q", title=unit))
         )
 
     tooltip = [

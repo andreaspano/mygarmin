@@ -1010,14 +1010,15 @@ def build_daily_data(
 #
 # 2. **La fascia e' di ogni punto, non della finestra.** Nel Trend della Day
 #    `_band` da' una fascia sola per tutta la finestra, e si disegna come due
-#    rettangoli larghi quanto il grafico. Qui ogni settimana ha la sua: la
-#    media piu' e meno uno e due errori standard. La varianza da cui vengono
-#    e' pero' **una sola per la finestra** - la media delle varianze dentro le
-#    settimane - e ogni settimana ne divide la radice per la radice dei suoi
-#    giorni. Quindi la fascia si allarga dove la media sta su **meno misure**,
-#    non dove quelle misure erano sparse: due settimane piene hanno la stessa
-#    larghezza, una settimana a meta' ce l'ha piu' larga. Si disegna con due
-#    aree, non due rettangoli (`run_chart.week_trend_chart`).
+#    rettangoli larghi quanto il grafico. Qui il disegno e' **una carta di
+#    controllo**: la settimana e' il sottogruppo, la riga tratteggiata e' la
+#    linea centrale (x-bar-bar, la media delle medie settimanali), e la fascia
+#    sono i limiti a uno e due errori standard attorno a lei. La varianza e'
+#    aggregata su tutta la finestra e ogni settimana ne divide la radice per la
+#    radice dei suoi giorni, quindi la fascia si allarga dove una media sta su
+#    **meno misure**. Il perche' per esteso sta in `_week_trend_points`. Si
+#    disegna con due aree e non due rettangoli, che la larghezza cambia
+#    (`run_chart.week_trend_chart`).
 
 # L'ampiezza della finestra, in settimane. Di suo le dodici di `BAND_WEEKS`:
 # sono quelle su cui la Week misura gia' le sue fasce, cosi' il Trend si apre
@@ -1055,26 +1056,38 @@ def _week_trend_points(
     weeks: int,
     digits: int,
     banda: bool,
-) -> list[dict[str, Any]]:
+) -> tuple[list[dict[str, Any]], Any]:
     """I punti di una serie settimanale, uno per settimana: il lunedi', il
     numero ISO della settimana, la media dei giorni misurati, quanti erano e
     la fascia del suo errore standard.
 
-    **L'errore standard non e' quello della singola settimana.** La varianza
-    che lo produce e' una sola per tutta la finestra: si prende la varianza
-    dentro ogni settimana, se ne fa la media, e lo scarto tipo e' la radice di
-    quella. Per ogni settimana poi si divide per la radice dei suoi giorni:
+    Rende anche il **centro**: la media delle medie settimanali, x-bar-bar, uno
+    solo per la finestra. E' quello attorno a cui la fascia si costruisce, ed e'
+    la riga tratteggiata del grafico.
 
-        varianza_media = media delle varianze settimanali
-        scarto_tipo    = radice(varianza_media)
-        sterr(i)       = scarto_tipo / radice(giorni della settimana i)
+    **Messe insieme, queste due cose sono una carta di controllo.** Non e' un
+    disegno nostro: la settimana e' il sottogruppo, x-bar-bar e' la linea
+    centrale, la fascia sono i limiti a uno e due errori standard, e i punti
+    sono le medie dei sottogruppi. Si legge come si leggono quelle: **dove sta
+    la settimana rispetto a dove di solito sta il corpo**, e un punto fuori dai
+    due errori standard e' una settimana che ha qualcosa di diverso.
 
-    La conseguenza e' voluta e va saputa leggendo il grafico: **la larghezza
-    della fascia dipende solo da quanti giorni ha la settimana**, non da quanto
-    quei giorni erano sparsi. Due settimane piene hanno la stessa fascia; una
-    settimana a meta' ce l'ha piu' larga, perche' la sua media e' fatta su meno
-    misure. Non si legge piu' "che settimana sballottata e' stata", si legge
-    "quanto e' solida questa media".
+    Da qui vengono le tre scelte, che insieme stanno in piedi e separate no:
+
+    1. **la varianza e' aggregata**, non quella della singola settimana: si
+       prende la varianza dentro ogni settimana, se ne fa la media, e lo scarto
+       tipo e' la radice di quella. E' la dispersione *tipica* di una settimana,
+       stimata su tutte invece che su sette giorni soli;
+    2. **ogni settimana divide per la radice dei suoi giorni**, quindi la fascia
+       si allarga dove la media sta su meno misure;
+    3. **il centro e' x-bar-bar**, non la media della settimana. Una fascia
+       centrata su ogni punto accompagnerebbe la linea e non direbbe niente:
+       il punto starebbe dentro la sua fascia per costruzione, sempre.
+
+            varianza_media = media delle varianze settimanali
+            scarto_tipo    = radice(varianza_media)
+            sterr(i)       = scarto_tipo / radice(giorni della settimana i)
+            centro         = media delle medie settimanali
 
     Le settimane senza nemmeno un giorno misurato restano con `value` a `None`
     e **non si tolgono**, per lo stesso motivo dei giorni in `_trend_points`:
@@ -1088,6 +1101,11 @@ def _week_trend_points(
     # giorno solo o nessuno); se non ne resta nessuna viene `NaN`, e li'
     # `_band_edges` non disegna niente.
     scarto = math.sqrt(stats["var"].mean()) if stats["var"].notna().any() else float("nan")
+    # x-bar-bar: la media delle medie settimanali, non quella di tutti i giorni
+    # messi in fila. Sono diverse quando le settimane hanno un numero di giorni
+    # diverso, e quella giusta per una carta di controllo e' la prima: ogni
+    # settimana e' un'osservazione, e pesa una.
+    centro = stats["mean"].mean()
     points = []
     for stamp, row in stats.iterrows():
         monday = stamp.date()
@@ -1100,13 +1118,26 @@ def _week_trend_points(
                 "value": _value(row["mean"], digits),
                 "days": giorni,
                 "band": (
-                    _band_edges(row["mean"], sterr, limits, digits + BAND_DIGITS)
+                    _band_edges(centro, sterr, limits, digits + BAND_DIGITS)
                     if banda and giorni >= MIN_WEEK_DAYS
                     else None
                 ),
             }
         )
-    return points
+    return points, (_value(centro, digits + BAND_DIGITS) if banda else None)
+
+
+def _week_trend_series(
+    health: pd.DataFrame,
+    column: str,
+    first: date,
+    weeks: int,
+    digits: int,
+    banda: bool,
+) -> dict[str, Any]:
+    """I punti di una serie e il suo centro, gia' nei nomi che l'API rende."""
+    points, centre = _week_trend_points(health, column, first, weeks, digits, banda)
+    return {"points": points, "centre": centre}
 
 
 def _week_trend_training(
@@ -1138,6 +1169,7 @@ def _week_trend_training(
                 "label": label,
                 "unit": unit,
                 "digits": digits,
+                "centre": None,
                 "points": [
                     {
                         "monday": stamp.date().isoformat(),
@@ -1191,7 +1223,7 @@ def week_trend_data(
                         "label": label,
                         "unit": unit,
                         "digits": digits,
-                        "points": _week_trend_points(
+                        **_week_trend_series(
                             health, column, first, weeks, digits, column not in TREND_NO_BAND
                         ),
                     }
