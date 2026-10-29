@@ -338,6 +338,47 @@ Due cose restano da guardare nella pagina vera, che da qui non si provano: il
 clic che deve aprire la settimana evidenziata (la trappola di `nearestMonday`)
 e il tasto indietro dopo aver mosso il cursore.
 
+### L'errore standard rifatto, dopo il merge
+
+Chiesto da Andrea guardando la pagina vera, e fuori da questo todo perche'
+arrivato dopo. La fascia c'era, ma la larghezza veniva da **quella settimana**:
+`sem()` di pandas, cioe' lo scarto tipo dei suoi giorni diviso la radice di
+quanti erano. Adesso la varianza e' **aggregata su tutta la finestra**:
+
+1. la varianza dentro ogni settimana;
+2. la media di quelle varianze, `varianza_media`;
+3. lo scarto tipo, `radice(varianza_media)` - **uno solo per la finestra**;
+4. per ogni settimana, `sterr = scarto_tipo / radice(n)`, con `n` i giorni
+   misurati di quella settimana.
+
+`_week_stats` quindi rende la **varianza** e non piu' l'errore standard, che
+una settimana alla volta non si puo' calcolare; l'aggregazione la fa
+`_week_trend_points`, che ha la finestra intera sotto gli occhi.
+
+**La conseguenza e' grossa e va saputa leggendo il grafico.** La larghezza
+della fascia adesso dipende **solo da quanti giorni ha la settimana**, non da
+quanto quei giorni erano sparsi. Due settimane piene hanno la stessa fascia:
+sul readiness delle dodici settimane fino al 26 ottobre tutte le settimane da
+sette giorni misurano 11.61 di larghezza, e solo quella in corso, con quattro
+giorni, arriva a 15.36. A schermo non e' piu' un profilo che si gonfia e si
+sgonfia, e' un nastro di spessore costante che si allarga dove la media sta su
+meno misure. Non si legge piu' "che settimana sballottata e' stata"; si legge
+"quanto e' solida questa media". I testi che dicevano il contrario - il
+commento del blocco, la descrizione del modello, le docstring delle rotte, la
+didascalia a schermo e il README - sono stati riscritti tutti.
+
+Verificato contro il conto a mano, passo per passo: `varianza_media` 235.8780,
+scarto tipo 15.3583, `sterr` 5.8049 con sette giorni e 7.6792 con quattro - gli
+stessi numeri che rende il codice.
+
+**`MIN_WEEK_DAYS` resta tre, ma per un altro motivo.** Valeva perche' su due
+valori l'errore standard della singola settimana era un caso; con la varianza
+aggregata non lo e' piu', e una settimana di un giorno solo avrebbe una fascia
+definita - la piu' larga di tutte. Il minimo resta perche' una media fatta su
+uno o due giorni e' un punto debole, e disegnarle attorno una fascia regolare
+la farebbe sembrare una misura come le altre. Se si vuole, adesso puo'
+scendere a uno senza rompere niente.
+
 ## Revert
 
 ```bash

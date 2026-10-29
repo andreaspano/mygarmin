@@ -98,9 +98,11 @@ export function WeekTrendPanels({
           cosa misura; e una settimana aperta spiega da se' perche' l'ultimo
           punto cala e la sua fascia e' larga. */}
       <p className="caption">
-        The band is each week&rsquo;s own: the mean of its days, plus and minus one and two
-        standard errors &mdash; how precisely that week&rsquo;s average is known. A week with
-        fewer than {minDays} measured days has none, and Training has none at all.
+        The band is the mean plus and minus one and two standard errors &mdash; how precisely
+        that week&rsquo;s average is known. The spread comes from the typical scatter inside a
+        week across the whole window, divided by the root of the days each week was measured
+        on: it widens where the average rests on fewer days. A week with fewer than {minDays}{" "}
+        measured days has none, and Training has none at all.
       </p>
       {aperta && (
         <p className="caption">
