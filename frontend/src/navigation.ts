@@ -72,6 +72,14 @@ export const MIN_DAYS = 5;
 export const MAX_DAYS = 365;
 export const DEFAULT_DAYS = 28;
 
+/** Lo stesso per il Trend della Week (todo 78), ma in settimane:
+ * `TREND_MIN_WEEKS` e `TREND_MAX_WEEKS`. Di suo le dodici su cui la Week
+ * misura gia' le fasce delle sue card, cosi' il Trend si apre sugli stessi tre
+ * mesi di cui quelle parlano. */
+export const MIN_WEEKS = 4;
+export const MAX_WEEKS = 52;
+export const DEFAULT_WEEKS = 12;
+
 function search(): URLSearchParams {
   return new URLSearchParams(window.location.search);
 }
@@ -103,6 +111,16 @@ export function daysFromUrl(): number {
   const value = text === null ? NaN : Number(text);
   if (!Number.isFinite(value)) return DEFAULT_DAYS;
   return Math.min(MAX_DAYS, Math.max(MIN_DAYS, Math.round(value)));
+}
+
+/** Le settimane del Trend della Week, riportate fra gli estremi;
+ * `DEFAULT_WEEKS` se manca o non e' un numero. Lo stesso controllo sul nullo
+ * di `daysFromUrl`, per lo stesso motivo. */
+export function weeksFromUrl(): number {
+  const text = search().get("weeks");
+  const value = text === null ? NaN : Number(text);
+  if (!Number.isFinite(value)) return DEFAULT_WEEKS;
+  return Math.min(MAX_WEEKS, Math.max(MIN_WEEKS, Math.round(value)));
 }
 
 /** Il valore di un parametro dell'URL, o `null`. */

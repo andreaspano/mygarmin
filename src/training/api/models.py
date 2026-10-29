@@ -587,6 +587,65 @@ class TrendData(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class WeekTrendPoint(BaseModel):
+    """One ISO week of a weekly trend series.
+
+    `value` is the arithmetic mean of the week's measured days - a sum, on the Training
+    panel. Null where no day of the week was measured: the line breaks there instead of
+    joining the two sides of a gap."""
+
+    monday: date = Field(description="The Monday of the week.")
+    week: int = Field(description="The ISO week number.")
+    value: float | None
+    days: int = Field(description="Measured days behind the value, out of seven.")
+    band: Band | None = Field(
+        description="The mean plus and minus one standard error of the week's days, and two. "
+        "Its own band for each week, and not one for the whole window as on the Day: a week "
+        "whose days were scattered carries a wide one. Null under MIN_WEEK_DAYS measured days, "
+        "for the load ratio and for the whole Training panel."
+    )
+
+
+class WeekTrendSeries(BaseModel):
+    """One measure, week by week.
+
+    No band of its own, unlike TrendSeries: here every week carries the band of its own
+    days."""
+
+    key: str = Field(description="The column it is read from.")
+    label: str
+    unit: str | None = Field(description="Null for plain scores.")
+    digits: int = Field(description="Decimals the measure is worth.")
+    points: list[WeekTrendPoint]
+
+
+class WeekTrendPanel(BaseModel):
+    """One panel of the weekly Trend, in the order of the Day cards."""
+
+    key: str
+    title: str
+    icon: str | None = Field(description="The icon of the Report section with the same name.")
+    series: list[WeekTrendSeries]
+
+
+class WeekTrendData(BaseModel):
+    """The weekly series over a window of ISO weeks, one point per week (todo 78).
+
+    Health, Recovery, Load and Fitness are the mean of the week's days; Training is their
+    sum. One rule for every panel, so the lines compare - which is why load and fitness are
+    means here and not the end-of-week states the Week itself reads."""
+
+    from_: date = Field(alias="from", description="The Monday of the first week.")
+    to: date = Field(description="The Monday of the last week, included.")
+    weeks: int = Field(description="Width of the window, in weeks.")
+    min_week_days: int = Field(
+        description="Measured days a weekly band needs; under it there is none."
+    )
+    panels: list[WeekTrendPanel]
+
+    model_config = {"populate_by_name": True}
+
+
 class WeeklyData(BaseModel):
     """Everything known about one ISO week, Monday to Sunday (todo 52)."""
 

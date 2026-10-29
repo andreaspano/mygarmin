@@ -23,6 +23,8 @@ export type WeeklyData = Schemas["WeeklyData"];
 export type TrendData = Schemas["TrendData"];
 export type TrendPanel = Schemas["TrendPanel"];
 export type TrendSeries = Schemas["TrendSeries"];
+export type WeekTrendData = Schemas["WeekTrendData"];
+export type WeekTrendPanel = Schemas["WeekTrendPanel"];
 export type WeekMeasure = Schemas["WeekMeasure"];
 export type WeekPlan = Schemas["WeekPlan"];
 export type DayPlan = Schemas["DayPlan"];
@@ -153,6 +155,26 @@ export const api = {
   ) =>
     getJson<TrendChart[]>(
       `/api/daily/trend/chart/vega?from=${from}&to=${to}&panel=${panel}&theme=${theme}`,
+      signal,
+    ),
+
+  // Le serie settimana per settimana (todo 78): `to` e' un lunedi' e `weeks`
+  // sta fra 4 e 52. Fuori, l'API risponde 422. Un punto per settimana: la
+  // media dei giorni misurati, la somma sul pannello Training.
+  weekTrend: (to: string, weeks: number, signal?: AbortSignal) =>
+    getJson<WeekTrendData>(`/api/weekly/trend?to=${to}&weeks=${weeks}`, signal),
+
+  // I grafici di un pannello settimanale. `TrendChart` e' lo stesso della
+  // Day: una specifica Altair non ha un modello, su nessuno dei due periodi.
+  weekTrendCharts: (
+    to: string,
+    weeks: number,
+    panel: string,
+    theme: "light" | "dark",
+    signal?: AbortSignal,
+  ) =>
+    getJson<TrendChart[]>(
+      `/api/weekly/trend/chart/vega?to=${to}&weeks=${weeks}&panel=${panel}&theme=${theme}`,
       signal,
     ),
 

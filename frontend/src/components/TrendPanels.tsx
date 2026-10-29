@@ -1,6 +1,12 @@
 // Il Trend della Day (todo 55): le misure giorno per giorno in una finestra
 // che si sceglie col cursore, da 5 a 365 giorni.
 //
+// Dal todo 78 i pezzi che non guardano il calendario — il riquadro di un
+// grafico, quello di un pannello, il cursore con la sua pausa — stanno qui ma
+// **servono tutti e due i periodi**: `WeekTrendPanels` li importa e ci mette
+// la sua copia. Il meccanismo e' lo stesso, le parole no: quelle cambiano
+// abbastanza da non volere cinque ternari dentro un componente solo.
+//
 // Un grafico **per misura** e non per pannello: dentro un pannello le unita'
 // non sono le stesse (il VO2max sta a 42, il punteggio di resistenza a
 // 5000), e su un asse solo la linea bassa verrebbe piatta. I pannelli sono
@@ -9,7 +15,7 @@
 //
 // Niente conti qui dentro: le serie, le fasce e le specifiche Vega-Lite
 // arrivano gia' pronte dall'API, come per `RunChart` e `WeekChart`.
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Result, VisualizationSpec } from "vega-embed";
 
 import { api, iconUrl, isAbort, type TrendChart, type TrendData } from "../api/client";
@@ -24,7 +30,9 @@ const SETTLE_MS = 250;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const PANELS = ["health", "recovery", "load", "fitness", "training"] as const;
+// Gli stessi cinque pannelli per la Day e per la Week, nello stesso ordine:
+// quello delle card dello Snap.
+export const PANELS = ["health", "recovery", "load", "fitness", "training"] as const;
 
 /** Il primo giorno della finestra: `to` meno l'ampiezza, estremi compresi. */
 function startOf(to: string, days: number): string {
@@ -34,7 +42,7 @@ function startOf(to: string, days: number): string {
 /** Gli estremi della finestra, "28 Sep - 25 Oct". Con l'anno sul primo
  * quando la finestra lo scavalca: a 365 giorni "26 Oct - 25 Oct" sembrava
  * un intervallo di un giorno. */
-function rangeLabel(from: string, to: string): string {
+export function rangeLabel(from: string, to: string): string {
   const anno = from.slice(0, 4) === to.slice(0, 4) ? "" : ` ${from.slice(0, 4)}`;
   return `${shortDayLabel(from)}${anno} \u2013 ${shortDayLabel(to)}`;
 }
@@ -70,7 +78,18 @@ function dayAt(view: Result["view"], box: HTMLElement, event: MouseEvent): strin
   return giorno.toISOString().slice(0, 10);
 }
 
-function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
+export function OneChart({
+  chart,
+  theme,
+  onPick,
+}: {
+  chart: TrendChart;
+  theme: ColorScheme;
+  // Il giorno su cui si e' cliccato, letto dalla scala. Dove va a finire lo
+  // decide chi usa il componente: la Day apre quel giorno, la Week la
+  // settimana del lunedi' piu' vicino.
+  onPick: (day: string) => void;
+}) {
   const box = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
 
@@ -91,13 +110,11 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
           view.finalize();
           return;
         }
-        // Un clic nel grafico apre lo Snap di quel giorno. `pushUrl`
-        // avvisa chi segue l'URL, quindi la pagina si scambia da sola
-        // senza ricaricare, e il tasto indietro torna al Trend.
+        // Un clic nel grafico apre lo Snap del periodo cliccato.
         view.view.addEventListener("click", (event) => {
           if (!box.current || !view) return;
           const day = dayAt(view.view, box.current, event as MouseEvent);
-          if (day) pushUrl({ day, view: null });
+          if (day) onPick(day);
         });
       } catch (error) {
         console.error(error);
@@ -108,7 +125,7 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
       cancelled = true;
       view?.finalize();
     };
-  }, [chart, theme]);
+  }, [chart, theme, onPick]);
 
   return (
     <figure className="trend-chart">
@@ -118,20 +135,31 @@ function OneChart({ chart, theme }: { chart: TrendChart; theme: ColorScheme }) {
   );
 }
 
-function Panel({
+export function Panel({
   panel,
+  period,
   title,
   icon,
-  from,
-  to,
+  anchor,
+  span,
   theme,
+  onPick,
 }: {
   panel: string;
+  // Quale delle due serie chiedere. E' una stringa e non una funzione di
+  // carico apposta: una callback cambierebbe identita' a ogni render del
+  // genitore e rifarebbe la richiesta ogni volta, e le dipendenze
+  // dell'effetto restano valori semplici.
+  period: "day" | "week";
   title: string;
   icon: string | null;
-  from: string;
-  to: string;
+  // L'estremo destro: il giorno sulla Day, il lunedi' sulla Week.
+  anchor: string;
+  // L'ampiezza: i giorni sulla Day, le settimane sulla Week. Sulla Day
+  // l'estremo sinistro si calcola qui, che l'API vuole le due date.
+  span: number;
   theme: ColorScheme;
+  onPick: (day: string) => void;
 }) {
   const [charts, setCharts] = useState<TrendChart[] | null>(null);
   const [error, setError] = useState(false);
@@ -139,8 +167,11 @@ function Panel({
   useEffect(() => {
     const controller = new AbortController();
     setError(false);
-    api
-      .trendCharts(from, to, panel, theme, controller.signal)
+    const chiesta =
+      period === "day"
+        ? api.trendCharts(startOf(anchor, span), anchor, panel, theme, controller.signal)
+        : api.weekTrendCharts(anchor, span, panel, theme, controller.signal);
+    chiesta
       .then(setCharts)
       .catch((e: unknown) => {
         if (!isAbort(e)) {
@@ -149,7 +180,7 @@ function Panel({
         }
       });
     return () => controller.abort();
-  }, [panel, from, to, theme]);
+  }, [panel, period, anchor, span, theme]);
 
   return (
     <section className="card trend-panel" aria-label={title}>
@@ -164,10 +195,71 @@ function Panel({
       )}
       <div className="trend-grid">
         {(charts ?? []).map((chart) => (
-          <OneChart key={chart.key} chart={chart} theme={theme} />
+          <OneChart key={chart.key} chart={chart} theme={theme} onPick={onPick} />
         ))}
       </div>
     </section>
+  );
+}
+
+/** Il cursore della finestra, con la pausa prima di chiedere.
+ *
+ * E' il pezzo non ovvio di questa vista, e deve esistere una volta sola:
+ * `pending` e' dove sta la manopola e si muove subito, `value` e' quello che
+ * e' gia' stato chiesto, e fra i due c'e' `SETTLE_MS`. Senza, trascinando il
+ * cursore partirebbe una richiesta per ogni valore attraversato - decine, con
+ * cinque pannelli ridisegnati ogni volta.
+ *
+ * `onChange` deve essere stabile (`useCallback`), che sta in un effetto. */
+export function TrendWindow({
+  min,
+  max,
+  value,
+  onChange,
+  label,
+  range,
+  children,
+}: {
+  min: number;
+  max: number;
+  value: number;
+  onChange: (value: number) => void;
+  // Come si legge l'ampiezza ("28 days", "12 weeks") e l'intervallo sotto.
+  label: (pending: number) => string;
+  range: (pending: number) => string;
+  // Quello che si disegna sotto il cursore, che sa gia' il valore in sospeso.
+  children?: (pending: number) => ReactNode;
+}) {
+  const [pending, setPending] = useState(value);
+
+  useEffect(() => setPending(value), [value]);
+
+  useEffect(() => {
+    if (pending === value) return;
+    const timer = window.setTimeout(() => onChange(pending), SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [pending, value, onChange]);
+
+  return (
+    <>
+      <div className="trend-window">
+        <label className="trend-slider">
+          <span className="caption">Window</span>
+          <input
+            type="range"
+            min={min}
+            max={max}
+            value={pending}
+            onChange={(e) => setPending(Number(e.target.value))}
+            aria-label="Window shown"
+          />
+        </label>
+        <p className="caption trend-range">
+          <strong>{label(pending)}</strong> · {range(pending)}
+        </p>
+      </div>
+      {children?.(pending)}
+    </>
   );
 }
 
@@ -182,20 +274,14 @@ export function TrendPanels({
   onDays: (days: number) => void;
   theme: ColorScheme;
 }) {
-  // Il cursore si muove subito, la richiesta aspetta: `pending` e' dove sta
-  // la manopola, `days` quello che e' gia' stato chiesto.
-  const [pending, setPending] = useState(days);
   const [data, setData] = useState<TrendData | null>(null);
 
-  useEffect(() => setPending(days), [days]);
-
-  useEffect(() => {
-    if (pending === days) return;
-    const timer = window.setTimeout(() => onDays(pending), SETTLE_MS);
-    return () => window.clearTimeout(timer);
-  }, [pending, days, onDays]);
-
   const from = startOf(day, days);
+
+  // Un clic apre lo Snap di quel giorno. `pushUrl` avvisa chi segue l'URL,
+  // quindi la pagina si scambia da sola senza ricaricare, e il tasto indietro
+  // torna al Trend.
+  const onPick = useCallback((picked: string) => pushUrl({ day: picked, view: null }), []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -214,36 +300,33 @@ export function TrendPanels({
 
   return (
     <>
-      <div className="trend-window">
-        <label className="trend-slider">
-          <span className="caption">Window</span>
-          <input
-            type="range"
-            min={MIN_DAYS}
-            max={MAX_DAYS}
-            value={pending}
-            onChange={(e) => setPending(Number(e.target.value))}
-            aria-label="Days shown"
-          />
-        </label>
-        <p className="caption trend-range">
-          <strong>{pending} days</strong> · {rangeLabel(startOf(day, pending), day)}
-        </p>
-      </div>
-      {pending < minBand && (
-        <p className="caption">
-          Under {minBand} measured days there is no band: the lines are drawn on their own.
-        </p>
-      )}
+      <TrendWindow
+        min={MIN_DAYS}
+        max={MAX_DAYS}
+        value={days}
+        onChange={onDays}
+        label={(pending) => `${pending} days`}
+        range={(pending) => rangeLabel(startOf(day, pending), day)}
+      >
+        {(pending) =>
+          pending < minBand ? (
+            <p className="caption">
+              Under {minBand} measured days there is no band: the lines are drawn on their own.
+            </p>
+          ) : null
+        }
+      </TrendWindow>
       {PANELS.map((panel) => (
         <Panel
           key={panel}
           panel={panel}
+          period="day"
           title={heads.get(panel)?.title ?? panel}
           icon={heads.get(panel)?.icon ?? null}
-          from={from}
-          to={day}
+          anchor={day}
+          span={days}
           theme={theme}
+          onPick={onPick}
         />
       ))}
     </>

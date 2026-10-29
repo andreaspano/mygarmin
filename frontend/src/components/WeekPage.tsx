@@ -8,13 +8,14 @@
 // nella Day: una settimana si apre da un link e il tasto indietro torna a
 // quella prima.
 //
-// Dal todo 59 la pagina ha tre viste, che il menu scambia con `?view=`: lo
+// Dal todo 59 la pagina ha le sue viste, che il menu scambia con `?view=`: lo
 // **Snap**, cioe' la settimana com'e' andata — le card e le sedute, quello
 // che la pagina ha sempre mostrato — il **Plan**, cioe' come doveva andare
-// (todo 60), e il **Trend**, che per ora e' vuoto. L'intestazione e la scelta
+// (todo 60), e il **Trend**, che dal todo 78 e' la fila delle settimane: un
+// punto per settimana invece che per giorno. L'intestazione e la scelta
 // della settimana sono le stesse per tutte e tre, che la settimana serve a
 // tutte: cambiandola, Snap e Plan parlano degli stessi sette giorni.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import {
   api,
@@ -42,13 +43,15 @@ import {
   weekLabel,
 } from "../format";
 import { markdown, sectionBody, sectionWrittenAt } from "../markdown";
-import { paramFromUrl, pushUrl, type View } from "../navigation";
+import { ETICHETTE, paramFromUrl, pushUrl, weeksFromUrl, type View } from "../navigation";
+import { useColorScheme } from "../useColorScheme";
 import { WeekCalendar } from "./WeekCalendar";
 import { CardHead, EmptyBar, RangeBar, Stat, WrittenAt, num } from "./Stat";
 import { SectionRefresh } from "./SectionRefresh";
 import { SummaryCard } from "./SummaryCard";
 import { TopBar } from "./TopBar";
 import { WeekPicker } from "./WeekPicker";
+import { WeekTrendPanels } from "./WeekTrendPanels";
 import { WeekPlanBrief, WeekPlanCard } from "./WeekPlanCard";
 
 const DAY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -206,6 +209,8 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
   const [watched, setWatched] = useState(false);
   const [reloads, setReloads] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const theme = useColorScheme();
+  const [weeks, setWeeks] = useState(() => weeksFromUrl());
   const sunday = addDays(monday, 6);
 
   const changeWeek = (next: string) => {
@@ -214,14 +219,31 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
     setMonday(next);
   };
 
+  // L'ampiezza del Trend va nell'URL, cosi' un link se la porta dietro, ma
+  // **senza lasciare una voce nella cronologia**: il cursore ne attraversa
+  // decine, e con una voce per valore il tasto indietro non tornerebbe piu'
+  // alla settimana di prima. E' la stessa regola di `changeDays` nella Day.
+  const changeWeeks = useCallback((next: number) => {
+    const url = new URL(window.location.href);
+    url.searchParams.set("weeks", String(next));
+    window.history.replaceState(window.history.state, "", url);
+    setWeeks(next);
+  }, []);
+
   useEffect(() => {
-    const onPop = () => setMonday(mondayFromUrl(today()));
+    const onPop = () => {
+      setMonday(mondayFromUrl(today()));
+      setWeeks(weeksFromUrl());
+    };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   useEffect(() => {
-    const coda = view === "snap" ? "" : ` · ${view === "trend" ? "Trend" : "Plan"}`;
+    // Da `ETICHETTE` e non da un ternario: quello diceva "Plan" anche sulla
+    // vista Training, che non e' ne' `snap` ne' `trend` e finiva nel ramo
+    // sbagliato. Cosi' una vista nuova non puo' restare senza nome.
+    const coda = view === "snap" ? "" : ` · ${ETICHETTE[view]}`;
     document.title = `Training · ${weekLabel(monday)}${coda}`;
   }, [monday, view]);
 
@@ -500,8 +522,12 @@ export function WeekPage({ view = "snap" }: { view?: View }) {
             The week of {refresh.day} was not rewritten: {refresh.message}
           </p>
         )}
-        {/* Come doveva andare la settimana: il Plan (todo 60). Il Trend,
-            per ora, sotto l'intestazione non ha niente (todo 59). */}
+        {/* La fila delle settimane: il Trend (todo 78). Un punto per
+            settimana invece che per giorno, sulla stessa griglia della Day. */}
+        {view === "trend" && (
+          <WeekTrendPanels monday={monday} weeks={weeks} onWeeks={changeWeeks} theme={theme} />
+        )}
+        {/* Come doveva andare la settimana: il Plan (todo 60). */}
         {view === "plan" && (
           <WeekPlanCard plan={plan} monday={monday} loading={planLoading} />
         )}

@@ -674,6 +674,126 @@ def _trend_colors(panel: str, series_key: str, theme: str) -> dict[str, str]:
     return {"line": tinta, "band": tinta, "wide": tinta}
 
 
+def _trend_text(values, digits: int) -> list[str]:
+    """I valori gia' scritti per il tooltip, con i decimali della misura, che
+    Vega non conosce.
+
+    Attenzione a cosa si passa: il `None` va riconosciuto, e una colonna di
+    pandas al posto suo porta `NaN`, che `is None` non intercetta. Il Trend
+    della Day passa la colonna e quindi sui giorni non misurati il tooltip
+    scrive "nan" - e' cosi' da prima del todo 78 e non si tocca qui. Il Trend
+    della Week passa la lista dei valori, dove il nullo e' nullo davvero."""
+    return [
+        "-" if v is None else (f"{v:.{digits}f}" if digits else f"{v:.0f}")
+        for v in values
+    ]
+
+
+def _trend_hover(data: pd.DataFrame, x: str, tooltip: list, theme: str) -> alt.Chart:
+    """La barra verticale che segue il mouse, e che porta il tooltip.
+
+    `nearest` costruisce una tassellatura sulla x: il punto lo sceglie la
+    vicinanza, quindi la barra si prende tutta l'altezza della colonna e
+    funziona anche dove i pallini non ci sono. La stessa barra porta il
+    tooltip, cosi' il numero si legge dovunque nella colonna invece che solo
+    centrando il punto - e su una barra alta zero, nel Training della Week, e'
+    l'unico modo di leggerlo."""
+    vicino = alt.selection_point(
+        name="hover",
+        nearest=True,
+        on="pointerover",
+        clear="pointerout",
+        encodings=["x"],
+        empty=False,
+    )
+    return (
+        alt.Chart(data)
+        .mark_rule(color=palette_muted(theme), strokeWidth=1)
+        .encode(
+            x=alt.X(f"{x}:T", title=None),
+            opacity=alt.condition(vicino, alt.value(0.8), alt.value(0)),
+            tooltip=tooltip,
+        )
+        .add_params(vicino)
+    )
+
+
+def _trend_y(unit: str | None, theme: str, zero: bool) -> alt.Y:
+    """L'asse y di un grafico del Trend: l'unita' sopra i numeri, orizzontale e
+    allineata a destra sulla riga dell'asse. Girata lungo l'asse si leggerebbe
+    una alla volta, e sono venti grafici bassi uno sotto l'altro.
+
+    `zero` e' l'unica cosa che cambia fra una linea e una barra, ed e'
+    importante in tutte e due i versi. Una **linea** su una misura che oscilla
+    fra 49 e 52 schiacciata sullo zero sarebbe piatta, quindi `zero=False`. Una
+    **barra** invece parte da zero per forza, o la sua altezza mente."""
+    return alt.Y(
+        "value:Q",
+        title=unit,
+        scale=alt.Scale(zero=zero, nice=True),
+        axis=alt.Axis(
+            titleFontSize=10,
+            labelFontSize=10,
+            titleAngle=0,
+            titleAlign="right",
+            titleX=0,
+            titleY=-7,
+            titleBaseline="bottom",
+            titleColor=palette_muted(theme),
+        ),
+    )
+
+
+def _trend_line(
+    data: pd.DataFrame, x: str, colors: dict, unit: str | None, theme: str, with_points: bool
+) -> alt.Chart:
+    """La linea di una serie, coi pallini dove non si impastano."""
+    return (
+        alt.Chart(data)
+        .mark_line(
+            color=colors["line"],
+            strokeWidth=2,
+            point=alt.OverlayMarkDef(color=colors["line"], size=22) if with_points else False,
+        )
+        .encode(
+            x=alt.X(f"{x}:T", title=None, axis=alt.Axis(format="%d %b", tickCount=5)),
+            y=_trend_y(unit, theme, zero=False),
+        )
+    )
+
+
+def _trend_bars(data: pd.DataFrame, x: str, colors: dict, unit: str | None, theme: str) -> alt.Chart:
+    """Le barre di una serie, al posto della linea.
+
+    Le vuole il pannello Training della Week (todo 78): una somma settimanale e'
+    una quantita', e le quantita' si leggono a barre. Risolvono da se' due cose
+    che sulla linea erano scomode - una settimana di riposo e' uno zero vero, e
+    una barra alta zero si legge come zero invece che come un avvallamento fra
+    due punti; e una settimana senza sedute non ha niente da spezzare."""
+    return (
+        alt.Chart(data)
+        .mark_bar(color=colors["line"])
+        .encode(
+            x=alt.X(f"{x}:T", title=None, axis=alt.Axis(format="%d %b", tickCount=5)),
+            y=_trend_y(unit, theme, zero=True),
+        )
+    )
+
+
+def _trend_frame(strati: list[alt.Chart], label: str) -> alt.Chart:
+    """Il telaio: gli strati sovrapposti, l'altezza fissa, la larghezza del
+    contenitore e il nome della misura come titolo in alto a sinistra.
+
+    E' una vista **a strati**, non composta: `width: "container"` dentro un
+    `facet` o un `vconcat` viene largo zero (todo 52), mentre con `layer`
+    funziona."""
+    return alt.layer(*strati).properties(
+        height=TREND_HEIGHT,
+        width="container",
+        title=alt.TitleParams(label, anchor="start", fontSize=11, offset=6, dy=-2),
+    )
+
+
 def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "health") -> alt.Chart | None:
     """Una serie del Trend (todo 55): la linea giorno per giorno, con la
     fascia di `_band` come sfondo.
@@ -704,13 +824,8 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
 
     data = pd.DataFrame(series["points"])
     data["day"] = pd.to_datetime(data["day"])
-    # Il testo del tooltip si prepara qui: con i decimali della misura, che
-    # Vega non conosce.
     digits = int(series.get("digits") or 0)
-    data["testo"] = [
-        "-" if v is None else (f"{v:.{digits}f}" if digits else f"{v:.0f}")
-        for v in data["value"]
-    ]
+    data["testo"] = _trend_text(data["value"], digits)
 
     strati = []
     banda = series.get("band")
@@ -743,91 +858,131 @@ def trend_chart(series: dict, days: int, theme: str = "light", panel: str = "hea
                 .encode(y=alt.Y("low:Q", title=unit), y2=alt.Y2("high:Q"))
             )
 
-    # La barra verticale che segue il mouse. `nearest` costruisce una
-    # tassellatura sulla x: il giorno lo sceglie la vicinanza, quindi si
-    # prende tutta l'altezza della colonna e funziona anche a 365 giorni,
-    # dove i pallini non ci sono. La stessa barra porta il tooltip: cosi' il
-    # numero si legge dovunque nella colonna, non solo centrando il punto.
-    vicino = alt.selection_point(
-        name="hover",
-        nearest=True,
-        on="pointerover",
-        clear="pointerout",
-        encodings=["x"],
-        empty=False,
+    tooltip = [
+        alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
+        alt.Tooltip("testo:N", title=series["label"]),
+    ]
+    strati.append(_trend_hover(data, "day", tooltip, theme))
+    strati.append(
+        _trend_line(data, "day", colors, unit, theme, days <= TREND_POINTS_UP_TO_DAYS)
     )
-    barra = (
-        alt.Chart(data)
-        .mark_rule(color=palette_muted(theme), strokeWidth=1)
-        .encode(
-            x=alt.X("day:T", title=None),
-            opacity=alt.condition(vicino, alt.value(0.8), alt.value(0)),
-            tooltip=[
-                alt.Tooltip("day:T", title="Day", format="%a %d %b %Y"),
-                alt.Tooltip("testo:N", title=series["label"]),
-            ],
-        )
-        .add_params(vicino)
-    )
-    strati.append(barra)
-
-    linea = (
-        alt.Chart(data)
-        .mark_line(
-            color=colors["line"],
-            strokeWidth=2,
-            point=(
-                alt.OverlayMarkDef(color=colors["line"], size=22)
-                if days <= TREND_POINTS_UP_TO_DAYS
-                else False
-            ),
-        )
-        .encode(
-            x=alt.X("day:T", title=None, axis=alt.Axis(format="%d %b", tickCount=5)),
-            y=alt.Y(
-                "value:Q",
-                title=unit,
-                scale=alt.Scale(zero=False, nice=True),
-                # L'unita' sopra i numeri dell'asse, orizzontale e allineata
-                # a destra sulla riga dell'asse: girata lungo l'asse si
-                # leggerebbe una alla volta, e sono venti grafici bassi uno
-                # sotto l'altro.
-                axis=alt.Axis(
-                    titleFontSize=10,
-                    labelFontSize=10,
-                    titleAngle=0,
-                    titleAlign="right",
-                    titleX=0,
-                    titleY=-7,
-                    titleBaseline="bottom",
-                    titleColor=palette_muted(theme),
-                ),
-            ),
-        )
-    )
-    strati.append(linea)
-    return alt.layer(*strati).properties(
-        height=TREND_HEIGHT,
-        width="container",
-        title=alt.TitleParams(
-            series["label"],
-            anchor="start",
-            fontSize=11,
-            offset=6,
-            dy=-2,
-        ),
-    )
+    return _trend_frame(strati, series["label"])
 
 
-def trend_panel_charts(panel: dict, days: int, theme: str = "light") -> list[dict]:
+def week_trend_chart(
+    series: dict, weeks: int, theme: str = "light", panel: str = "health"
+) -> alt.Chart | None:
+    """Una serie del Trend della Week (todo 78): un punto per settimana, con la
+    fascia di **ogni** settimana sotto.
+
+    La differenza vera dal Trend della Day sta qui. La' la fascia e' una per
+    tutta la finestra, e si disegna come due rettangoli senza `x`, larghi quanto
+    il grafico. Qui cambia settimana per settimana - e' l'errore standard della
+    media dei giorni di quella settimana - e due rettangoli non la possono dire:
+    sono **due aree** con la `x` sui lunedi', una riga per settimana, nelle
+    stesse due tinte e con le stesse due opacita' delle barre della card.
+
+    Il pannello **Training** non ha fascia e si disegna a **barre**: una somma
+    settimanale e' una quantita'. E' l'unico ramo che guarda il nome del
+    pannello, e combacia con l'unico che la fascia gia' non ce l'ha, cosi'
+    Training e' l'eccezione una volta sola e non due.
+
+    Un telaio solo per tutti gli strati: le aree leggono le stesse righe della
+    linea, quindi i lunedi' sono per costruzione gli stessi, e una settimana
+    senza fascia porta `None` sui quattro bordi. L'area si spezza nel buco come
+    la linea, che Vega sull'area taglia sul nullo esattamente come sulla
+    spezzata.
+
+    Niente ramo "un livello solo" come nella Day: li' una fascia degenere
+    restava un filo spesso quanto il grafico, e disegnarlo due volte lo
+    scuriva; qui un'area di altezza zero non disegna niente.
+
+    `None` se nella finestra non c'e' nemmeno un valore."""
+    if not any(p["value"] is not None for p in series["points"]):
+        return None
+    colors = _trend_colors(panel, series["key"], theme)
+    unit = series.get("unit")
+    digits = int(series.get("digits") or 0)
+
+    # Un telaio solo: il valore, i quattro bordi della fascia e i testi gia'
+    # formattati. Le righe non si filtrano, che le settimane senza fascia
+    # devono restare come righe a nullo.
+    data = pd.DataFrame(
+        [
+            {
+                "monday": point["monday"],
+                "value": point["value"],
+                "settimana": f"W{point['week']:02d}",
+                "giorni": f"{point['days']} of 7",
+                **{
+                    edge: (point["band"] or {}).get(edge)
+                    for edge in ("low", "high", "outer_low", "outer_high")
+                },
+            }
+            for point in series["points"]
+        ]
+    )
+    data["monday"] = pd.to_datetime(data["monday"])
+    # Dalla lista e non dalla colonna: li' il nullo e' `None`, e `_trend_text`
+    # lo riconosce. Nella colonna sarebbe gia' diventato `NaN`.
+    data["testo"] = _trend_text([point["value"] for point in series["points"]], digits)
+
+    strati = []
+    for low, high, tinta, opacity in (
+        ("outer_low", "outer_high", colors["wide"], TREND_WIDE_OPACITY.get(theme, 0.16)),
+        ("low", "high", colors["band"], TREND_BAND_OPACITY.get(theme, 0.38)),
+    ):
+        if data[low].isna().all():
+            continue
+        strati.append(
+            alt.Chart(data)
+            .mark_area(color=tinta, opacity=opacity)
+            # Senza `scale`: in un `layer` la scala y e' condivisa, e
+            # dichiararla in due strati e' un conflitto. La dichiara la linea
+            # (`_trend_y`), e il dominio comprende i bordi della fascia perche'
+            # stanno sullo stesso asse.
+            .encode(
+                x=alt.X("monday:T", title=None),
+                y=alt.Y(f"{low}:Q", title=unit),
+                y2=alt.Y2(f"{high}:Q"),
+            )
+        )
+
+    tooltip = [
+        alt.Tooltip("settimana:N", title="Week"),
+        alt.Tooltip("monday:T", title="From", format="%d %b %Y"),
+        alt.Tooltip("testo:N", title=series["label"]),
+        alt.Tooltip("giorni:N", title="Days"),
+    ]
+    strati.append(_trend_hover(data, "monday", tooltip, theme))
+    if panel == "training":
+        strati.append(_trend_bars(data, "monday", colors, unit, theme))
+    else:
+        # I pallini sempre: una serie settimanale sono al piu' cinquantadue
+        # punti, sotto i sessanta oltre i quali si impastano.
+        strati.append(_trend_line(data, "monday", colors, unit, theme, with_points=True))
+    return _trend_frame(strati, series["label"])
+
+
+def _panel_charts(panel: dict, builder, span: int, theme: str) -> list[dict]:
     """I grafici di un pannello: uno per serie, gia' in dizionario Vega-Lite.
 
     Le serie senza nemmeno un valore nella finestra si saltano, invece di
     lasciare un riquadro vuoto."""
     charts = []
     for series in panel["series"]:
-        chart = trend_chart(series, days, theme, panel["key"])
+        chart = builder(series, span, theme, panel["key"])
         if chart is None:
             continue
         charts.append({"key": series["key"], "label": series["label"], "spec": chart.to_dict()})
     return charts
+
+
+def trend_panel_charts(panel: dict, days: int, theme: str = "light") -> list[dict]:
+    """I grafici di un pannello del Trend della Day, uno per giorno."""
+    return _panel_charts(panel, trend_chart, days, theme)
+
+
+def week_trend_panel_charts(panel: dict, weeks: int, theme: str = "light") -> list[dict]:
+    """I grafici di un pannello del Trend della Week, uno per settimana."""
+    return _panel_charts(panel, week_trend_chart, weeks, theme)

@@ -296,6 +296,36 @@ def _week_mean(health: pd.DataFrame, column: str, monday: date) -> float | None:
     return float(week.mean()) if len(week) else None
 
 
+def _week_stats(health: pd.DataFrame, column: str, first: date, weeks: int) -> pd.DataFrame:
+    """Settimana per settimana, dalla settimana di `first` per `weeks`
+    settimane: la media dei giorni misurati (`mean`), quanti erano (`days`) e
+    l'errore standard della media (`sterr`). Una riga per settimana, indicizzata
+    sul lunedi'.
+
+    Il raggruppamento e' per lunedi' (`index - dayofweek`), in **una passata
+    sola** su tutta la finestra: `_week_mean` settimana per settimana vorrebbe
+    un `reindex` per ognuna, cinquantadue per colonna e venti colonne.
+
+    `sterr` e' `sem()` di pandas, che e' gia' lo scarto tipo campionario diviso
+    la radice dei valori: la formula non si riscrive, e i due casi limite
+    vengono gratis. Con un giorno solo l'errore standard non esiste e viene
+    `NaN`, e li' la fascia non si disegna. Una settimana senza nemmeno un giorno
+    misurato ha `mean` a `NaN`: il punto resta nullo e la linea si spezza, come
+    i giorni senza misura del Trend della Day.
+
+    Il `reindex` finale rimette le settimane che il raggruppamento non ha visto
+    perche' non avevano un solo valore: senza, una settimana vuota sparirebbe
+    dalla serie invece di restarci come buco."""
+    days = pd.date_range(first, periods=weeks * 7, freq="D")
+    daily = health.reindex(days)[column]
+    mondays = daily.index - pd.to_timedelta(daily.index.dayofweek, unit="D")
+    by_week = daily.groupby(mondays)
+    stats = pd.DataFrame(
+        {"mean": by_week.mean(), "days": by_week.count(), "sterr": by_week.sem()}
+    )
+    return stats.reindex(pd.date_range(first, periods=weeks, freq="7D"))
+
+
 def _week_measures(health: pd.DataFrame, monday: date) -> dict[str, dict[str, Any]]:
     """Le misure di Health e Recovery della settimana (todo 52): la media
     dei sette giorni e la fascia in cui si e' mossa nelle `BAND_WEEKS`

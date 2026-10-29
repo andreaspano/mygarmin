@@ -155,8 +155,8 @@ si resta sull'istantanea: da Day/Snap si clicca Week e si arriva su
 Week/Snap.
 
 L'URL dice i due assi: `?period=` e `?view=`, piu' i parametri della pagina
-(`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90`
-per l'ampiezza del Trend). `?view=` si scrive solo quando non e' la vista di
+(`?day=2026-10-07` per la Day, `?monday=2026-10-19` per la Week, `?days=90` e
+`?weeks=26` per l'ampiezza dei due Trend). `?view=` si scrive solo quando non e' la vista di
 partenza, quindi `?period=week` da solo apre lo Snap: i link di prima
 continuano ad aprire quello che aprivano. Cambiando vista **il periodo
 resta**: da Day/Snap si clicca Trend e si resta sul giorno che si stava
@@ -218,8 +218,25 @@ dentro il perche', i totali, i ritmi e i segnali per scaricare — con in cima
 da che blocco viene, a che settimana del blocco siamo, la gara e il
 bersaglio. Una settimana senza file non e' un
 errore, e la vista lo dice: le settimane prima dell'inizio di un blocco non ne
-hanno. Il **Trend** invece e' ancora **vuoto**, la casella prenotata per la
-fila delle settimane, un punto per settimana invece di uno per giorno.
+hanno.
+
+Il **Trend** e' la fila delle settimane (todo 78): gli stessi cinque pannelli
+della Day, ma con **un punto per settimana** invece che per giorno, in una
+finestra che il cursore muove da 4 a 52 settimane. Il punto e' la **media** dei
+giorni misurati — la **somma** sul pannello Training, che li' si disegna a
+barre, perche' i minuti di una settimana sono la loro somma e una quantita' si
+legge a barre.
+
+Due cose non sono quelle dello Snap, e sono volute. Lo Snap legge carico e
+forma come **stati di fine settimana**; il Trend li media come tutto il resto,
+perche' una linea i cui punti fossero stati su un pannello e medie su un altro
+non si confronterebbe. E la **fascia risponde a un'altra domanda** di tutte le
+altre dell'app: non dove sta di solito la misura, ma **quanto bene si conosce
+la media di quella settimana** — la media piu' e meno uno e due errori standard
+dei suoi giorni (`scarto tipo / radice dei giorni`). E' quindi di **ogni
+punto** e non della finestra: una settimana con giorni sparsi porta una fascia
+larga, e si vede a colpo d'occhio. Sotto tre giorni misurati non si disegna, e
+il pannello Training non ce l'ha affatto.
 
 La card Plan della Training e la vista Plan leggono **lo stesso file e
 rispondono a due domande** (todo 71): la vista ha il **documento**, che si

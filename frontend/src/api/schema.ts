@@ -265,6 +265,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/weekly/trend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly trend series
+         * @description The weekly series over a window of ISO weeks, panel by panel (todo 78).
+         *
+         *     One point per week: the mean of the week's measured days on Health, Recovery, Load and
+         *     Fitness, the sum on Training. Each week carries its own band — the mean plus and minus
+         *     one and two standard errors of its days — so a week whose days were scattered shows a
+         *     wide one, and a week with fewer than `min_week_days` measured days shows none.
+         *
+         *     Unlike `/api/weekly/{monday}`, load and fitness are means of the week's days and not
+         *     the state at its end: one rule for every panel, so the lines compare.
+         *
+         *     The last week may still be running: its mean is made of fewer days and its totals are
+         *     partial, and every point says how many days are behind it.
+         */
+        get: operations["get_weekly_trend_api_weekly_trend_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/weekly/trend/chart/vega": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Weekly trend charts, Vega-Lite
+         * @description The charts of one weekly panel, one Vega-Lite spec per measure (todo 78).
+         *
+         *     Four panels draw a line with its band underneath, as two areas and not the two
+         *     full-width rectangles of the Day: here the band changes from week to week. Training
+         *     draws **bars**, because a weekly sum is a quantity, and carries no band.
+         */
+        get: operations["get_weekly_trend_charts_api_weekly_trend_chart_vega_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/weekly/{monday}": {
         parameters: {
             query?: never;
@@ -1910,6 +1965,115 @@ export interface components {
             body: string;
         };
         /**
+         * WeekTrendData
+         * @description The weekly series over a window of ISO weeks, one point per week (todo 78).
+         *
+         *     Health, Recovery, Load and Fitness are the mean of the week's days; Training is their
+         *     sum. One rule for every panel, so the lines compare - which is why load and fitness are
+         *     means here and not the end-of-week states the Week itself reads.
+         */
+        WeekTrendData: {
+            /**
+             * From
+             * Format: date
+             * @description The Monday of the first week.
+             */
+            from: string;
+            /**
+             * To
+             * Format: date
+             * @description The Monday of the last week, included.
+             */
+            to: string;
+            /**
+             * Weeks
+             * @description Width of the window, in weeks.
+             */
+            weeks: number;
+            /**
+             * Min Week Days
+             * @description Measured days a weekly band needs; under it there is none.
+             */
+            min_week_days: number;
+            /** Panels */
+            panels: components["schemas"]["WeekTrendPanel"][];
+        };
+        /**
+         * WeekTrendPanel
+         * @description One panel of the weekly Trend, in the order of the Day cards.
+         */
+        WeekTrendPanel: {
+            /** Key */
+            key: string;
+            /** Title */
+            title: string;
+            /**
+             * Icon
+             * @description The icon of the Report section with the same name.
+             */
+            icon: string | null;
+            /** Series */
+            series: components["schemas"]["WeekTrendSeries"][];
+        };
+        /**
+         * WeekTrendPoint
+         * @description One ISO week of a weekly trend series.
+         *
+         *     `value` is the arithmetic mean of the week's measured days - a sum, on the Training
+         *     panel. Null where no day of the week was measured: the line breaks there instead of
+         *     joining the two sides of a gap.
+         */
+        WeekTrendPoint: {
+            /**
+             * Monday
+             * Format: date
+             * @description The Monday of the week.
+             */
+            monday: string;
+            /**
+             * Week
+             * @description The ISO week number.
+             */
+            week: number;
+            /** Value */
+            value: number | null;
+            /**
+             * Days
+             * @description Measured days behind the value, out of seven.
+             */
+            days: number;
+            /** @description The mean plus and minus one standard error of the week's days, and two. Its own band for each week, and not one for the whole window as on the Day: a week whose days were scattered carries a wide one. Null under MIN_WEEK_DAYS measured days, for the load ratio and for the whole Training panel. */
+            band: components["schemas"]["Band"] | null;
+        };
+        /**
+         * WeekTrendSeries
+         * @description One measure, week by week.
+         *
+         *     No band of its own, unlike TrendSeries: here every week carries the band of its own
+         *     days.
+         */
+        WeekTrendSeries: {
+            /**
+             * Key
+             * @description The column it is read from.
+             */
+            key: string;
+            /** Label */
+            label: string;
+            /**
+             * Unit
+             * @description Null for plain scores.
+             */
+            unit: string | null;
+            /**
+             * Digits
+             * @description Decimals the measure is worth.
+             */
+            digits: number;
+            /** Points */
+            points: components["schemas"]["WeekTrendPoint"][];
+        };
+        /**
          * WeekZone
          * @description Minutes spent in one of Garmin's three effort bands, over the week (todo 54).
          */
@@ -2399,6 +2563,78 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DayPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weekly_trend_api_weekly_trend_get: {
+        parameters: {
+            query: {
+                /** @description The Monday of the last week, included. */
+                to: string;
+                /** @description Width of the window, in weeks. */
+                weeks?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WeekTrendData"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_weekly_trend_charts_api_weekly_trend_chart_vega_get: {
+        parameters: {
+            query: {
+                /** @description The Monday of the last week, included. */
+                to: string;
+                panel: string;
+                /** @description Width of the window, in weeks. */
+                weeks?: number;
+                theme?: "light" | "dark";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
                 };
             };
             /** @description Validation Error */
