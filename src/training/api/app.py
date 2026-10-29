@@ -49,15 +49,20 @@ from training.api.models import (
     TerrainUpdate,
     TrendData,
     WeeklyData,
+    WeekTrendData,
     WeekPlan,
     ZoneBand,
 )
 from training.interface.daily_data import (
+    TREND_DEFAULT_WEEKS,
     TREND_MAX_DAYS,
+    TREND_MAX_WEEKS,
     TREND_MIN_DAYS,
+    TREND_MIN_WEEKS,
     build_daily_data,
     fitness_on,
     trend_data,
+    week_trend_data,
 )
 from training.interface.db import _clean, load_activity_records
 from training.interface.health import load_lactate_threshold
@@ -70,6 +75,7 @@ from training.interface.run_chart import (
     pauses,
     run_analysis_chart,
     trend_panel_charts,
+    week_trend_panel_charts,
     zone_bands,
     zone_settings,
 )
@@ -348,6 +354,81 @@ def get_day_plan(day: date, ctx: Context) -> DayPlan:
     return DayPlan(**{name: plan[name] for name in DayPlan.model_fields})
 
 
+def _week_monday(monday: date) -> None:
+    """Il lunedi' di una settimana che si puo' chiedere, o 422. La settimana in
+    corso si guarda - e' il caso normale - quella che non e' ancora cominciata
+    no.
+
+    Stava dentro `get_weekly`; e' uscita quando le rotte del Trend della Week
+    (todo 78) hanno avuto bisogno degli stessi due controlli, perche' le tre
+    non possano divergere. `get_week_plan` tiene il suo: il piano di una
+    settimana futura e' legittimo."""
+    if monday.weekday() != 0:
+        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
+    if monday > date.today():
+        raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
+
+
+# Le due rotte del Trend della Week stanno **prima** di `/api/weekly/{monday}`,
+# per lo stesso motivo di `/api/daily/trend` (todo 55): le rotte si provano
+# nell'ordine in cui sono scritte, e "trend" finirebbe dentro `{monday}` come
+# data non valida.
+@app.get("/api/weekly/trend", response_model=WeekTrendData, summary="Weekly trend series")
+def get_weekly_trend(
+    ctx: Context,
+    to: Annotated[date, Query(description="The Monday of the last week, included.")],
+    weeks: Annotated[
+        int,
+        Query(
+            ge=TREND_MIN_WEEKS,
+            le=TREND_MAX_WEEKS,
+            description="Width of the window, in weeks.",
+        ),
+    ] = TREND_DEFAULT_WEEKS,
+) -> WeekTrendData:
+    """The weekly series over a window of ISO weeks, panel by panel (todo 78).
+
+    One point per week: the mean of the week's measured days on Health, Recovery, Load and
+    Fitness, the sum on Training. Each week carries its own band — the mean plus and minus
+    one and two standard errors of its days — so a week whose days were scattered shows a
+    wide one, and a week with fewer than `min_week_days` measured days shows none.
+
+    Unlike `/api/weekly/{monday}`, load and fitness are means of the week's days and not
+    the state at its end: one rule for every panel, so the lines compare.
+
+    The last week may still be running: its mean is made of fewer days and its totals are
+    partial, and every point says how many days are behind it."""
+    _week_monday(to)
+    first = to - timedelta(weeks=weeks - 1)
+    return WeekTrendData(
+        **week_trend_data(first, to, ctx.data_dir, load_activities(ctx.data_dir), load_health(ctx.data_dir))
+    )
+
+
+@app.get("/api/weekly/trend/chart/vega", summary="Weekly trend charts, Vega-Lite")
+def get_weekly_trend_charts(
+    ctx: Context,
+    to: Annotated[date, Query(description="The Monday of the last week, included.")],
+    panel: str,
+    weeks: Annotated[
+        int, Query(ge=TREND_MIN_WEEKS, le=TREND_MAX_WEEKS, description="Width of the window, in weeks.")
+    ] = TREND_DEFAULT_WEEKS,
+    theme: Literal["light", "dark"] = "light",
+) -> list[dict[str, Any]]:
+    """The charts of one weekly panel, one Vega-Lite spec per measure (todo 78).
+
+    Four panels draw a line with its band underneath, as two areas and not the two
+    full-width rectangles of the Day: here the band changes from week to week. Training
+    draws **bars**, because a weekly sum is a quantity, and carries no band."""
+    _week_monday(to)
+    first = to - timedelta(weeks=weeks - 1)
+    data = week_trend_data(first, to, ctx.data_dir, load_activities(ctx.data_dir), load_health(ctx.data_dir))
+    for item in data["panels"]:
+        if item["key"] == panel:
+            return week_trend_panel_charts(item, weeks, theme)
+    raise HTTPException(status_code=404, detail=f"No panel named {panel!r}.")
+
+
 @app.get("/api/weekly/{monday}", response_model=WeeklyData, summary="Weekly data")
 def get_weekly(monday: date, ctx: Context) -> WeeklyData:
     """Everything known about one ISO week, Monday to Sunday (todo 52).
@@ -355,10 +436,7 @@ def get_weekly(monday: date, ctx: Context) -> WeeklyData:
     The Health and Recovery measures are averages of the seven days, each with the band it
     has moved in over the last twelve weeks; load and fitness are the state at the end of
     the week, which is today for a week still running."""
-    if monday.weekday() != 0:
-        raise HTTPException(status_code=422, detail=f"{monday} is not a Monday.")
-    if monday > date.today():
-        raise HTTPException(status_code=422, detail=f"The week of {monday} has not started.")
+    _week_monday(monday)
     data = weekly_payload(monday, ctx.data_dir)
     return WeeklyData(**{name: data[name] for name in WeeklyData.model_fields})
 

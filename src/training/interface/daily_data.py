@@ -34,7 +34,7 @@ from training.interface.report_text import section_icon
 from training.interface.grade import EQUIV_SPEED_SPORTS
 from training.interface.run_chart import EFFECTS, durations_s, effects, has_effects, zone_settings
 from training.interface.sports import has_distance
-from training.interface.weekly_data import WEEKDAYS, _load, _mean, _value
+from training.interface.weekly_data import BAND_WEEKS, WEEKDAYS, _load, _mean, _value, _week_stats
 
 # Le misure della mattina, con la riga di `health_daily` da cui si leggono:
 # 0 e' il giorno D, -1 il giorno prima. Il sonno con la data di D e' la notte
@@ -106,6 +106,38 @@ def _window(health: pd.DataFrame, column: str, end: date, days: int) -> pd.Serie
     return health.reindex(index)[column]
 
 
+def _band_edges(
+    centre: float | None,
+    spread: float | None,
+    limits: tuple[float, float] | None = None,
+    digits: int = 1,
+) -> dict[str, Any] | None:
+    """La forma di una fascia: `centre` piu' e meno `spread` (`low`, `high`) e
+    piu' e meno due (`outer_low`, `outer_high`), fermata a `limits` e
+    arrotondata.
+
+    Qui sta il **disegno** della fascia, non da dove viene la sua larghezza. La
+    Day passa lo scarto tipo dei giorni della finestra (`_band`), il Trend della
+    Week l'errore standard della media dei giorni della settimana
+    (`_week_trend_points`): una funzione sola che sa la forma, due che sanno la
+    larghezza.
+
+    `None` se il centro o la larghezza non ci sono."""
+    if centre is None or spread is None or pd.isna(centre) or pd.isna(spread):
+        return None
+    floor, ceiling = limits or (-math.inf, math.inf)
+
+    def edge(value: float) -> Any:
+        return _value(min(max(value, floor), ceiling), digits)
+
+    return {
+        "low": edge(centre - spread),
+        "high": edge(centre + spread),
+        "outer_low": edge(centre - 2 * spread),
+        "outer_high": edge(centre + 2 * spread),
+    }
+
+
 def _band(
     window: pd.Series,
     limits: tuple[float, float] | None = None,
@@ -138,20 +170,7 @@ def _band(
     values = window.dropna()
     if len(values) < min_values:
         return None
-    mean, sd = values.mean(), values.std()
-    if pd.isna(mean) or pd.isna(sd):
-        return None
-    floor, ceiling = limits or (-math.inf, math.inf)
-
-    def edge(value: float) -> Any:
-        return _value(min(max(value, floor), ceiling), digits)
-
-    return {
-        "low": edge(mean - sd),
-        "high": edge(mean + sd),
-        "outer_low": edge(mean - 2 * sd),
-        "outer_high": edge(mean + 2 * sd),
-    }
+    return _band_edges(values.mean(), values.std(), limits, digits)
 
 
 def _morning(health: pd.DataFrame, day: date) -> dict[str, Any]:
@@ -686,24 +705,34 @@ def _trend_points(window: pd.Series, digits: int) -> list[dict[str, Any]]:
     ]
 
 
-def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[str, Any]:
-    """Il pannello Training: minuti per intensita' e chilometri, per giorno.
+def _training_daily(activities: pd.DataFrame, start: date, end: date) -> pd.DataFrame:
+    """I totali delle sedute giorno per giorno fra `start` e `end` compresi, una
+    riga per giorno e una colonna per serie di `TREND_TRAINING`.
 
     Un giorno senza sedute vale **zero**, non "non misurato": il riposo e' un
-    dato, al contrario di una notte che l'orologio non ha registrato. Per lo
-    stesso motivo qui non c'e' la fascia di `_band`: fra i giorni a zero la
-    media e lo scarto tipo direbbero poco."""
+    dato, al contrario di una notte che l'orologio non ha registrato.
+
+    Lo usano il pannello Training della Day, un punto per giorno, e quello della
+    Week, che poi somma i giorni di ogni settimana."""
     index = pd.date_range(start, end, freq="D")
     columns = [column for column, *_ in TREND_TRAINING]
     if activities.empty:
-        daily = pd.DataFrame(0.0, index=index, columns=columns)
-    else:
-        inside = activities[
-            (activities["start_time"] >= pd.Timestamp(start))
-            & (activities["start_time"] < pd.Timestamp(end) + pd.Timedelta(days=1))
-        ]
-        by_day = inside.set_index(inside["start_time"].dt.normalize())[columns]
-        daily = by_day.groupby(level=0).sum().reindex(index).fillna(0.0)
+        return pd.DataFrame(0.0, index=index, columns=columns)
+    inside = activities[
+        (activities["start_time"] >= pd.Timestamp(start))
+        & (activities["start_time"] < pd.Timestamp(end) + pd.Timedelta(days=1))
+    ]
+    by_day = inside.set_index(inside["start_time"].dt.normalize())[columns]
+    return by_day.groupby(level=0).sum().reindex(index).fillna(0.0)
+
+
+def _trend_training(activities: pd.DataFrame, start: date, end: date) -> dict[str, Any]:
+    """Il pannello Training: minuti per intensita' e chilometri, per giorno.
+
+    Qui non c'e' la fascia di `_band`, per lo stesso motivo per cui un giorno di
+    riposo e' zero: fra i giorni a zero la media e lo scarto tipo direbbero
+    poco."""
+    daily = _training_daily(activities, start, end)
     return {
         "key": "training",
         "title": "Training",
@@ -962,6 +991,193 @@ def build_daily_data(
         "missing": [name for name, item in morning.items() if isinstance(item, dict) and "value" in item and item["value"] is None],
     }
 
+
+
+# --- Il Trend della Week (todo 78) ---
+
+# Un punto per settimana ISO invece che per giorno. Due cose da dire subito,
+# perche' non sono quelle della Week Snap:
+#
+# 1. **La media, per tutti i pannelli.** Lo Snap legge carico e forma come
+#    stati di fine settimana (`_load`, `_at_end_of`); qui sono la media
+#    aritmetica dei giorni della settimana come salute e recupero. Una regola
+#    sola, su tutti e quattro i pannelli: una linea i cui punti fossero "lo
+#    stato di domenica" su un pannello e "la media dei sette giorni" su un
+#    altro non si confronterebbe fra pannelli, e la fascia - che e' l'errore
+#    di una media - vuole una media sotto. Il pannello Training somma, che i
+#    minuti e i chilometri di una settimana sono la loro somma e non la loro
+#    media.
+#
+# 2. **La fascia e' di ogni punto, non della finestra.** Nel Trend della Day
+#    `_band` da' una fascia sola per tutta la finestra, e si disegna come due
+#    rettangoli larghi quanto il grafico. Qui ogni settimana ha la sua: la
+#    media piu' e meno uno e due errori standard dei suoi giorni (`sterr =
+#    scarto tipo / radice dei giorni`). Una settimana con giorni sparsi porta
+#    una fascia larga, una con giorni vicini una stretta, ed e' quello che si
+#    vuole leggere. Si disegna con due aree, non due rettangoli
+#    (`run_chart.week_trend_chart`).
+
+# L'ampiezza della finestra, in settimane. Di suo le dodici di `BAND_WEEKS`:
+# sono quelle su cui la Week misura gia' le sue fasce, cosi' il Trend si apre
+# sugli stessi tre mesi di cui parlano le card.
+TREND_MIN_WEEKS = 4
+TREND_MAX_WEEKS = 52
+TREND_DEFAULT_WEEKS = BAND_WEEKS
+
+# I giorni misurati che servono perche' una settimana porti la fascia. Due
+# sarebbero il minimo perche' uno scarto tipo campionario esista, ma su due
+# valori l'errore standard e' un caso: la scala y e' condivisa fra gli strati
+# del grafico, quindi **una** settimana con una fascia assurda allarga l'asse
+# e appiattisce le altre cinquantuno.
+MIN_WEEK_DAYS = 3
+
+# I decimali in piu' che si tengono sui bordi della fascia. `_band` arrotonda
+# ai decimali della misura, e sullo scarto tipo dei 28 giorni va bene perche'
+# e' grande; un **errore standard** e' radice di sette volte piu' piccolo e
+# cade sotto il passo dell'arrotondamento. Misurato sul VO2max, che di
+# decimali ne ha uno: la settimana del 5 ottobre 2026 ha la fascia a
+# `[41.2803, 41.3483]`, che arrotondata diventa `[41.3, 41.3]` - un'area di
+# altezza zero, cioe' niente. Il valore del punto tiene i suoi decimali; la
+# fascia ne tiene due in piu'.
+BAND_DIGITS = 2
+
+
+def _week_trend_points(
+    health: pd.DataFrame,
+    column: str,
+    first: date,
+    weeks: int,
+    digits: int,
+    banda: bool,
+) -> list[dict[str, Any]]:
+    """I punti di una serie settimanale, uno per settimana: il lunedi', il
+    numero ISO della settimana, la media dei giorni misurati, quanti erano e
+    la fascia del suo errore standard.
+
+    Le settimane senza nemmeno un giorno misurato restano con `value` a `None`
+    e **non si tolgono**, per lo stesso motivo dei giorni in `_trend_points`:
+    la linea si spezza nel buco, invece di unire i due estremi di un vuoto che
+    non e' mai stato misurato."""
+    limits = TREND_LIMITS.get(column, TREND_FLOOR)
+    stats = _week_stats(health, column, first, weeks)
+    points = []
+    for stamp, row in stats.iterrows():
+        monday = stamp.date()
+        giorni = 0 if pd.isna(row["days"]) else int(row["days"])
+        points.append(
+            {
+                "monday": monday.isoformat(),
+                "week": monday.isocalendar()[1],
+                "value": _value(row["mean"], digits),
+                "days": giorni,
+                "band": (
+                    _band_edges(row["mean"], row["sterr"], limits, digits + BAND_DIGITS)
+                    if banda and giorni >= MIN_WEEK_DAYS
+                    else None
+                ),
+            }
+        )
+    return points
+
+
+def _week_trend_training(
+    activities: pd.DataFrame, first: date, weeks: int, last: date
+) -> dict[str, Any]:
+    """Il pannello Training settimana per settimana: i minuti per intensita',
+    i chilometri e il dislivello **sommati** sui giorni della settimana.
+
+    `last` taglia i giorni che non sono ancora stati vissuti, cosi' `days` dice
+    la verita' sulla settimana in corso: la somma dell'ultimo punto copre i
+    giorni che ci sono stati, e il tooltip dice quanti.
+
+    Niente fascia, come nel pannello Training della Day: di una somma l'errore
+    standard non e' definito, e fra le settimane di scarico e quelle di carico
+    media e scarto tipo direbbero poco."""
+    mondays = pd.date_range(first, periods=weeks, freq="7D")
+    end = min(first + timedelta(days=weeks * 7 - 1), last)
+    daily = _training_daily(activities, first, end)
+    by_week = daily.groupby(daily.index - pd.to_timedelta(daily.index.dayofweek, unit="D"))
+    somme = by_week.sum().reindex(mondays).fillna(0.0)
+    giorni = by_week.size().reindex(mondays).fillna(0).astype(int)
+    return {
+        "key": "training",
+        "title": "Training",
+        "icon": section_icon("training"),
+        "series": [
+            {
+                "key": column,
+                "label": label,
+                "unit": unit,
+                "digits": digits,
+                "points": [
+                    {
+                        "monday": stamp.date().isoformat(),
+                        "week": stamp.date().isocalendar()[1],
+                        "value": _value(somme[column].loc[stamp], digits),
+                        "days": int(giorni.loc[stamp]),
+                        "band": None,
+                    }
+                    for stamp in mondays
+                ],
+            }
+            for column, label, unit, digits in TREND_TRAINING
+        ],
+    }
+
+
+def week_trend_data(
+    first: date,
+    last: date,
+    data_dir: Path = DATA_DIR,
+    activities: pd.DataFrame | None = None,
+    health: pd.DataFrame | None = None,
+) -> dict[str, Any]:
+    """Le serie settimanali dalla settimana di `first` a quella di `last`
+    compresa, pannello per pannello.
+
+    `first` e `last` sono lunedi': lo controlla chi chiama (l'API rifiuta un
+    `to` che non lo sia, e un'ampiezza fuori da
+    `TREND_MIN_WEEKS`-`TREND_MAX_WEEKS`).
+
+    Gli stessi pannelli e le stesse serie del Trend della Day, nello stesso
+    ordine - che e' quello delle card - perche' Report e Trend restino due
+    forme della stessa struttura, su qualunque periodo."""
+    if activities is None:
+        activities = list_activities(data_dir)
+    if health is None:
+        health = load_health_db(data_dir)
+
+    weeks = (last - first).days // 7 + 1
+
+    panels = []
+    for key, (title, series) in TREND_PANELS.items():
+        panels.append(
+            {
+                "key": key,
+                "title": title,
+                "icon": section_icon(title),
+                "series": [
+                    {
+                        "key": column,
+                        "label": label,
+                        "unit": unit,
+                        "digits": digits,
+                        "points": _week_trend_points(
+                            health, column, first, weeks, digits, column not in TREND_NO_BAND
+                        ),
+                    }
+                    for column, label, unit, digits in series
+                ],
+            }
+        )
+    panels.append(_week_trend_training(activities, first, weeks, date.today()))
+    return {
+        "from": first.isoformat(),
+        "to": last.isoformat(),
+        "weeks": weeks,
+        "min_week_days": MIN_WEEK_DAYS,
+        "panels": panels,
+    }
 
 def _day(text: str) -> date:
     try:

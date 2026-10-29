@@ -183,7 +183,8 @@ h2 {
   color: var(--text);
 }
 
-/* --- Il Trend della Day (todo 55) --- */
+/* --- Il Trend, della Day (todo 55) e della Week (todo 78): le
+   regole sono le stesse, che non guardano il periodo --- */
 
 /* Il cursore della finestra, con l'ampiezza e i due estremi accanto. */
 .trend-window {
