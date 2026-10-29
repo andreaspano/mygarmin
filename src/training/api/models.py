@@ -599,10 +599,12 @@ class WeekTrendPoint(BaseModel):
     value: float | None
     days: int = Field(description="Measured days behind the value, out of seven.")
     band: Band | None = Field(
-        description="The mean plus and minus one standard error of the week's days, and two. "
-        "Its own band for each week, and not one for the whole window as on the Day: a week "
-        "whose days were scattered carries a wide one. Null under MIN_WEEK_DAYS measured days, "
-        "for the load ratio and for the whole Training panel."
+        description="The mean plus and minus one standard error, and two. The variance behind "
+        "it is pooled over the window - the mean of the within-week variances - and each week "
+        "divides its square root by the root of its own measured days. So the band widens where "
+        "the average rests on fewer days, not where those days were scattered: two full weeks "
+        "carry the same width. Null under MIN_WEEK_DAYS measured days, for the load ratio and "
+        "for the whole Training panel."
     )
 
 

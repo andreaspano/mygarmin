@@ -389,9 +389,11 @@ def get_weekly_trend(
     """The weekly series over a window of ISO weeks, panel by panel (todo 78).
 
     One point per week: the mean of the week's measured days on Health, Recovery, Load and
-    Fitness, the sum on Training. Each week carries its own band — the mean plus and minus
-    one and two standard errors of its days — so a week whose days were scattered shows a
-    wide one, and a week with fewer than `min_week_days` measured days shows none.
+    Fitness, the sum on Training. Each week carries a band — the mean plus and minus one and
+    two standard errors. The variance behind them is pooled over the whole window, the mean
+    of the within-week variances, and each week divides its square root by the root of its
+    own measured days: the band widens where the average rests on fewer days. A week with
+    fewer than `min_week_days` measured days shows none.
 
     Unlike `/api/weekly/{monday}`, load and fitness are means of the week's days and not
     the state at its end: one rule for every panel, so the lines compare.
@@ -418,8 +420,9 @@ def get_weekly_trend_charts(
     """The charts of one weekly panel, one Vega-Lite spec per measure (todo 78).
 
     Four panels draw a line with its band underneath, as two areas and not the two
-    full-width rectangles of the Day: here the band changes from week to week. Training
-    draws **bars**, because a weekly sum is a quantity, and carries no band."""
+    full-width rectangles of the Day: here the band changes from week to week, with how many
+    days each average rests on. Training draws **bars**, because a weekly sum is a quantity,
+    and carries no band."""
     _week_monday(to)
     first = to - timedelta(weeks=weeks - 1)
     data = week_trend_data(first, to, ctx.data_dir, load_activities(ctx.data_dir), load_health(ctx.data_dir))

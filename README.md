@@ -232,11 +232,13 @@ forma come **stati di fine settimana**; il Trend li media come tutto il resto,
 perche' una linea i cui punti fossero stati su un pannello e medie su un altro
 non si confronterebbe. E la **fascia risponde a un'altra domanda** di tutte le
 altre dell'app: non dove sta di solito la misura, ma **quanto bene si conosce
-la media di quella settimana** — la media piu' e meno uno e due errori standard
-dei suoi giorni (`scarto tipo / radice dei giorni`). E' quindi di **ogni
-punto** e non della finestra: una settimana con giorni sparsi porta una fascia
-larga, e si vede a colpo d'occhio. Sotto tre giorni misurati non si disegna, e
-il pannello Training non ce l'ha affatto.
+la media di quella settimana** — la media piu' e meno uno e due errori
+standard. Lo scarto tipo da cui vengono e' **uno solo per la finestra**: si
+prende la varianza dentro ogni settimana, se ne fa la media, e se ne prende la
+radice; poi ogni settimana divide per la radice dei **suoi** giorni. La fascia
+si allarga quindi dove la media sta su **meno misure** — due settimane piene
+hanno la stessa larghezza, una settimana a meta' ce l'ha piu' larga. Sotto tre
+giorni misurati non si disegna, e il pannello Training non ce l'ha affatto.
 
 La card Plan della Training e la vista Plan leggono **lo stesso file e
 rispondono a due domande** (todo 71): la vista ha il **documento**, che si

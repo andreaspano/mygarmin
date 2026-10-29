@@ -277,9 +277,11 @@ export interface paths {
          * @description The weekly series over a window of ISO weeks, panel by panel (todo 78).
          *
          *     One point per week: the mean of the week's measured days on Health, Recovery, Load and
-         *     Fitness, the sum on Training. Each week carries its own band — the mean plus and minus
-         *     one and two standard errors of its days — so a week whose days were scattered shows a
-         *     wide one, and a week with fewer than `min_week_days` measured days shows none.
+         *     Fitness, the sum on Training. Each week carries a band — the mean plus and minus one and
+         *     two standard errors. The variance behind them is pooled over the whole window, the mean
+         *     of the within-week variances, and each week divides its square root by the root of its
+         *     own measured days: the band widens where the average rests on fewer days. A week with
+         *     fewer than `min_week_days` measured days shows none.
          *
          *     Unlike `/api/weekly/{monday}`, load and fitness are means of the week's days and not
          *     the state at its end: one rule for every panel, so the lines compare.
@@ -308,8 +310,9 @@ export interface paths {
          * @description The charts of one weekly panel, one Vega-Lite spec per measure (todo 78).
          *
          *     Four panels draw a line with its band underneath, as two areas and not the two
-         *     full-width rectangles of the Day: here the band changes from week to week. Training
-         *     draws **bars**, because a weekly sum is a quantity, and carries no band.
+         *     full-width rectangles of the Day: here the band changes from week to week, with how many
+         *     days each average rests on. Training draws **bars**, because a weekly sum is a quantity,
+         *     and carries no band.
          */
         get: operations["get_weekly_trend_charts_api_weekly_trend_chart_vega_get"];
         put?: never;
@@ -2042,7 +2045,7 @@ export interface components {
              * @description Measured days behind the value, out of seven.
              */
             days: number;
-            /** @description The mean plus and minus one standard error of the week's days, and two. Its own band for each week, and not one for the whole window as on the Day: a week whose days were scattered carries a wide one. Null under MIN_WEEK_DAYS measured days, for the load ratio and for the whole Training panel. */
+            /** @description The mean plus and minus one standard error, and two. The variance behind it is pooled over the window - the mean of the within-week variances - and each week divides its square root by the root of its own measured days. So the band widens where the average rests on fewer days, not where those days were scattered: two full weeks carry the same width. Null under MIN_WEEK_DAYS measured days, for the load ratio and for the whole Training panel. */
             band: components["schemas"]["Band"] | null;
         };
         /**

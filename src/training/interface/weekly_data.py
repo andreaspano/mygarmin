@@ -298,20 +298,20 @@ def _week_mean(health: pd.DataFrame, column: str, monday: date) -> float | None:
 
 def _week_stats(health: pd.DataFrame, column: str, first: date, weeks: int) -> pd.DataFrame:
     """Settimana per settimana, dalla settimana di `first` per `weeks`
-    settimane: la media dei giorni misurati (`mean`), quanti erano (`days`) e
-    l'errore standard della media (`sterr`). Una riga per settimana, indicizzata
-    sul lunedi'.
+    settimane: la media dei giorni misurati (`mean`), quanti erano (`days`) e la
+    varianza **dentro** quella settimana (`var`). Una riga per settimana,
+    indicizzata sul lunedi'.
 
     Il raggruppamento e' per lunedi' (`index - dayofweek`), in **una passata
     sola** su tutta la finestra: `_week_mean` settimana per settimana vorrebbe
     un `reindex` per ognuna, cinquantadue per colonna e venti colonne.
 
-    `sterr` e' `sem()` di pandas, che e' gia' lo scarto tipo campionario diviso
-    la radice dei valori: la formula non si riscrive, e i due casi limite
-    vengono gratis. Con un giorno solo l'errore standard non esiste e viene
-    `NaN`, e li' la fascia non si disegna. Una settimana senza nemmeno un giorno
-    misurato ha `mean` a `NaN`: il punto resta nullo e la linea si spezza, come
-    i giorni senza misura del Trend della Day.
+    Qui si rende la **varianza**, non l'errore standard: l'errore standard non
+    si puo' calcolare una settimana alla volta, perche' la sua varianza e'
+    quella media di tutte le settimane della finestra (`_week_trend_points`).
+    Una settimana con un giorno solo ha `var` a `NaN` e non entra in quella
+    media; una senza nemmeno un giorno ha `mean` a `NaN`, il punto resta nullo e
+    la linea si spezza, come i giorni senza misura del Trend della Day.
 
     Il `reindex` finale rimette le settimane che il raggruppamento non ha visto
     perche' non avevano un solo valore: senza, una settimana vuota sparirebbe
@@ -321,7 +321,7 @@ def _week_stats(health: pd.DataFrame, column: str, first: date, weeks: int) -> p
     mondays = daily.index - pd.to_timedelta(daily.index.dayofweek, unit="D")
     by_week = daily.groupby(mondays)
     stats = pd.DataFrame(
-        {"mean": by_week.mean(), "days": by_week.count(), "sterr": by_week.sem()}
+        {"mean": by_week.mean(), "days": by_week.count(), "var": by_week.var()}
     )
     return stats.reindex(pd.date_range(first, periods=weeks, freq="7D"))
 

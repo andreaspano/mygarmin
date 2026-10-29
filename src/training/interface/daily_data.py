@@ -1011,11 +1011,13 @@ def build_daily_data(
 # 2. **La fascia e' di ogni punto, non della finestra.** Nel Trend della Day
 #    `_band` da' una fascia sola per tutta la finestra, e si disegna come due
 #    rettangoli larghi quanto il grafico. Qui ogni settimana ha la sua: la
-#    media piu' e meno uno e due errori standard dei suoi giorni (`sterr =
-#    scarto tipo / radice dei giorni`). Una settimana con giorni sparsi porta
-#    una fascia larga, una con giorni vicini una stretta, ed e' quello che si
-#    vuole leggere. Si disegna con due aree, non due rettangoli
-#    (`run_chart.week_trend_chart`).
+#    media piu' e meno uno e due errori standard. La varianza da cui vengono
+#    e' pero' **una sola per la finestra** - la media delle varianze dentro le
+#    settimane - e ogni settimana ne divide la radice per la radice dei suoi
+#    giorni. Quindi la fascia si allarga dove la media sta su **meno misure**,
+#    non dove quelle misure erano sparse: due settimane piene hanno la stessa
+#    larghezza, una settimana a meta' ce l'ha piu' larga. Si disegna con due
+#    aree, non due rettangoli (`run_chart.week_trend_chart`).
 
 # L'ampiezza della finestra, in settimane. Di suo le dodici di `BAND_WEEKS`:
 # sono quelle su cui la Week misura gia' le sue fasce, cosi' il Trend si apre
@@ -1024,11 +1026,15 @@ TREND_MIN_WEEKS = 4
 TREND_MAX_WEEKS = 52
 TREND_DEFAULT_WEEKS = BAND_WEEKS
 
-# I giorni misurati che servono perche' una settimana porti la fascia. Due
-# sarebbero il minimo perche' uno scarto tipo campionario esista, ma su due
-# valori l'errore standard e' un caso: la scala y e' condivisa fra gli strati
-# del grafico, quindi **una** settimana con una fascia assurda allarga l'asse
-# e appiattisce le altre cinquantuno.
+# I giorni misurati che servono perche' una settimana porti la fascia.
+#
+# La ragione per cui erano tre e' caduta: valeva quando l'errore standard si
+# calcolava sui giorni della singola settimana, e su due valori era un caso.
+# Con la varianza aggregata non lo e' piu' - la larghezza viene dalla finestra
+# intera - e una settimana di un giorno solo avrebbe una fascia definita, la
+# piu' larga di tutte. Il minimo resta per un motivo diverso: una media fatta
+# su uno o due giorni e' un punto debole, e disegnargli attorno una fascia
+# **regolare** la farebbe sembrare una misura come le altre.
 MIN_WEEK_DAYS = 3
 
 # I decimali in piu' che si tengono sui bordi della fascia. `_band` arrotonda
@@ -1054,16 +1060,39 @@ def _week_trend_points(
     numero ISO della settimana, la media dei giorni misurati, quanti erano e
     la fascia del suo errore standard.
 
+    **L'errore standard non e' quello della singola settimana.** La varianza
+    che lo produce e' una sola per tutta la finestra: si prende la varianza
+    dentro ogni settimana, se ne fa la media, e lo scarto tipo e' la radice di
+    quella. Per ogni settimana poi si divide per la radice dei suoi giorni:
+
+        varianza_media = media delle varianze settimanali
+        scarto_tipo    = radice(varianza_media)
+        sterr(i)       = scarto_tipo / radice(giorni della settimana i)
+
+    La conseguenza e' voluta e va saputa leggendo il grafico: **la larghezza
+    della fascia dipende solo da quanti giorni ha la settimana**, non da quanto
+    quei giorni erano sparsi. Due settimane piene hanno la stessa fascia; una
+    settimana a meta' ce l'ha piu' larga, perche' la sua media e' fatta su meno
+    misure. Non si legge piu' "che settimana sballottata e' stata", si legge
+    "quanto e' solida questa media".
+
     Le settimane senza nemmeno un giorno misurato restano con `value` a `None`
     e **non si tolgono**, per lo stesso motivo dei giorni in `_trend_points`:
     la linea si spezza nel buco, invece di unire i due estremi di un vuoto che
     non e' mai stato misurato."""
     limits = TREND_LIMITS.get(column, TREND_FLOOR)
     stats = _week_stats(health, column, first, weeks)
+    # Lo scarto tipo e' **uno solo per la finestra**, e viene dalla varianza
+    # media delle settimane; per ogni settimana si divide per la radice dei
+    # suoi giorni. `mean()` salta le settimane senza varianza (quelle con un
+    # giorno solo o nessuno); se non ne resta nessuna viene `NaN`, e li'
+    # `_band_edges` non disegna niente.
+    scarto = math.sqrt(stats["var"].mean()) if stats["var"].notna().any() else float("nan")
     points = []
     for stamp, row in stats.iterrows():
         monday = stamp.date()
         giorni = 0 if pd.isna(row["days"]) else int(row["days"])
+        sterr = scarto / math.sqrt(giorni) if giorni else float("nan")
         points.append(
             {
                 "monday": monday.isoformat(),
@@ -1071,7 +1100,7 @@ def _week_trend_points(
                 "value": _value(row["mean"], digits),
                 "days": giorni,
                 "band": (
-                    _band_edges(row["mean"], row["sterr"], limits, digits + BAND_DIGITS)
+                    _band_edges(row["mean"], sterr, limits, digits + BAND_DIGITS)
                     if banda and giorni >= MIN_WEEK_DAYS
                     else None
                 ),
