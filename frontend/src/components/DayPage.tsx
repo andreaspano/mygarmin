@@ -322,7 +322,6 @@ export function DayPage({ view = "snap" }: { view?: View }) {
               comment={sectionBody(report, "Training")}
               writtenAt={sectionWrittenAt(report, "Training")}
               day={day}
-              icon={sectionIcon(report, "Training")}
               refresh={sectionButton("training")}
             />
           </>
