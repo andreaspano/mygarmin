@@ -599,12 +599,13 @@ class WeekTrendPoint(BaseModel):
     value: float | None
     days: int = Field(description="Measured days behind the value, out of seven.")
     band: Band | None = Field(
-        description="The mean plus and minus one standard error, and two. The variance behind "
-        "it is pooled over the window - the mean of the within-week variances - and each week "
-        "divides its square root by the root of its own measured days. So the band widens where "
-        "the average rests on fewer days, not where those days were scattered: two full weeks "
-        "carry the same width. Null under MIN_WEEK_DAYS measured days, for the load ratio and "
-        "for the whole Training panel."
+        description="Where this week's average would sit if nothing had changed: the window's "
+        "centre - the mean of the weekly means - plus and minus one standard error, and two. "
+        "It is a control chart: the week is the subgroup, the variance is pooled over the "
+        "window, and each week divides its square root by the root of its own measured days, so "
+        "the band widens where the average rests on fewer days. A point outside the outer edges "
+        "is a week that did something different. Null under MIN_WEEK_DAYS measured days, for the "
+        "load ratio and for the whole Training panel."
     )
 
 
@@ -618,6 +619,11 @@ class WeekTrendSeries(BaseModel):
     label: str
     unit: str | None = Field(description="Null for plain scores.")
     digits: int = Field(description="Decimals the measure is worth.")
+    centre: float | None = Field(
+        description="The mean of the weekly means over the window, which the bands are built "
+        "around and the chart draws as a dashed line. Null where there is no band: the load "
+        "ratio and the whole Training panel."
+    )
     points: list[WeekTrendPoint]
 
 
